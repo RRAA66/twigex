@@ -25,23 +25,32 @@ export function useFormBuilder() {
     const status = ref("loading");
     const saving = ref(false);
 
+    let loadRequest = 0;
+
     async function loadHeaders() {
         const { data } = await workspaceStore.fetchWorkspaceNav(route.params.id);
         const table = workspaceTables(data).find((tbl) => tbl.id === route.params.tid);
 
-        headers.value = table?.headers || [];
+        return table?.headers || [];
     }
 
-    async function loadForm(formId) {
-        const { data } = await formService.getForm(route.params.id, route.params.tid, formId);
+    async function loadSavedFields() {
+        if (!route.params.fid) return { form: null, fields: [] };
 
-        formData.value = normalizeFormData(data, route.params.id, route.params.tid);
+        const { data } = await formService.getForm(
+            route.params.id,
+            route.params.tid,
+            route.params.fid,
+        );
 
-        return data.fields || [];
+        return { form: data, fields: data.fields || [] };
     }
 
     async function load() {
-        formData.value = emptyFormData(route.params.id, route.params.tid);
+        const request = ++loadRequest;
+        const { id, tid } = route.params;
+
+        formData.value = emptyFormData(id, tid);
         formFields.value = [];
 
         if (!settingsStore.getLicenseFeature("forms")) {
@@ -52,13 +61,18 @@ export function useFormBuilder() {
 
         status.value = "loading";
         try {
-            await loadHeaders();
+            const tableHeaders = await loadHeaders();
+            const saved = await loadSavedFields();
 
-            const savedFields = route.params.fid ? await loadForm(route.params.fid) : [];
+            if (request !== loadRequest) return;
 
-            formFields.value = mergeFormFields(headers.value, savedFields, t.value);
+            headers.value = tableHeaders;
+            if (saved.form) formData.value = normalizeFormData(saved.form, id, tid);
+            formFields.value = mergeFormFields(tableHeaders, saved.fields, t.value);
             status.value = "ready";
         } catch (error) {
+            if (request !== loadRequest) return;
+
             if (error?.response?.status === 403) {
                 status.value = "forbidden";
 
@@ -131,9 +145,13 @@ export function useFormBuilder() {
     onMounted(load);
 
     watch(
-        () => route.params.fid,
-        (fid) => {
-            if ((fid || "") !== formData.value.id) load();
+        () => [route.params.id, route.params.tid, route.params.fid],
+        ([id, tid, fid]) => {
+            const form = formData.value;
+
+            if (id !== form.workspace_id || tid !== form.table_id || (fid || "") !== form.id) {
+                load();
+            }
         },
     );
 
