@@ -581,3 +581,47 @@ type KanbanStatusOption struct {
 	Color      string
 	StatusType string
 }
+
+type WorkspaceForm struct {
+	ID            string `json:"id"`
+	WorkspaceID   string `json:"workspace_id"`
+	TableID       string `json:"table_id"`
+	Name          string `json:"name"`
+	Title         string `json:"title"`
+	Description   string `json:"description"`
+	CoverImage    string `json:"cover_image"`
+	CoverPosition int    `json:"cover_position"`
+	Logo          string `json:"logo"`
+	AccentColor   string `json:"accent_color"`
+	PublicToken   string `json:"public_token"`
+	RequiresLogin bool   `json:"requires_login"`
+	Active        bool   `json:"active"`
+	CreatedBy     string `json:"created_by"`
+	CreatedAt     int64  `json:"created_at"`
+	UpdatedAt     int64  `json:"updated_at"`
+}
+
+type WorkspaceFormField struct {
+	ID             string `json:"id"`
+	FormID         string `json:"form_id"`
+	HeaderID       string `json:"header_id"`
+	HeaderName     string `json:"header_name"`
+	Label          string `json:"label"`
+	Placeholder    string `json:"placeholder"`
+	Description    string `json:"description"`
+	Required       bool   `json:"required"`
+	Visible        bool   `json:"visible"`
+	SortOrder      int    `json:"sort_order"`
+	ColumnPosition string `json:"column_position,omitempty"`
+	// Read from the table's field and its link, not stored with the form.
+	FieldType     string `json:"field_type,omitempty"`
+	LinkedID      string `json:"linked_id,omitempty"`
+	SingleSelect  bool   `json:"single_select,omitempty"`
+	ParentTableID string `json:"parent_table_id,omitempty"`
+	DisplayName   string `json:"display_name,omitempty"`
+}
+
+type WorkspaceFormWithFields struct {
+	WorkspaceForm
+	Fields []WorkspaceFormField `json:"fields"`
+}

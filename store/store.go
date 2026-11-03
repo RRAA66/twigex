@@ -699,6 +699,11 @@ type WorkspaceStore interface {
 	UpdateGroupRoles(ctx context.Context, workspaceID, groupID string, roles []string) error
 	SearchMembers(ctx context.Context, workspaceIDs []string, query string, limit, offset int) ([]model.User, error)
 	GetGroupRolesForUser(userID, workspaceID string) ([]string, error)
+
+	CreateForm(ctx context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error
+	GetForm(ctx context.Context, formID string) (*model.WorkspaceFormWithFields, error)
+	UpdateForm(ctx context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error
+	DeleteForm(ctx context.Context, formID string) error
 }
 
 type UploadSessionStore interface {
