@@ -80,15 +80,36 @@ func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search s
 		return nil, appErr
 	}
 
-	if !formShows(form, func(f model.WorkspaceFormField) bool { return f.LinkedID != "" && pickedTable(f) == tableID }) {
+	i := slices.IndexFunc(form.Fields, func(f model.WorkspaceFormField) bool {
+		return f.Visible && f.LinkedID != "" && pickedTable(f) == tableID
+	})
+	if i == -1 {
 		return nil, model.NewAppError("workspace.form_linked_not_found", http.StatusNotFound)
 	}
 
-	items, total, err := a.Store.Workspace.GetLinkedItems(ctx, form.WorkspaceID, tableID, search, (page-1)*limit, limit)
+	// A single-select's options belong to the form's table, which the user
+	// already reads; a link's rows are another table's.
+	if !form.Fields[i].SingleSelect && !a.canReadTable(ctx, *user, form.WorkspaceID, tableID) {
+		return nil, model.NewAppError("workspace.form_linked_not_found", http.StatusNotFound)
+	}
+
+	tableName, err := a.Store.Workspace.GetTableName(tableID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, model.NewAppError("workspace.form_linked_not_found", http.StatusNotFound)
 	}
 
+	if err != nil {
+		tlog.Errorw("Failed to retrieve the linked table of a form",
+			"form_id", form.ID,
+			"table_id", tableID,
+			"error", err,
+		)
+		return nil, model.NewAppError("workspace.form_linked_failed", http.StatusInternalServerError)
+	}
+
+	// One row past the page tells whether another page follows.
+	access := a.assignedOnlyFilter(*user, form.WorkspaceID, tableID)
+	rows, err := a.Store.Workspace.GetLinkedRecordsLite(ctx, tableName, search, nil, limit+1, (page-1)*limit, access)
 	if err != nil {
 		tlog.Errorw("Failed to retrieve linked items for a form",
 			"form_id", form.ID,
@@ -98,7 +119,14 @@ func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search s
 		return nil, model.NewAppError("workspace.form_linked_failed", http.StatusInternalServerError)
 	}
 
-	return &model.LinkedItemsResponse{Items: items, Total: total, Page: page, Limit: limit}, nil
+	response := model.LinkedItemsResponse{Items: []model.FormLinkedItem{}, HasMore: len(rows) > limit}
+	for _, row := range rows[:min(len(rows), limit)] {
+		id, _ := row["id"].(string)
+		name, _ := row["name"].(string)
+		response.Items = append(response.Items, model.FormLinkedItem{ID: id, Name: name})
+	}
+
+	return &response, nil
 }
 
 // SubmitForm creates a row from a submitted form. A filled honeypot is

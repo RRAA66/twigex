@@ -659,10 +659,8 @@ type FormLinkedItem struct {
 }
 
 type LinkedItemsResponse struct {
-	Items []FormLinkedItem `json:"items"`
-	Total int              `json:"total"`
-	Page  int              `json:"page"`
-	Limit int              `json:"limit"`
+	Items   []FormLinkedItem `json:"items"`
+	HasMore bool             `json:"has_more"`
 }
 
 type FormValue struct {

@@ -5,7 +5,6 @@ package sqlstore
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"slices"
 	"testing"
@@ -107,28 +106,6 @@ func TestGetFormByTokenOnlyFindsActiveForms(t *testing.T) {
 	closed, err := w.GetFormByToken(ctx, "token-2")
 	if err != nil || closed != nil {
 		t.Errorf("token-2 = %+v, %v; want nil for an inactive form", closed, err)
-	}
-}
-
-func TestGetLinkedItemsPagesThroughTheTable(t *testing.T) {
-	w := setupFormSubmit(t)
-	ctx := context.Background()
-
-	items, total, err := w.GetLinkedItems(ctx, "ws", "t-b", "task", 3, 3)
-	if err != nil {
-		t.Fatalf("GetLinkedItems: %v", err)
-	}
-	if total != 9 || len(items) != 3 || items[0] != (model.FormLinkedItem{ID: "b4", Name: "task b4"}) {
-		t.Errorf("got %+v of %d, want b4..b6 of 9", items, total)
-	}
-
-	items, total, err = w.GetLinkedItems(ctx, "ws", "t-b", "b7", 0, 50)
-	if err != nil || total != 1 || len(items) != 1 || items[0].ID != "b7" {
-		t.Errorf("search b7 = %+v of %d, %v; want b7", items, total, err)
-	}
-
-	if _, _, err := w.GetLinkedItems(ctx, "other-ws", "t-b", "", 0, 50); !errors.Is(err, sql.ErrNoRows) {
-		t.Errorf("another workspace = %v, want sql.ErrNoRows", err)
 	}
 }
 

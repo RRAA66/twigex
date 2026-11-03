@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"testing"
@@ -26,7 +27,10 @@ type fakeFormSubmitStore struct {
 	created        []model.FormTask
 	recorded       []model.WorkspaceFormSubmission
 	submissions    []model.WorkspaceFormSubmission
+	linkedRows     int
 	linkedLimit    int
+	linkedOffset   int
+	linkedAccess   model.SQLFilter
 	privateView    bool
 	viewShares     []string
 }
@@ -89,9 +93,21 @@ func (f *fakeFormSubmitStore) GetLinkableTables(context.Context, string, string)
 	return []model.FormLinkTable{{ID: tbl2, Name: "t2"}}, nil
 }
 
-func (f *fakeFormSubmitStore) GetLinkedItems(_ context.Context, _, _, _ string, _, limit int) ([]model.FormLinkedItem, int, error) {
+func (f *fakeFormSubmitStore) GetLinkedRecordsLite(_ context.Context, _, _ string, _ []string, limit, offset int, access model.SQLFilter) ([]map[string]any, error) {
 	f.linkedLimit = limit
-	return []model.FormLinkedItem{{ID: "row-1", Name: "Acme"}}, 1, nil
+	f.linkedOffset = offset
+	f.linkedAccess = access
+
+	rows := []map[string]any{}
+	for i := range min(f.linkedRows, limit) {
+		rows = append(rows, map[string]any{"id": fmt.Sprintf("row-%d", i+1), "name": "Acme"})
+	}
+
+	return rows, nil
+}
+
+func (f *fakeFormSubmitStore) IsTableSingleSelect(string) (bool, error) {
+	return false, nil
 }
 
 func (f *fakeFormSubmitStore) CreateFormTask(_ context.Context, _, _ string, task model.FormTask, submission model.WorkspaceFormSubmission) (map[string]any, error) {
@@ -175,6 +191,7 @@ func submitApp(fields ...model.WorkspaceFormField) (*App, *fakeFormSubmitStore, 
 		fakeFormStore:  forms,
 		tableWorkspace: map[string]string{tbl1: wsID, tbl2: wsID, "table-3": "workspace-2"},
 		members:        []string{"member-1", "member-2"},
+		linkedRows:     1,
 	}
 	users := &fakeFormUserStore{users: []model.User{
 		{ID: "member-1", Name: "Anna", LastName: "Ozola", Email: "anna@example.com", Photo: "p1"},
@@ -490,8 +507,43 @@ func TestPublicLinkedItemsOnlyForTheFormsFields(t *testing.T) {
 	if appErr != nil {
 		t.Fatalf("GetPublicLinkedItems: %v", appErr)
 	}
-	if ws.linkedLimit != 50 || items.Limit != 50 || len(items.Items) != 1 {
-		t.Errorf("asked the store for %d, answered %+v, want a page of at most 50", ws.linkedLimit, items)
+	if ws.linkedLimit != 51 || len(items.Items) != 1 || items.HasMore {
+		t.Errorf("asked the store for %d, answered %+v, want a page of at most 50 and one more to tell if there are more", ws.linkedLimit, items)
+	}
+}
+
+func TestPublicLinkedItemsSaysWhetherMoreFollow(t *testing.T) {
+	a, ws, _ := submitApp(model.WorkspaceFormField{HeaderName: "customers", FieldType: "link", LinkedID: "link-table", ParentTableID: tbl2, Visible: true})
+	ws.linkedRows = 25
+
+	items, appErr := a.GetPublicLinkedItems(context.Background(), "token-1", tbl2, "", 2, 10, submitter)
+	if appErr != nil {
+		t.Fatalf("GetPublicLinkedItems: %v", appErr)
+	}
+	if ws.linkedOffset != 10 || len(items.Items) != 10 || !items.HasMore || items.Items[0] != (model.FormLinkedItem{ID: "row-1", Name: "Acme"}) {
+		t.Errorf("read from %d, answered %+v; want the second page of 10 with more to follow", ws.linkedOffset, items)
+	}
+}
+
+func TestPublicLinkedItemsOfATableTheUserCannotReadAreNotFound(t *testing.T) {
+	a, _, _ := submitApp(model.WorkspaceFormField{HeaderName: "customers", FieldType: "link", LinkedID: "link-table", ParentTableID: tbl2, Visible: true})
+	a.WorkspaceRoles = formRoles{hiddenTable: tbl2}
+
+	_, appErr := a.GetPublicLinkedItems(context.Background(), "token-1", tbl2, "", 1, 10, submitter)
+	if appErr == nil || appErr.Status != http.StatusNotFound {
+		t.Fatalf("want 404, got %v", appErr)
+	}
+}
+
+func TestPublicLinkedItemsListOnlyTheUsersOwnTasksWhereTheySeeNoOthers(t *testing.T) {
+	a, ws, _ := submitApp(model.WorkspaceFormField{HeaderName: "customers", FieldType: "link", LinkedID: "link-table", ParentTableID: tbl2, Visible: true})
+	a.WorkspaceRoles = assignedOnlyRoles{tables: map[string]bool{tbl2: true}}
+
+	if _, appErr := a.GetPublicLinkedItems(context.Background(), "token-1", tbl2, "", 1, 10, submitter); appErr != nil {
+		t.Fatalf("GetPublicLinkedItems: %v", appErr)
+	}
+	if len(ws.linkedAccess.Args) != 1 || ws.linkedAccess.Args[0] != submitter.ID {
+		t.Errorf("filtered by %+v, want the submitter's own tasks", ws.linkedAccess)
 	}
 }
 
