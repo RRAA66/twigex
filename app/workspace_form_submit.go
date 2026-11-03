@@ -1,0 +1,475 @@
+// Copyright (c) 2022 Twigex, SIA.
+// SPDX-License-Identifier: AGPL-3.0-only
+
+package app
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"net/http"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/twigex/twigex/model"
+	"github.com/twigex/twigex/tlog"
+)
+
+const maxLinkedItemsPage = 50
+
+// GetPublicForm serves a form to anyone who holds its link and is logged
+// in, member of its workspace or not.
+func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User) (*model.PublicForm, *model.AppError) {
+	ctx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	form, appErr := a.getFormByToken(ctx, token, user)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	public := model.PublicForm{
+		WorkspaceFormWithFields: *form,
+		Members:                 []model.FormMember{},
+		LinkTables:              []model.FormLinkTable{},
+	}
+
+	if formShows(form, isAssigneeField) {
+		members, appErr := a.formMembers(ctx, form.WorkspaceID)
+		if appErr != nil {
+			return nil, appErr
+		}
+
+		public.Members = members
+	}
+
+	if formShows(form, isMasterLinkField) {
+		tables, err := a.Store.Workspace.GetLinkableTables(ctx, form.WorkspaceID, form.TableID)
+		if err != nil {
+			tlog.Errorw("Failed to retrieve tables for a form",
+				"form_id", form.ID,
+				"error", err,
+			)
+			return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
+		}
+
+		public.LinkTables = tables
+	}
+
+	return &public, nil
+}
+
+// GetPublicLinkedItems pages through the rows a link or single-select field
+// of the form can pick, by id and name only.
+func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search string, page, limit int, user *model.User) (*model.LinkedItemsResponse, *model.AppError) {
+	if limit <= 0 || limit > maxLinkedItemsPage {
+		limit = maxLinkedItemsPage
+	}
+
+	if page < 1 {
+		page = 1
+	}
+
+	ctx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	form, appErr := a.getFormByToken(ctx, token, user)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	if !formShows(form, func(f model.WorkspaceFormField) bool { return f.LinkedID != "" && pickedTable(f) == tableID }) {
+		return nil, model.NewAppError("workspace.form_linked_not_found", http.StatusNotFound)
+	}
+
+	items, total, err := a.Store.Workspace.GetLinkedItems(ctx, form.WorkspaceID, tableID, search, (page-1)*limit, limit)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, model.NewAppError("workspace.form_linked_not_found", http.StatusNotFound)
+	}
+
+	if err != nil {
+		tlog.Errorw("Failed to retrieve linked items for a form",
+			"form_id", form.ID,
+			"table_id", tableID,
+			"error", err,
+		)
+		return nil, model.NewAppError("workspace.form_linked_failed", http.StatusInternalServerError)
+	}
+
+	return &model.LinkedItemsResponse{Items: items, Total: total, Page: page, Limit: limit}, nil
+}
+
+// SubmitForm creates a row from a submitted form. A filled honeypot is
+// dropped without an error, so a bot cannot tell it was caught.
+func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSubmitRequest, user *model.User, clientIP string) (map[string]any, *model.AppError) {
+	ctx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	form, appErr := a.getFormByToken(ctx, token, user)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	if request.Honeypot != "" {
+		return nil, nil
+	}
+
+	allowed, err := a.formSubmitLimiter().Allow(clientIP, token)
+	if err != nil {
+		tlog.Errorw("Failed to check form submit rate limit", "error", err)
+		return nil, model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
+	}
+
+	if !allowed {
+		return nil, model.NewAppError("link.rate_limited", http.StatusTooManyRequests)
+	}
+
+	fields := make(map[string]model.WorkspaceFormField, len(form.Fields))
+	for _, f := range form.Fields {
+		if f.Visible && f.FieldType != "file" && !model.IsServerKeptColumn(f.HeaderName) {
+			fields[f.HeaderName] = f
+		}
+	}
+
+	now := time.Now().Unix()
+	task := model.FormTask{
+		ID:        model.NewID(),
+		CreatedBy: user.ID,
+		CreatedAt: now,
+		Values:    map[string]any{},
+		Links:     map[string][]string{},
+		Selects:   map[string]string{},
+	}
+
+	for _, v := range request.Fields {
+		field, ok := fields[v.Name]
+		if !ok {
+			continue
+		}
+
+		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, v.Value, &task); appErr != nil {
+			return nil, appErr
+		}
+	}
+
+	for _, f := range fields {
+		if !f.Required {
+			continue
+		}
+
+		value, ok := task.Values[f.HeaderName]
+		if (!ok || value == nil || value == "") && len(task.Links[f.HeaderName]) == 0 {
+			return nil, model.NewAppError("workspace.form_submit_required_field", http.StatusBadRequest)
+		}
+	}
+
+	start, _ := task.Values["start_date"].(string)
+	due, _ := task.Values["due_date"].(string)
+	if start != "" && due != "" && start > due {
+		return nil, model.NewAppError("workspace.task_dates_reversed", http.StatusBadRequest)
+	}
+
+	submission := model.WorkspaceFormSubmission{
+		ID:          model.NewID(),
+		FormID:      form.ID,
+		TaskID:      task.ID,
+		SubmittedBy: user.ID,
+		SubmittedAt: now,
+	}
+
+	row, err := a.Store.Workspace.CreateFormTask(ctx, form.WorkspaceID, form.TableID, task, submission)
+	switch {
+	case errors.Is(err, model.ErrLinkTargetMissing):
+		return nil, model.NewAppError("request.invalid", http.StatusBadRequest)
+	case errors.Is(err, sql.ErrNoRows):
+		return nil, model.NewAppError("workspace.view_or_field_not_found", http.StatusNotFound)
+	case err != nil:
+		tlog.Errorw("Failed to create a row from a form",
+			"workspace_id", form.WorkspaceID,
+			"table_id", form.TableID,
+			"form_id", form.ID,
+			"error", err,
+		)
+		return nil, model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
+	case row == nil:
+		return nil, model.NewAppError("workspace.form_not_found", http.StatusNotFound)
+	}
+
+	a.publishTaskRow(ctx, "task_created", form.WorkspaceID, form.TableID, task.ID)
+
+	return row, nil
+}
+
+// GetFormSubmissions lists who submitted a form and which row each made.
+// Rows are table data, so it asks for reading the table as well as what
+// reading the form asks for.
+func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, formID string, user model.User) ([]model.WorkspaceFormSubmission, *model.AppError) {
+	if !a.Server.License.HasForms() {
+		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
+	}
+
+	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceView) ||
+		!a.canReadTable(ctx, user, workspaceID, tableID) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	ctx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	if _, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
+		return nil, appErr
+	}
+
+	submissions, err := a.Store.Workspace.GetFormSubmissions(ctx, formID)
+	if err != nil {
+		tlog.Errorw("Failed to retrieve form submissions",
+			"form_id", formID,
+			"error", err,
+		)
+		return nil, model.NewAppError("workspace.form_submissions_failed", http.StatusInternalServerError)
+	}
+
+	var submitterIDs []string
+	for _, s := range submissions {
+		if s.SubmittedBy != "" && !slices.Contains(submitterIDs, s.SubmittedBy) {
+			submitterIDs = append(submitterIDs, s.SubmittedBy)
+		}
+	}
+
+	users, err := a.Store.User.GetByIDs(submitterIDs)
+	if err != nil {
+		tlog.Errorw("Failed to retrieve form submitters",
+			"form_id", formID,
+			"error", err,
+		)
+		return nil, model.NewAppError("workspace.form_submissions_failed", http.StatusInternalServerError)
+	}
+
+	submitters := make(map[string]model.FormMember, len(users))
+	for _, u := range users {
+		submitters[u.ID] = formMember(u)
+	}
+
+	for i, s := range submissions {
+		if info, ok := submitters[s.SubmittedBy]; ok {
+			submissions[i].SubmitterInfo = &info
+		}
+	}
+
+	return submissions, nil
+}
+
+// getFormByToken serves only members of the form's workspace: anonymous
+// access is disabled for every form for now, whatever its RequiresLogin says.
+func (a *App) getFormByToken(ctx context.Context, token string, user *model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
+	if user == nil {
+		return nil, model.NewAppError("workspace.form_login_required", http.StatusUnauthorized)
+	}
+
+	if !a.Server.License.HasForms() {
+		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
+	}
+
+	form, err := a.Store.Workspace.GetFormByToken(ctx, token)
+	if err != nil {
+		tlog.Errorw("Failed to retrieve form by its link", "error", err)
+		return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
+	}
+
+	if form == nil {
+		return nil, model.NewAppError("workspace.form_not_found", http.StatusNotFound)
+	}
+
+	if !a.IsWorkspaceMemberOrGroupMember(form.WorkspaceID, user.ID) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	return form, nil
+}
+
+// setFormValue checks one submitted value against its field and puts it in
+// the task. An empty value leaves the column to its default.
+func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.WorkspaceFormField, value any, task *model.FormTask) *model.AppError {
+	invalid := model.NewAppError("request.invalid", http.StatusBadRequest)
+
+	switch value.(type) {
+	case nil, string, float64, bool:
+	default:
+		return invalid
+	}
+
+	text, isText := value.(string)
+	name := field.HeaderName
+
+	switch {
+	case field.LinkedID != "" && field.SingleSelect:
+		if text == "" || text == "0" {
+			return nil
+		}
+
+		options, err := a.Store.Workspace.GetSingleSelectOptions(ctx, field.LinkedID, []string{text})
+		if err != nil {
+			tlog.Errorw("Failed to check a form's single-select option",
+				"field", name,
+				"error", err,
+			)
+			return model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
+		}
+
+		if options[text] == nil {
+			return invalid
+		}
+
+		task.Values[name] = text
+		task.Selects[name] = text
+
+	case field.LinkedID != "":
+		var ids []string
+		for _, id := range strings.Split(text, ",") {
+			id = strings.TrimSpace(id)
+			if id == "" {
+				continue
+			}
+
+			if !validLinkID(id) {
+				return invalid
+			}
+
+			ids = append(ids, id)
+		}
+
+		if len(ids) > maxLinkChanges {
+			return invalid
+		}
+
+		if len(ids) > 0 {
+			task.Links[name] = ids
+		}
+
+	case field.FieldType == "link":
+		return nil
+
+	case field.FieldType == "default_date":
+		if value != nil && !isText {
+			return invalid
+		}
+
+		day, ok := taskDay(text)
+		if !ok {
+			return invalid
+		}
+
+		if day != "" {
+			task.Values[name] = day
+		}
+
+	case isAssigneeField(field):
+		if text == "" {
+			return nil
+		}
+
+		members, err := a.Store.Workspace.GetMemberUserIDs(ctx, workspaceID, []string{text})
+		if err != nil {
+			tlog.Errorw("Failed to check the assignee's membership",
+				"workspace_id", workspaceID,
+				"user_id", text,
+				"error", err,
+			)
+			return model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
+		}
+
+		if len(members) == 0 {
+			return invalid
+		}
+
+		task.Values[name] = text
+
+	case field.FieldType == "bool" || field.FieldType == "checkbox":
+		checked := false
+		switch v := value.(type) {
+		case string:
+			checked = v != "" && v != "false" && v != "0"
+		case bool:
+			checked = v
+		case float64:
+			checked = v != 0
+		}
+
+		task.Values[name] = 0
+		if checked {
+			task.Values[name] = 1
+		}
+
+	case value == nil || value == "":
+		return nil
+
+	default:
+		task.Values[name] = value
+	}
+
+	return nil
+}
+
+func (a *App) formMembers(ctx context.Context, workspaceID string) ([]model.FormMember, *model.AppError) {
+	members, err := a.Store.Workspace.GetMembers(workspaceID)
+	if err != nil {
+		tlog.Errorw("Failed to retrieve members for a form",
+			"workspace_id", workspaceID,
+			"error", err,
+		)
+		return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
+	}
+
+	ids := make([]string, 0, len(members))
+	for _, m := range members {
+		ids = append(ids, m.UserID)
+	}
+
+	users, err := a.Store.User.GetByIDs(ids)
+	if err != nil {
+		tlog.Errorw("Failed to retrieve members for a form",
+			"workspace_id", workspaceID,
+			"error", err,
+		)
+		return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
+	}
+
+	result := make([]model.FormMember, 0, len(users))
+	for _, u := range users {
+		result = append(result, formMember(u))
+	}
+
+	return result, nil
+}
+
+// formMember is all a form shows of a user: the form's link reaches people
+// outside the workspace.
+func formMember(u model.User) model.FormMember {
+	return model.FormMember{ID: u.ID, Name: u.Name, Lastname: u.LastName, Photo: u.Photo}
+}
+
+func formShows(form *model.WorkspaceFormWithFields, match func(model.WorkspaceFormField) bool) bool {
+	return slices.ContainsFunc(form.Fields, func(f model.WorkspaceFormField) bool {
+		return f.Visible && match(f)
+	})
+}
+
+func isAssigneeField(f model.WorkspaceFormField) bool {
+	return f.FieldType == "assignee" || f.FieldType == "default_assignee"
+}
+
+func isMasterLinkField(f model.WorkspaceFormField) bool {
+	return f.FieldType == "master link"
+}
+
+// pickedTable is the table whose rows a link field's picker lists: the
+// target of a link, or the options of a single-select field, whose own
+// table has no parent.
+func pickedTable(f model.WorkspaceFormField) string {
+	if f.ParentTableID != "" {
+		return f.ParentTableID
+	}
+
+	return f.LinkedID
+}

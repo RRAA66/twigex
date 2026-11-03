@@ -135,18 +135,26 @@ func (w *workspaceRepository) SyncTaskKanban(workspaceID, tableID, taskID string
 		}
 	}()
 
-	if err = w.UpdateKanbanViewsTx(tx, workspaceID, tableID, task); err != nil {
+	if err = w.syncTaskKanbanTx(tx, workspaceID, tableID, taskID, selects, task); err != nil {
 		return err
-	}
-
-	for _, field := range slices.Sorted(maps.Keys(selects)) {
-		if _, err = w.UpdateKanbanSectionsTx(tx, workspaceID, tableID, taskID, field, selects[field]); err != nil {
-			return err
-		}
 	}
 
 	err = tx.Commit()
 	return err
+}
+
+func (w *workspaceRepository) syncTaskKanbanTx(tx *sql.Tx, workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error {
+	if err := w.UpdateKanbanViewsTx(tx, workspaceID, tableID, task); err != nil {
+		return err
+	}
+
+	for _, field := range slices.Sorted(maps.Keys(selects)) {
+		if _, err := w.UpdateKanbanSectionsTx(tx, workspaceID, tableID, taskID, field, selects[field]); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // CreateTx creates a workspace, its default roles, and the creator as admin member
@@ -5043,9 +5051,6 @@ type LinkedItem struct {
 // sql.ErrNoRows when the table, field or task is not there, and
 // model.ErrLinkTargetMissing when a row to link is not in the linked table.
 func (w *workspaceRepository) ChangeTaskLinks(ctx context.Context, workspaceID, tableID, taskID, field string, add, remove []string) (*map[string]interface{}, error) {
-	add = slices.Compact(slices.Sorted(slices.Values(add)))
-	remove = slices.Compact(slices.Sorted(slices.Values(remove)))
-
 	// Read committed, so that once the task is locked every read sees what
 	// an earlier save to the same task wrote, rather than the snapshot taken
 	// before it was locked.
@@ -5055,6 +5060,24 @@ func (w *workspaceRepository) ChangeTaskLinks(ctx context.Context, workspaceID, 
 	}
 
 	defer tx.Rollback()
+
+	result, err := w.changeTaskLinksTx(ctx, tx, workspaceID, tableID, taskID, field, add, remove)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// changeTaskLinksTx is ChangeTaskLinks inside the caller's transaction, which
+// must be read committed for the reason ChangeTaskLinks gives.
+func (w *workspaceRepository) changeTaskLinksTx(ctx context.Context, tx *sql.Tx, workspaceID, tableID, taskID, field string, add, remove []string) (map[string]interface{}, error) {
+	add = slices.Compact(slices.Sorted(slices.Values(add)))
+	remove = slices.Compact(slices.Sorted(slices.Values(remove)))
 
 	var taskTable string
 	if err := tx.QueryRowContext(ctx, `SELECT name FROM workspace_tables
@@ -5220,11 +5243,7 @@ func (w *workspaceRepository) ChangeTaskLinks(ctx context.Context, workspaceID, 
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return &map[string]interface{}{
+	return map[string]interface{}{
 		"newLinkedItems":            links,
 		"secondLinkedItemsToAdd":    reverseAdded,
 		"secondLinkedItemsToDelete": reverseRemoved,

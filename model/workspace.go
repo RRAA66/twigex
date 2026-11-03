@@ -630,3 +630,67 @@ type WorkspaceFormRequest struct {
 	Form   WorkspaceForm        `json:"form"`
 	Fields []WorkspaceFormField `json:"fields"`
 }
+
+// PublicForm is a form as its link serves it. Members fill an assignee
+// field's picker and LinkTables a master link field's; each is left empty
+// unless the form shows such a field, as the link reaches non-members.
+type PublicForm struct {
+	WorkspaceFormWithFields
+	Members    []FormMember    `json:"members"`
+	LinkTables []FormLinkTable `json:"link_tables"`
+}
+
+type FormMember struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Lastname string `json:"lastname"`
+	Photo    string `json:"photo"`
+}
+
+type FormLinkTable struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name,omitempty"`
+}
+
+type FormLinkedItem struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type LinkedItemsResponse struct {
+	Items []FormLinkedItem `json:"items"`
+	Total int              `json:"total"`
+	Page  int              `json:"page"`
+	Limit int              `json:"limit"`
+}
+
+type FormValue struct {
+	Name  string `json:"name"`
+	Value any    `json:"value"`
+}
+
+type FormSubmitRequest struct {
+	Fields   []FormValue `json:"fields"`
+	Honeypot string      `json:"honeypot"`
+}
+
+// FormTask is the row a form submission creates: Values by column, the row
+// ids for each link field, and the option chosen in each single-select field.
+type FormTask struct {
+	ID        string
+	CreatedBy string
+	CreatedAt int64
+	Values    map[string]any
+	Links     map[string][]string
+	Selects   map[string]string
+}
+
+type WorkspaceFormSubmission struct {
+	ID            string      `json:"id"`
+	FormID        string      `json:"form_id"`
+	TaskID        string      `json:"task_id"`
+	SubmittedBy   string      `json:"submitted_by"`
+	SubmittedAt   int64       `json:"submitted_at"`
+	SubmitterInfo *FormMember `json:"submitter_info,omitempty"`
+}

@@ -85,6 +85,7 @@ func InitAPI(a *app.App) {
 	api.initNotifications()
 	api.initOffice()
 	api.initPublic()
+	api.initPublicForms()
 	api.initPublicShare()
 	api.initSearch()
 	api.initSettings()
