@@ -2461,5 +2461,14 @@
     "projects.form_view.public.no_access": "Бұл формаға қолжетімділігіңіз жоқ. Оның жұмыс кеңістігінің мүшесінен сізді қосуын сұраңыз.",
     "projects.form_view.public.not_found": "Бұл форма жоқ немесе енді ашық емес.",
     "projects.form_view.action.add_files": "Файлдарды қосу",
-    "projects.form_view.action.remove_file": "{name} жою"
+    "projects.form_view.action.remove_file": "{name} жою",
+    "projects.form_view.action.upload_image": "Жүктеу",
+    "projects.form_view.action.replace_image": "Ауыстыру",
+    "projects.form_view.action.reposition": "Орнын өзгерту",
+    "projects.form_view.action.reposition_done": "Дайын",
+    "projects.form_view.settings.cover_image": "Мұқаба суреті",
+    "projects.form_view.settings.logo": "Логотип",
+    "projects.form_view.settings.images_after_save": "Мұқаба суреті мен логотипті қосу үшін пішінді сақтаңыз.",
+    "projects.form_view.image_alt.cover": "Пішіннің мұқаба суреті",
+    "projects.form_view.image_alt.logo": "Пішін логотипі"
 }

@@ -34,20 +34,50 @@ SPDX-License-Identifier: AGPL-3.0-only
                 class="mt-1 h-8 w-full cursor-pointer rounded border border-gray-200 p-0.5"
             />
         </div>
+
+        <FormViewImageInput
+            :label="t('projects.form_view.settings.cover_image')"
+            :alt="t('projects.form_view.image_alt.cover')"
+            :src="formImageUrl(form.workspace_id, form.cover_image)"
+            :loading="busy === 'cover'"
+            :disabled="!form.id || busy !== ''"
+            @pick="setImage('cover', $event)"
+            @remove="removeImage('cover')"
+        />
+
+        <FormViewImageInput
+            :label="t('projects.form_view.settings.logo')"
+            :alt="t('projects.form_view.image_alt.logo')"
+            :src="formImageUrl(form.workspace_id, form.logo)"
+            contain
+            :loading="busy === 'logo'"
+            :disabled="!form.id || busy !== ''"
+            @pick="setImage('logo', $event)"
+            @remove="removeImage('logo')"
+        />
+
+        <p v-if="!form.id" class="text-xs text-gray-400">
+            {{ t("projects.form_view.settings.images_after_save") }}
+        </p>
     </aside>
 </template>
 
 <script setup>
 import { useId } from "vue";
 import { t } from "@/i18n/index.js";
+import { useFormImages } from "@/composables/projects/useFormImages";
+import { formImageUrl } from "@/utils/projects/forms";
 import ToggleSwitch from "@/components/ToggleSwitch.vue";
+import FormViewImageInput from "@/components/Projects/Form/FormViewImageInput.vue";
 
-defineProps({
+const props = defineProps({
     form: {
         type: Object,
         required: true,
     },
 });
+
+const { busy, setImage, removeImage } = useFormImages(() => props.form);
 
 const id = useId();
 </script>

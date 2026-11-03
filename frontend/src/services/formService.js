@@ -48,6 +48,24 @@ const formService = {
 
         return axios.post(`/public/forms/${token}/files`, data, MULTIPART);
     },
+
+    setFormImage(workspaceId, tableId, formId, kind, file) {
+        const data = new FormData();
+
+        data.append("file", file);
+
+        return axios.post(
+            `/workspaces/${workspaceId}/table/${tableId}/forms/${formId}/images/${kind}`,
+            data,
+            MULTIPART,
+        );
+    },
+
+    removeFormImage(workspaceId, tableId, formId, kind) {
+        return axios.delete(
+            `/workspaces/${workspaceId}/table/${tableId}/forms/${formId}/images/${kind}`,
+        );
+    },
 };
 
 export default formService;

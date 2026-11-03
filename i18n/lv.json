@@ -1986,5 +1986,9 @@
   {
     "id": "workspace.form_file_missing",
     "translation": "Augšupielādētais fails netika atrasts. Augšupielādējiet to vēlreiz."
+  },
+  {
+    "id": "workspace.form_image_type_not_allowed",
+    "translation": "Izmantojiet JPEG, PNG, GIF vai WebP attēlu."
   }
 ]

@@ -6,21 +6,35 @@ SPDX-License-Identifier: AGPL-3.0-only
     <div class="flex min-h-0 flex-1">
         <div class="flex-1 space-y-3 overflow-y-auto p-6">
             <div
-                class="space-y-2 rounded-lg border border-t-4 border-gray-200 bg-white p-6 shadow-sm"
+                class="overflow-hidden rounded-lg border border-t-4 border-gray-200 bg-white shadow-sm"
                 :style="{ borderTopColor: form.accent_color }"
             >
-                <input
-                    v-model="form.title"
-                    type="text"
-                    class="w-full rounded-md border-0 bg-transparent text-2xl font-bold text-gray-900 placeholder:text-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-                    :placeholder="t('projects.form_view.placeholder.form_title')"
+                <FormCoverImage
+                    v-if="form.cover_image"
+                    v-model:position="form.cover_position"
+                    :src="formImageUrl(form.workspace_id, form.cover_image)"
+                    repositionable
                 />
-                <textarea
-                    v-model="form.description"
-                    rows="2"
-                    class="w-full resize-none rounded-md border-0 bg-transparent text-sm text-gray-500 placeholder:text-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-                    :placeholder="t('projects.form_view.placeholder.form_description')"
-                />
+                <div class="space-y-2 p-6">
+                    <img
+                        v-if="form.logo"
+                        :src="formImageUrl(form.workspace_id, form.logo)"
+                        :alt="t('projects.form_view.image_alt.logo')"
+                        class="h-12 w-auto max-w-48 object-contain"
+                    />
+                    <input
+                        v-model="form.title"
+                        type="text"
+                        class="w-full rounded-md border-0 bg-transparent text-2xl font-bold text-gray-900 placeholder:text-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                        :placeholder="t('projects.form_view.placeholder.form_title')"
+                    />
+                    <textarea
+                        v-model="form.description"
+                        rows="2"
+                        class="w-full resize-none rounded-md border-0 bg-transparent text-sm text-gray-500 placeholder:text-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                        :placeholder="t('projects.form_view.placeholder.form_description')"
+                    />
+                </div>
             </div>
 
             <draggable
@@ -42,7 +56,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script setup>
 import draggable from "vuedraggable";
 import { t } from "@/i18n/index.js";
-import { headerLabel } from "@/utils/projects/forms";
+import { formImageUrl, headerLabel } from "@/utils/projects/forms";
+import FormCoverImage from "@/components/Projects/Form/FormCoverImage.vue";
 import FormViewFieldRow from "@/components/Projects/Form/FormViewFieldRow.vue";
 import FormViewSettings from "@/components/Projects/Form/FormViewSettings.vue";
 
