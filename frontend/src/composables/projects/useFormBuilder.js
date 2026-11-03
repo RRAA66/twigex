@@ -56,7 +56,7 @@ export function useFormBuilder() {
 
             const savedFields = route.params.fid ? await loadForm(route.params.fid) : [];
 
-            formFields.value = mergeFormFields(headers.value, savedFields);
+            formFields.value = mergeFormFields(headers.value, savedFields, t.value);
             status.value = "ready";
         } catch (error) {
             if (error?.response?.status === 403) {

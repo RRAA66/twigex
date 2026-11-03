@@ -62,6 +62,9 @@ const props = defineProps({
 });
 
 function fieldName(field) {
-    return headerLabel(props.headers.find((h) => h.name === field.header_name));
+    return headerLabel(
+        props.headers.find((h) => h.name === field.header_name),
+        t.value,
+    );
 }
 </script>
