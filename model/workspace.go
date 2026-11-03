@@ -636,7 +636,7 @@ type WorkspaceFormRequest struct {
 
 // PublicForm is a form as its link serves it. Members fill an assignee
 // field's picker and LinkTables a master link field's; each is left empty
-// unless the form shows such a field, as the link reaches non-members.
+// unless the form shows such a field.
 type PublicForm struct {
 	WorkspaceFormWithFields
 	Members    []FormMember    `json:"members"`

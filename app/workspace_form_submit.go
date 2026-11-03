@@ -20,8 +20,8 @@ import (
 
 const maxLinkedItemsPage = 50
 
-// GetPublicForm serves a form to anyone who holds its link and is logged
-// in, member of its workspace or not.
+// GetPublicForm serves a form by its link, with what its pickers offer and
+// whether the user may submit it.
 func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User) (*model.PublicForm, *model.AppError) {
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
@@ -554,8 +554,7 @@ func (a *App) formMembers(ctx context.Context, workspaceID string) ([]model.Form
 	return result, nil
 }
 
-// formMember is all a form shows of a user: the form's link reaches people
-// outside the workspace.
+// formMember is all a form shows of a user.
 func formMember(u model.User) model.FormMember {
 	return model.FormMember{ID: u.ID, Name: u.Name, Lastname: u.LastName, Photo: u.Photo}
 }
