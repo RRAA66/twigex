@@ -740,6 +740,14 @@ const routes = [
         },
     },
     {
+        path: "/forms/public/:token",
+        name: "public-form",
+        component: () => import("@/views/Public/PublicFormView.vue"),
+        meta: {
+            requireAuth: true,
+        },
+    },
+    {
         path: "/login",
         name: "login",
         component: LoginView,
