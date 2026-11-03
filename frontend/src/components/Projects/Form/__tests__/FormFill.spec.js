@@ -111,6 +111,53 @@ describe("FormFill", () => {
         w.unmount();
     });
 
+    it("shows and requires a field only while its condition holds", async () => {
+        formService.getPublicForm.mockResolvedValue({
+            data: {
+                ...form,
+                fields: [
+                    form.fields[0],
+                    form.fields[2],
+                    {
+                        header_name: "reason",
+                        label: "Reason",
+                        field_type: "text",
+                        visible: true,
+                        required: true,
+                        visibility_rule: {
+                            trigger_field: "done",
+                            operator: "equals",
+                            value: "true",
+                        },
+                    },
+                ],
+            },
+        });
+        formService.submitPublicForm.mockResolvedValue({ data: {} });
+        const w = await mountFill();
+
+        expect(w.text()).not.toContain("Reason");
+
+        await w.find("input[type='checkbox']").setValue(true);
+
+        expect(w.text()).toContain("Reason");
+
+        await w.find("input[type='checkbox']").setValue(false);
+        await w.find("input[type='text']:not([tabindex])").setValue("Task");
+        await w.find("form").trigger("submit");
+        await flushPromises();
+
+        expect(formService.submitPublicForm).toHaveBeenCalledWith(
+            "tok",
+            [
+                { name: "name", value: "Task" },
+                { name: "done", value: false },
+            ],
+            "",
+        );
+        w.unmount();
+    });
+
     it("shows why the server refused the answer", async () => {
         formService.submitPublicForm.mockRejectedValue({
             response: { status: 400, data: { error: "The due date is before the start date." } },

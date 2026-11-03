@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+    conditionTriggers,
     emptyFormData,
     fillableFormFields,
     formFieldType,
@@ -12,6 +13,7 @@ import {
     mergeFormFields,
     missingRequiredFields,
     normalizeFormData,
+    shownFormFields,
 } from "../forms";
 
 describe("headerLabel", () => {
@@ -92,6 +94,49 @@ describe("mergeFormFields", () => {
 
         expect(fields.map((f) => f.header_name)).toEqual(["budget", "name", "status"]);
         expect(fields[0]).toMatchObject({ label: "Cost", column_position: "full" });
+    });
+
+    it("reads a new field's type and link from its header", () => {
+        const linked = [
+            ...headers,
+            {
+                id: "h-client",
+                name: "client",
+                header_usage: "link",
+                linked_id: "t-link",
+                parent_table_id: "t-clients",
+            },
+        ];
+
+        const client = mergeFormFields(linked, []).find((f) => f.header_name === "client");
+
+        expect(client).toMatchObject({
+            field_type: "link",
+            linked_id: "t-link",
+            single_select: false,
+            parent_table_id: "t-clients",
+            visibility_rule: null,
+        });
+    });
+
+    it("drops a condition on a field the table no longer has", () => {
+        const saved = [
+            {
+                header_name: "budget",
+                sort_order: 0,
+                visibility_rule: { trigger_field: "gone", operator: "is_empty", value: "" },
+            },
+            {
+                header_name: "status",
+                sort_order: 1,
+                visibility_rule: { trigger_field: "budget", operator: "is_empty", value: "" },
+            },
+        ];
+
+        const [budget, status] = mergeFormFields(headers, saved);
+
+        expect(budget.visibility_rule).toBeNull();
+        expect(status.visibility_rule).toEqual(saved[1].visibility_rule);
     });
 
     it("always shows and requires the name", () => {
@@ -189,6 +234,97 @@ describe("formSubmitFields", () => {
             { name: "tags", value: "r1,r2" },
             { name: "done", value: false },
             { name: "notes", value: "" },
+        ]);
+    });
+});
+
+describe("shownFormFields", () => {
+    const rule = (trigger_field, operator, value = "") => ({ trigger_field, operator, value });
+    const names = (fields, values) => shownFormFields(fields, values).map((f) => f.header_name);
+
+    it.each([
+        ["equals", "refund", "refund", true],
+        ["equals", "refund", "question", false],
+        ["not_equals", "refund", "question", true],
+        ["not_equals", "refund", "", true],
+        ["contains", "fun", "refund", true],
+        ["contains", "fun", "question", false],
+        ["is_empty", "", "", true],
+        ["is_empty", "", undefined, true],
+        ["is_not_empty", "", "x", true],
+        ["is_not_empty", "", "", false],
+    ])("%s %j against %j shows the field: %s", (operator, value, kind, shown) => {
+        const fields = [
+            { header_name: "kind" },
+            { header_name: "reason", visibility_rule: rule("kind", operator, value) },
+        ];
+
+        expect(names(fields, { kind }).includes("reason")).toBe(shown);
+    });
+
+    it("compares picked rows by id", () => {
+        const fields = [
+            { header_name: "clients", linked_id: "t-link" },
+            { header_name: "status", linked_id: "t-status", single_select: true },
+            { header_name: "a", visibility_rule: rule("clients", "equals", "r2") },
+            { header_name: "b", visibility_rule: rule("status", "equals", "s1") },
+            { header_name: "c", visibility_rule: rule("clients", "not_equals", "r3") },
+        ];
+        const values = {
+            clients: [
+                { id: "r1", name: "One" },
+                { id: "r2", name: "Two" },
+            ],
+            status: { id: "s1", name: "Open" },
+        };
+
+        expect(names(fields, values)).toEqual(["clients", "status", "a", "b", "c"]);
+        expect(names(fields, {})).toEqual(["clients", "status", "c"]);
+    });
+
+    it("reads an untouched checkbox as unchecked", () => {
+        const fields = [
+            { header_name: "urgent", field_type: "bool" },
+            { header_name: "calm", visibility_rule: rule("urgent", "equals", "false") },
+            { header_name: "why", visibility_rule: rule("urgent", "equals", "true") },
+        ];
+
+        expect(names(fields, {})).toEqual(["urgent", "calm"]);
+        expect(names(fields, { urgent: true })).toEqual(["urgent", "why"]);
+    });
+
+    it("sees a hidden field as empty", () => {
+        const fields = [
+            { header_name: "kind" },
+            { header_name: "reason", visibility_rule: rule("kind", "equals", "refund") },
+            { header_name: "other", visibility_rule: rule("reason", "is_empty") },
+            { header_name: "gone", visibility_rule: rule("missing", "is_not_empty") },
+        ];
+
+        expect(names(fields, { kind: "question", reason: "kept from before" })).toEqual([
+            "kind",
+            "other",
+        ]);
+    });
+});
+
+describe("conditionTriggers", () => {
+    it("offers the other shown fields, less files and those watching the field", () => {
+        const name = { header_name: "name", visible: true };
+        const hidden = { header_name: "hidden", visible: false };
+        const files = { header_name: "files", visible: true, field_type: "file" };
+        const notes = { header_name: "notes", visible: true };
+        const reason = {
+            header_name: "reason",
+            visible: true,
+            visibility_rule: { trigger_field: "name", operator: "is_empty", value: "" },
+        };
+        const fields = [name, hidden, files, notes, reason];
+
+        expect(conditionTriggers(fields, name).map((f) => f.header_name)).toEqual(["notes"]);
+        expect(conditionTriggers(fields, notes).map((f) => f.header_name)).toEqual([
+            "name",
+            "reason",
         ]);
     });
 });

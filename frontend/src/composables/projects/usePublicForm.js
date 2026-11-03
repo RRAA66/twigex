@@ -11,6 +11,7 @@ import {
     fillableFormFields,
     formSubmitFields,
     missingRequiredFields,
+    shownFormFields,
 } from "@/utils/projects/forms";
 
 const STATUS_BY_HTTP = {
@@ -36,7 +37,8 @@ export function usePublicForm(token, { live = false } = {}) {
     const submitted = ref(false);
     const configChanged = ref(false);
 
-    const fields = computed(() => fillableFormFields(form.value?.fields));
+    const fillable = computed(() => fillableFormFields(form.value?.fields));
+    const fields = computed(() => shownFormFields(fillable.value, values.value));
 
     function failLoad(error) {
         status.value = STATUS_BY_HTTP[error?.response?.status] || "failed";
