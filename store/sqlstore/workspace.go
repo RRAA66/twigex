@@ -3396,9 +3396,27 @@ func (w *workspaceRepository) GetTableNamesByIDs(ids []string) (map[string]strin
 	return result, rows.Err()
 }
 
+// DeleteTableView also deletes the form a form view shows, which shares its
+// id, so the form's public link stops working with its tab.
 func (w *workspaceRepository) DeleteTableView(workspaceID string, tableID string, viewID string) (bool, error) {
-	_, err := w.Db.Exec("DELETE FROM workspace_view WHERE workspace_id = ? AND table_id = ? AND id = ?", workspaceID, tableID, viewID)
+	tx, err := w.Db.Begin()
 	if err != nil {
+		return false, err
+	}
+
+	defer tx.Rollback()
+
+	_, err = tx.Exec("DELETE FROM workspace_forms WHERE workspace_id = ? AND table_id = ? AND id = ?", workspaceID, tableID, viewID)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = tx.Exec("DELETE FROM workspace_view WHERE workspace_id = ? AND table_id = ? AND id = ?", workspaceID, tableID, viewID)
+	if err != nil {
+		return false, err
+	}
+
+	if err := tx.Commit(); err != nil {
 		return false, err
 	}
 
