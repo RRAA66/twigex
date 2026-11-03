@@ -119,7 +119,12 @@ export function fillableFormFields(fields) {
 }
 
 function isEmptyFormValue(value) {
-    return value == null || value === "" || (Array.isArray(value) && value.length === 0);
+    return (
+        value == null ||
+        value === "" ||
+        value === false ||
+        (Array.isArray(value) && value.length === 0)
+    );
 }
 
 export function missingRequiredFields(fields, values) {

@@ -163,7 +163,7 @@ describe("fillableFormFields", () => {
 });
 
 describe("missingRequiredFields", () => {
-    it("names required fields left empty, and counts an unticked box as filled", () => {
+    it("names required fields left empty, an unticked box among them", () => {
         const fields = [
             { header_name: "name", required: true },
             { header_name: "tags", required: true },
@@ -174,10 +174,14 @@ describe("missingRequiredFields", () => {
         expect(missingRequiredFields(fields, { name: "", tags: [], agree: false })).toEqual([
             "name",
             "tags",
+            "agree",
         ]);
         expect(missingRequiredFields(fields, { name: "A", tags: [{ id: "1" }] })).toEqual([
             "agree",
         ]);
+        expect(
+            missingRequiredFields(fields, { name: "A", tags: [{ id: "1" }], agree: true }),
+        ).toEqual([]);
     });
 });
 
