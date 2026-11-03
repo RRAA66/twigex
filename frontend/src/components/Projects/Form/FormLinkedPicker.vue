@@ -94,7 +94,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         />
                     </li>
                 </ComboboxOption>
-                <li v-if="!loading && items.length < total" class="px-3 py-1">
+                <li v-if="!loading && hasMore" class="px-3 py-1">
                     <BaseButton
                         type="button"
                         size="small"
@@ -148,7 +148,7 @@ const { floating, floatingStyles } = useAnchoredPopup({ matchWidth: true, anchor
 
 const search = ref("");
 const items = ref([]);
-const total = ref(0);
+const hasMore = ref(false);
 const page = ref(0);
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -176,7 +176,7 @@ async function fetchPage(next) {
         if (current !== request) return;
 
         items.value = next === 1 ? data.items : [...items.value, ...data.items];
-        total.value = data.total;
+        hasMore.value = data.has_more;
         page.value = next;
     } catch {
         if (current === request) loadFailed.value = true;
