@@ -35,7 +35,7 @@ func (f *fakeFormStore) GetTableName(tableID string) (string, error) {
 }
 
 func (f *fakeFormStore) GetColumnNames(_ context.Context, _ string) ([]string, error) {
-	return []string{"id", "name", "status", "budget", "created_at", "parent_task_id"}, nil
+	return []string{"id", "name", "status", "budget", "notes", "created_at", "parent_task_id"}, nil
 }
 
 func (f *fakeFormStore) ViewExistsByName(tableID, name string) (bool, error) {
