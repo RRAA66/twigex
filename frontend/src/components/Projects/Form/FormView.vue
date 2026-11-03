@@ -35,11 +35,16 @@ SPDX-License-Identifier: AGPL-3.0-only
                 {{ formData.name || t("projects.form_view.new_form") }}
             </span>
             <template v-if="formData.id">
-                <BaseButton size="small" :is-loading="saving" @click="updateForm">
+                <BaseButton
+                    v-if="canUpdateForm"
+                    size="small"
+                    :is-loading="saving"
+                    @click="updateForm"
+                >
                     {{ t("projects.form_view.action.update") }}
                 </BaseButton>
                 <BaseButton
-                    v-if="rolesStore.hasPermissionToCreateWorkspaceView"
+                    v-if="canCreateForm"
                     size="small"
                     variant="secondary"
                     :is-disabled="saving"
@@ -48,7 +53,12 @@ SPDX-License-Identifier: AGPL-3.0-only
                     {{ t("projects.form_view.action.save_as_new") }}
                 </BaseButton>
             </template>
-            <BaseButton v-else size="small" :is-disabled="saving" @click="dialogMode = 'create'">
+            <BaseButton
+                v-else-if="canCreateForm"
+                size="small"
+                :is-disabled="saving"
+                @click="dialogMode = 'create'"
+            >
                 {{ t("projects.form_view.action.save") }}
             </BaseButton>
         </div>
@@ -66,7 +76,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { useRoute } from "vue-router";
 import { LockClosedIcon } from "@heroicons/vue/24/outline";
 import { t } from "@/i18n/index.js";
 import { useFormBuilder } from "@/composables/projects/useFormBuilder";
@@ -77,9 +88,25 @@ import LicensePurchase from "@/components/Settings/LicensePurchase.vue";
 import FormViewBuild from "@/components/Projects/Form/FormViewBuild.vue";
 import FormViewNameDialog from "@/components/Projects/Form/FormViewNameDialog.vue";
 
+const route = useRoute();
 const rolesStore = useWorkspaceRolesStore();
 const { formData, formFields, headers, status, saving, load, updateForm, createForm } =
     useFormBuilder();
+
+// The server also lets a role that manages this table's views build its
+// forms, which only a per-table role can grant.
+const managesTableViews = computed(
+    () =>
+        rolesStore.perTableMode && rolesStore.hasTablePermission(route.params.tid, "manage_views"),
+);
+
+const canCreateForm = computed(
+    () => rolesStore.hasPermissionToCreateWorkspaceView || managesTableViews.value,
+);
+
+const canUpdateForm = computed(
+    () => rolesStore.hasPermissionToUpdateWorkspaceView || managesTableViews.value,
+);
 
 const dialogMode = ref(null);
 
