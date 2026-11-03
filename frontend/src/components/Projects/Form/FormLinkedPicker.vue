@@ -15,7 +15,8 @@ SPDX-License-Identifier: AGPL-3.0-only
         <div
             ref="anchor"
             @focusin="loadFirstPage"
-            class="relative flex w-full flex-wrap items-center gap-1 rounded-md bg-white py-1 pl-2 pr-10 shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-indigo-600"
+            class="relative flex w-full flex-wrap items-center gap-1 rounded-md bg-white py-1 pl-2 pr-10 shadow-sm ring-1 ring-inset focus-within:ring-2 focus-within:ring-indigo-600"
+            :class="error ? 'ring-red-600' : 'ring-gray-300'"
         >
             <span
                 v-for="item in chips"
@@ -34,6 +35,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             </span>
             <ComboboxInput
                 :id="id"
+                v-bind="$attrs"
                 class="min-w-[6rem] flex-1 border-0 bg-transparent px-1 py-0.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-0"
                 :display-value="(item) => (multiple ? '' : item?.name || '')"
                 :placeholder="chips.length ? '' : placeholder"
@@ -128,6 +130,8 @@ import formService from "@/services/formService";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseSpinner from "@/components/BaseSpinner.vue";
 
+defineOptions({ inheritAttrs: false });
+
 const PAGE_SIZE = 50;
 const SEARCH_DELAY_MS = 250;
 
@@ -138,6 +142,7 @@ const props = defineProps({
     multiple: { type: Boolean, default: false },
     placeholder: { type: String, default: "" },
     id: { type: String, default: undefined },
+    error: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue"]);

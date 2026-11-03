@@ -6,6 +6,8 @@ SPDX-License-Identifier: AGPL-3.0-only
     <BaseSelect
         :model-value="modelValue"
         :options="options"
+        :label="label"
+        :error="error"
         :placeholder="placeholder"
         @update:model-value="emit('update:modelValue', $event)"
     >
@@ -38,6 +40,8 @@ const props = defineProps({
     modelValue: { type: String, default: "" },
     members: { type: Array, default: () => [] },
     placeholder: { type: String, default: "" },
+    label: { type: String, default: "" },
+    error: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue"]);

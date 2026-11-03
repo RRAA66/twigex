@@ -72,7 +72,8 @@ describe("FormFill", () => {
 
         const labels = w.findAll("label.mb-1").map((l) => l.text().replace(/\s+/g, " "));
 
-        expect(labels).toEqual(["Title *", "Budget", "Done", "Due", "Owner"]);
+        expect(labels).toEqual(["Title *", "Budget", "Done", "Due"]);
+        expect(w.find("[id^='headlessui-listbox-label']").text()).toBe("Owner");
         expect(w.find("input[type='number']").exists()).toBe(true);
         expect(w.find("input[type='checkbox']").exists()).toBe(true);
         expect(w.text()).toContain("Pick a date");
