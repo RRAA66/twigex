@@ -8,10 +8,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/twigex/twigex/model"
@@ -22,6 +25,9 @@ const (
 	maxFormFileSize = 25 << 20
 	maxFormFiles    = 10
 	maxFileNameLen  = 255
+
+	pendingFormRoot    = "form-uploads"
+	pendingFormFileTTL = 24 * time.Hour
 )
 
 var formFileExtensions = map[string]bool{
@@ -265,8 +271,63 @@ func (a *App) dropPendingFormFiles(ctx context.Context, form *model.WorkspaceFor
 	}
 }
 
+// SweepPendingFormFiles removes the files uploaded to forms and not
+// submitted within pendingFormFileTTL.
+func (a *App) SweepPendingFormFiles(ctx context.Context) error {
+	return a.removePendingFiles(ctx, pendingFormRoot, time.Now().Add(-pendingFormFileTTL))
+}
+
+// removePendingFormFiles removes what was uploaded to a deleted form and not
+// submitted.
+func (a *App) removePendingFormFiles(ctx context.Context, formID string) {
+	if err := a.removePendingFiles(ctx, pendingFormDir(formID), time.Time{}); err != nil {
+		tlog.Warnw("Failed to remove a deleted form's uploaded files",
+			"form_id", formID,
+			"error", err,
+		)
+	}
+}
+
+// removePendingFiles removes the files under dir last written before
+// before, or all of them for a zero before. Each storage is looked through,
+// as the primary one may have changed since the files were uploaded.
+func (a *App) removePendingFiles(ctx context.Context, dir string, before time.Time) error {
+	storageIDs := append([]string{""}, slices.Sorted(maps.Keys(a.FileStorageObjects))...)
+
+	var errs []error
+	for _, storageID := range storageIDs {
+		backend, path, err := a.projectFile(storageID, dir)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		files, err := backend.ListFiles(ctx, path)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		for _, f := range files {
+			if !before.IsZero() && !f.ModTime.Before(before) {
+				continue
+			}
+
+			if err := backend.RemoveFile(ctx, f.Path); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func pendingFormDir(formID string) string {
+	return pendingFormRoot + "/" + formID
+}
+
 func pendingFormPath(form *model.WorkspaceFormWithFields, id, ext string) string {
-	return form.WorkspaceID + "/" + form.TableID + "/pending/" + id + ext
+	return pendingFormDir(form.ID) + "/" + id + ext
 }
 
 func isFileField(f model.WorkspaceFormField) bool {

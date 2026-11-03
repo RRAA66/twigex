@@ -12,7 +12,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/twigex/twigex/internal/filestore"
 	"github.com/twigex/twigex/model"
@@ -225,7 +227,7 @@ func TestSubmitFormAttachesUploadedFilesToTheRow(t *testing.T) {
 				t.Errorf("row's file holds %q", content)
 			}
 
-			pending, err := os.ReadDir(filepath.Join(root, wsID, tbl1, "pending"))
+			pending, err := os.ReadDir(filepath.Join(root, "form-uploads", "form-1"))
 			if err != nil || len(pending) != 0 {
 				t.Errorf("pending area holds %v (%v), want it empty", pending, err)
 			}
@@ -259,7 +261,7 @@ func TestSubmitFormRefusesAFileSomeoneElseUploaded(t *testing.T) {
 	if len(ws.created) != 0 {
 		t.Errorf("created %d rows, want none", len(ws.created))
 	}
-	if content := readFile(t, filepath.Join(root, wsID, tbl1, "pending", uploaded.ID+".pdf")); content != "%PDF-1.4" {
+	if content := readFile(t, filepath.Join(root, "form-uploads", "form-1", uploaded.ID+".pdf")); content != "%PDF-1.4" {
 		t.Errorf("pending file holds %q", content)
 	}
 }
@@ -293,7 +295,7 @@ func TestSubmitFormReturnsFilesWhenTheRowIsNotWritten(t *testing.T) {
 		t.Fatalf("want 500, got %v", appErr)
 	}
 
-	if content := readFile(t, filepath.Join(root, wsID, tbl1, "pending", uploaded.ID+".pdf")); content != "%PDF-1.4" {
+	if content := readFile(t, filepath.Join(root, "form-uploads", "form-1", uploaded.ID+".pdf")); content != "%PDF-1.4" {
 		t.Errorf("pending file holds %q", content)
 	}
 
@@ -303,5 +305,65 @@ func TestSubmitFormReturnsFilesWhenTheRowIsNotWritten(t *testing.T) {
 	}
 	if len(ws.created) != 1 || len(ws.created[0].Attachments) != 1 {
 		t.Errorf("created %+v, want one row with its file", ws.created)
+	}
+}
+
+func TestSweepPendingFormFilesRemovesOnlyOldUploads(t *testing.T) {
+	a, _, _ := submitApp(fileField("docs", false))
+	root := usePrimaryStorage(t, a)
+
+	old := uploadToForm(t, a, submitter, "old.pdf", "%PDF-1.4 old")
+	fresh := uploadToForm(t, a, submitter, "fresh.pdf", "%PDF-1.4 fresh")
+
+	dir := filepath.Join(root, "form-uploads", "form-1")
+	longAgo := time.Now().Add(-25 * time.Hour)
+	for _, name := range []string{old.ID + ".pdf", old.ID + ".json"} {
+		if err := os.Chtimes(filepath.Join(dir, name), longAgo, longAgo); err != nil {
+			t.Fatalf("Chtimes: %v", err)
+		}
+	}
+
+	if err := a.SweepPendingFormFiles(context.Background()); err != nil {
+		t.Fatalf("SweepPendingFormFiles: %v", err)
+	}
+
+	left, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+
+	var names []string
+	for _, e := range left {
+		names = append(names, e.Name())
+	}
+
+	if want := []string{fresh.ID + ".json", fresh.ID + ".pdf"}; !slices.Equal(names, want) {
+		t.Errorf("pending area holds %v, want %v", names, want)
+	}
+}
+
+func TestDeleteFormRemovesItsPendingFiles(t *testing.T) {
+	a, _, _ := submitApp(fileField("docs", false))
+	root := useLocalProjectFiles(t, a)
+
+	uploadToForm(t, a, submitter, "report.pdf", "%PDF-1.4")
+
+	other := filepath.Join(root, "form-uploads", "form-2", "kept.pdf")
+	if err := os.MkdirAll(filepath.Dir(other), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(other, []byte("%PDF-1.4"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if appErr := a.DeleteForm(context.Background(), wsID, tbl1, "form-1", workspaceAdmin); appErr != nil {
+		t.Fatalf("DeleteForm: %v", appErr)
+	}
+
+	if left, _ := os.ReadDir(filepath.Join(root, "form-uploads", "form-1")); len(left) != 0 {
+		t.Errorf("deleted form's pending area holds %v", left)
+	}
+	if _, err := os.Stat(other); err != nil {
+		t.Errorf("another form's pending file is gone: %v", err)
 	}
 }

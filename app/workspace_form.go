@@ -213,6 +213,7 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 	}
 
 	a.removeFormImageFiles(ctx, images)
+	a.removePendingFormFiles(ctx, formID)
 	a.publishProjectChange(ctx, deleted)
 
 	return nil

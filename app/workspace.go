@@ -4253,7 +4253,11 @@ func (a *App) DeleteWorkspaceTableView(ctx context.Context, workspaceID string, 
 		return false, model.NewAppError("workspace.table_view_delete_failed", http.StatusInternalServerError)
 	}
 
-	a.removeFormImageFiles(ctx, formImages)
+	if formImages != nil {
+		a.removeFormImageFiles(ctx, formImages)
+		a.removePendingFormFiles(ctx, viewID)
+	}
+
 	a.publishProjectChange(ctx, deleted)
 
 	return ok, nil

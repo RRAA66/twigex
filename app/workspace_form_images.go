@@ -211,7 +211,7 @@ func (a *App) formImages(form *model.WorkspaceFormWithFields) ([]model.Workspace
 	return images, nil
 }
 
-// viewFormImages are formImages of the form a view of the table is, or none
+// viewFormImages are formImages of the form a view of the table is, or nil
 // when the view is not a form.
 func (a *App) viewFormImages(ctx context.Context, workspaceID, tableID, viewID string) ([]model.WorkspaceAttachment, *model.AppError) {
 	form, err := a.Store.Workspace.GetForm(ctx, viewID)
