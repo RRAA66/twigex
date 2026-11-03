@@ -33,6 +33,7 @@ func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User)
 		WorkspaceFormWithFields: *form,
 		Members:                 []model.FormMember{},
 		LinkTables:              []model.FormLinkTable{},
+		CanSubmit:               a.canSubmitForm(*user, form),
 	}
 
 	if formShows(form, isAssigneeField) {
@@ -109,6 +110,10 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 	form, appErr := a.getFormByToken(ctx, token, user)
 	if appErr != nil {
 		return nil, appErr
+	}
+
+	if !a.canSubmitForm(*user, form) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
 	if request.Honeypot != "" {
@@ -260,8 +265,8 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	return submissions, nil
 }
 
-// getFormByToken serves only members of the form's workspace: anonymous
-// access is disabled for every form for now, whatever its RequiresLogin says.
+// getFormByToken opens a form to whoever would see its view in the grid: a
+// member of its workspace who is shown the view and may read its table.
 func (a *App) getFormByToken(ctx context.Context, token string, user *model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
 	if user == nil {
 		return nil, model.NewAppError("workspace.form_login_required", http.StatusUnauthorized)
@@ -285,7 +290,19 @@ func (a *App) getFormByToken(ctx context.Context, token string, user *model.User
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
+	if appErr := a.requireViewAccess(ctx, user.ID, form.ID); appErr != nil {
+		return nil, appErr
+	}
+
+	if !a.canReadTable(ctx, *user, form.WorkspaceID, form.TableID) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
 	return form, nil
+}
+
+func (a *App) canSubmitForm(user model.User, form *model.WorkspaceFormWithFields) bool {
+	return a.CanPerformRowAction(user, form.WorkspaceID, form.TableID, model.PermissionCreateTask, model.PermissionCreateTask)
 }
 
 // setFormValue checks one submitted value against its field and puts it in

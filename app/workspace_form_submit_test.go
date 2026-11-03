@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/twigex/twigex/interfaces"
 	"github.com/twigex/twigex/model"
 	"github.com/twigex/twigex/store"
 )
@@ -26,6 +27,16 @@ type fakeFormSubmitStore struct {
 	recorded       []model.WorkspaceFormSubmission
 	submissions    []model.WorkspaceFormSubmission
 	linkedLimit    int
+	privateView    bool
+	viewShares     []string
+}
+
+func (f *fakeFormSubmitStore) GetViewVisibility(context.Context, string) (bool, string, error) {
+	return !f.privateView, "creator", nil
+}
+
+func (f *fakeFormSubmitStore) GetViewSharedUserIDs(string) ([]string, error) {
+	return f.viewShares, nil
 }
 
 func (f *fakeFormSubmitStore) IsMember(_, userID string) (bool, error) {
@@ -139,6 +150,18 @@ func (f *fakeFormAuthCounter) Incr(key string, _ time.Duration) (int64, error) {
 	f.counts[key]++
 	return f.counts[key], nil
 }
+
+// noCreateRoles stand in for enterprise roles that show every table but let
+// no one create rows.
+type noCreateRoles struct{}
+
+func (noCreateRoles) Resolve(interfaces.AccessInput) interfaces.WorkspaceAccess {
+	return noCreateAccess{}
+}
+
+type noCreateAccess struct{ openAccess }
+
+func (noCreateAccess) CanPerformRowAction(_, _, _ string) bool { return false }
 
 var submitter = &model.User{ID: "submitter", Role: model.SystemUserRoleId}
 
@@ -546,6 +569,83 @@ func TestPublicFormIsOnlyForWorkspaceMembers(t *testing.T) {
 		t.Errorf("submit: want 403, got %v", appErr)
 	}
 
+	if len(ws.created) != 0 {
+		t.Errorf("created %d rows, want none", len(ws.created))
+	}
+}
+
+func TestPublicFormFollowsTheViewsVisibility(t *testing.T) {
+	cases := []struct {
+		name       string
+		shares     []string
+		wantStatus int
+	}{
+		{"a private view not shared with the user", []string{"member-1"}, http.StatusNotFound},
+		{"a private view shared with the user", []string{submitter.ID}, 0},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a, ws, _ := submitApp(textField("name", false))
+			ws.privateView = true
+			ws.viewShares = c.shares
+
+			_, openErr := a.GetPublicForm(context.Background(), "token-1", submitter)
+			_, submitErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"})
+
+			for what, appErr := range map[string]*model.AppError{"open": openErr, "submit": submitErr} {
+				if c.wantStatus == 0 && appErr != nil {
+					t.Errorf("%s: %v", what, appErr)
+				}
+				if c.wantStatus != 0 && (appErr == nil || appErr.Status != c.wantStatus) {
+					t.Errorf("%s: want %d, got %v", what, c.wantStatus, appErr)
+				}
+			}
+		})
+	}
+}
+
+func TestPublicFormOnATableTheUserCannotReadIsForbidden(t *testing.T) {
+	a, ws, _ := submitApp(textField("name", false))
+	a.WorkspaceRoles = formRoles{hiddenTable: tbl1}
+
+	if _, appErr := a.GetPublicForm(context.Background(), "token-1", submitter); appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("open: want 403, got %v", appErr)
+	}
+
+	if _, appErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"}); appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("submit: want 403, got %v", appErr)
+	}
+
+	if len(ws.created) != 0 {
+		t.Errorf("created %d rows, want none", len(ws.created))
+	}
+}
+
+func TestPublicFormSaysWhetherTheUserMaySubmit(t *testing.T) {
+	a, _, _ := submitApp(textField("name", false))
+
+	form, appErr := a.GetPublicForm(context.Background(), "token-1", submitter)
+	if appErr != nil || !form.CanSubmit {
+		t.Errorf("with the right to create rows: %+v, %v; want can_submit", form, appErr)
+	}
+
+	a.WorkspaceRoles = noCreateRoles{}
+
+	form, appErr = a.GetPublicForm(context.Background(), "token-1", submitter)
+	if appErr != nil || form.CanSubmit {
+		t.Errorf("without the right to create rows: %+v, %v; want the form, not to submit", form, appErr)
+	}
+}
+
+func TestSubmitFormNeedsTheRightToCreateRows(t *testing.T) {
+	a, ws, _ := submitApp(textField("name", false))
+	a.WorkspaceRoles = noCreateRoles{}
+
+	_, appErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"})
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Fatalf("want 403, got %v", appErr)
+	}
 	if len(ws.created) != 0 {
 		t.Errorf("created %d rows, want none", len(ws.created))
 	}
