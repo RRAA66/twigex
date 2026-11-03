@@ -72,6 +72,14 @@ SPDX-License-Identifier: AGPL-3.0-only
             <div v-if="!isNameField" class="flex items-end pb-1.5">
                 <BaseCheckbox v-model="field.required" :label="t('projects.form_view.required')" />
             </div>
+            <FormViewFieldCondition
+                v-if="!isNameField"
+                class="col-span-2"
+                :field="field"
+                :fields="fields"
+                :workspace-id="workspaceId"
+                :table-id="tableId"
+            />
         </div>
     </div>
 </template>
@@ -83,6 +91,7 @@ import { t } from "@/i18n/index.js";
 import BaseCheckbox from "@/components/BaseCheckbox.vue";
 import BaseSelect from "@/components/BaseSelect.vue";
 import ToggleSwitch from "@/components/ToggleSwitch.vue";
+import FormViewFieldCondition from "@/components/Projects/Form/FormViewFieldCondition.vue";
 
 const props = defineProps({
     field: {
@@ -92,6 +101,18 @@ const props = defineProps({
     fieldName: {
         type: String,
         default: "",
+    },
+    fields: {
+        type: Array,
+        default: () => [],
+    },
+    workspaceId: {
+        type: String,
+        required: true,
+    },
+    tableId: {
+        type: String,
+        required: true,
     },
 });
 

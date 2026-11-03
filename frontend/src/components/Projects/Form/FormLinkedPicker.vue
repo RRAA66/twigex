@@ -122,6 +122,7 @@ import { CheckIcon, ChevronUpDownIcon, XMarkIcon } from "@heroicons/vue/20/solid
 import { t } from "@/i18n/index.js";
 import { useAnchoredPopup } from "@/composables/useAnchoredPopup";
 import formService from "@/services/formService";
+import workspaceService from "@/services/workspaceService";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseSpinner from "@/components/BaseSpinner.vue";
 
@@ -130,7 +131,8 @@ const SEARCH_DELAY_MS = 250;
 
 const props = defineProps({
     modelValue: { type: [Object, Array], default: null },
-    token: { type: String, required: true },
+    token: { type: String, default: "" },
+    workspaceId: { type: String, default: "" },
     tableId: { type: String, required: true },
     multiple: { type: Boolean, default: false },
     placeholder: { type: String, default: "" },
@@ -154,6 +156,31 @@ let searchTimer = null;
 
 const chips = computed(() => (props.multiple ? props.modelValue || [] : []));
 
+// The builder has no form link yet, so it lists rows through the workspace.
+async function requestPage(next) {
+    if (!props.workspaceId) {
+        const { data } = await formService.getPublicLinkedItems(props.token, props.tableId, {
+            page: next,
+            limit: PAGE_SIZE,
+            search: search.value || undefined,
+        });
+
+        return data;
+    }
+
+    const { data } = await workspaceService.getLinkedRecordsLite(props.workspaceId, props.tableId, {
+        q: search.value || undefined,
+        limit: PAGE_SIZE,
+        offset: (next - 1) * PAGE_SIZE,
+    });
+    const items = (data || []).map((row) => ({ id: String(row.id), name: row.name }));
+
+    // These rows come uncounted, so a full page stands for one more to load.
+    const more = items.length === PAGE_SIZE ? 1 : 0;
+
+    return { items, total: (next - 1) * PAGE_SIZE + items.length + more };
+}
+
 async function fetchPage(next) {
     const current = ++request;
 
@@ -162,11 +189,7 @@ async function fetchPage(next) {
     else loadingMore.value = true;
 
     try {
-        const { data } = await formService.getPublicLinkedItems(props.token, props.tableId, {
-            page: next,
-            limit: PAGE_SIZE,
-            search: search.value || undefined,
-        });
+        const data = await requestPage(next);
 
         // A slower answer to an older search must not replace a newer one.
         if (current !== request) return;

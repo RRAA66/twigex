@@ -30,7 +30,13 @@ SPDX-License-Identifier: AGPL-3.0-only
                 class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
             >
                 <template #item="{ element }">
-                    <FormViewFieldRow :field="element" :field-name="fieldName(element)" />
+                    <FormViewFieldRow
+                        :field="element"
+                        :field-name="fieldName(element)"
+                        :fields="fields"
+                        :workspace-id="form.workspace_id"
+                        :table-id="form.table_id"
+                    />
                 </template>
             </draggable>
         </div>
