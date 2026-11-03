@@ -195,6 +195,47 @@ func (a *App) formImageAttachment(form *model.WorkspaceFormWithFields, kind stri
 	return *attachment, nil
 }
 
+// formImages are the form's cover and logo, for removing their files once
+// the form is deleted.
+func (a *App) formImages(form *model.WorkspaceFormWithFields) ([]model.WorkspaceAttachment, *model.AppError) {
+	images := make([]model.WorkspaceAttachment, 0, 2)
+	for _, kind := range []string{model.FormImageCover, model.FormImageLogo} {
+		image, appErr := a.formImageAttachment(form, kind)
+		if appErr != nil {
+			return nil, appErr
+		}
+
+		images = append(images, image)
+	}
+
+	return images, nil
+}
+
+// viewFormImages are formImages of the form a view of the table is, or none
+// when the view is not a form.
+func (a *App) viewFormImages(ctx context.Context, workspaceID, tableID, viewID string) ([]model.WorkspaceAttachment, *model.AppError) {
+	form, err := a.Store.Workspace.GetForm(ctx, viewID)
+	if err != nil {
+		tlog.Errorw("Failed to retrieve the form of a view",
+			"view_id", viewID,
+			"error", err,
+		)
+		return nil, model.NewAppError("workspace.table_view_delete_failed", http.StatusInternalServerError)
+	}
+
+	if form == nil || form.WorkspaceID != workspaceID || form.TableID != tableID {
+		return nil, nil
+	}
+
+	return a.formImages(form)
+}
+
+func (a *App) removeFormImageFiles(ctx context.Context, images []model.WorkspaceAttachment) {
+	for _, image := range images {
+		a.removeFormImageFile(ctx, image)
+	}
+}
+
 func (a *App) removeFormImageFile(ctx context.Context, image model.WorkspaceAttachment) {
 	if image.TaskID == "" {
 		return

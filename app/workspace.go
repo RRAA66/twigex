@@ -4237,6 +4237,11 @@ func (a *App) DeleteWorkspaceTableView(ctx context.Context, workspaceID string, 
 		deleted.onlyUsers = audience
 	}
 
+	formImages, appErr := a.viewFormImages(ctx, workspaceID, tableID, viewID)
+	if appErr != nil {
+		return false, appErr
+	}
+
 	ok, err := a.Store.Workspace.DeleteTableView(workspaceID, tableID, viewID)
 	if err != nil {
 		tlog.Errorw("Failed to delete table view",
@@ -4248,6 +4253,7 @@ func (a *App) DeleteWorkspaceTableView(ctx context.Context, workspaceID string, 
 		return false, model.NewAppError("workspace.table_view_delete_failed", http.StatusInternalServerError)
 	}
 
+	a.removeFormImageFiles(ctx, formImages)
 	a.publishProjectChange(ctx, deleted)
 
 	return ok, nil

@@ -193,12 +193,7 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 		return appErr
 	}
 
-	cover, appErr := a.formImageAttachment(form, model.FormImageCover)
-	if appErr != nil {
-		return appErr
-	}
-
-	logo, appErr := a.formImageAttachment(form, model.FormImageLogo)
+	images, appErr := a.formImages(form)
 	if appErr != nil {
 		return appErr
 	}
@@ -217,8 +212,7 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 		return model.NewAppError("workspace.form_delete_failed", http.StatusInternalServerError)
 	}
 
-	a.removeFormImageFile(ctx, cover)
-	a.removeFormImageFile(ctx, logo)
+	a.removeFormImageFiles(ctx, images)
 	a.publishProjectChange(ctx, deleted)
 
 	return nil

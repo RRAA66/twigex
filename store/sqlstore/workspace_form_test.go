@@ -185,6 +185,11 @@ func TestDeleteTableViewDeletesTheFormItShows(t *testing.T) {
 		t.Fatalf("CreateForm: %v", err)
 	}
 
+	logo := &model.WorkspaceAttachment{ID: "img-1", WorkspaceID: "w1", TableID: "t1", FieldID: "form_logo", TaskID: "form-1", UserID: "u1", Name: "logo.png", MimeType: "image/png"}
+	if err := w.SetFormImage(ctx, "form-1", model.FormImageLogo, logo, ""); err != nil {
+		t.Fatalf("SetFormImage: %v", err)
+	}
+
 	if _, err := w.DeleteTableView("w1", "t1", "form-1"); err != nil {
 		t.Fatalf("DeleteTableView: %v", err)
 	}
@@ -196,6 +201,9 @@ func TestDeleteTableViewDeletesTheFormItShows(t *testing.T) {
 	}
 	if n := countRows(t, testDB, `SELECT COUNT(*) FROM workspace_form_fields WHERE form_id = 'form-1'`); n != 0 {
 		t.Errorf("workspace_form_fields keeps %d rows of the form", n)
+	}
+	if n := countRows(t, testDB, `SELECT COUNT(*) FROM workspace_attachments WHERE task_id = 'form-1'`); n != 0 {
+		t.Errorf("workspace_attachments keeps %d images of the form", n)
 	}
 }
 

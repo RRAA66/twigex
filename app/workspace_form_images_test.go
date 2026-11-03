@@ -48,6 +48,17 @@ func (f *fakeFormImageStore) SetFormImage(_ context.Context, formID, kind string
 	return nil
 }
 
+func (f *fakeFormImageStore) DeleteTableView(workspaceID, tableID, viewID string) (bool, error) {
+	form, ok := f.forms[viewID]
+	if ok && form.WorkspaceID == workspaceID && form.TableID == tableID {
+		delete(f.forms, viewID)
+		delete(f.attachments, form.CoverImage)
+		delete(f.attachments, form.Logo)
+	}
+
+	return true, nil
+}
+
 func imageApp(t *testing.T) (*App, *fakeFormImageStore, string) {
 	t.Helper()
 
@@ -245,6 +256,26 @@ func TestDeleteFormRemovesItsImages(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(root, wsID, tbl1, "form-1", set.CoverImage+".png")); !os.IsNotExist(err) {
 		t.Errorf("cover file is still there: %v", err)
+	}
+}
+
+func TestDeletingAFormAsAViewRemovesItsImages(t *testing.T) {
+	a, ws, root := imageApp(t)
+
+	set, appErr := setImage(t, a, model.FormImageLogo, "a.png", pngHeader)
+	if appErr != nil {
+		t.Fatalf("SetFormImage: %v", appErr)
+	}
+
+	if _, appErr := a.DeleteWorkspaceTableView(context.Background(), wsID, tbl1, "form-1", workspaceAdmin); appErr != nil {
+		t.Fatalf("DeleteWorkspaceTableView: %v", appErr)
+	}
+
+	if _, ok := ws.attachments[set.Logo]; ok {
+		t.Error("logo's attachment is still there")
+	}
+	if _, err := os.Stat(filepath.Join(root, wsID, tbl1, "form-1", set.Logo+".png")); !os.IsNotExist(err) {
+		t.Errorf("logo file is still there: %v", err)
 	}
 }
 
