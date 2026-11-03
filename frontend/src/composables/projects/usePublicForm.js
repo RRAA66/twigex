@@ -20,8 +20,8 @@ const STATUS_BY_HTTP = {
     404: "not_found",
 };
 
-// Fills in a form through its link, as the public page and the builder's
-// preview both do. live keeps the page's form current while it is open.
+// live opens the app's websocket and closes it on unmount, so only a page
+// outside the app shell, which has no connection of its own, may pass it.
 export function usePublicForm(token, { live = false } = {}) {
     const alertStore = useAlertStore();
 

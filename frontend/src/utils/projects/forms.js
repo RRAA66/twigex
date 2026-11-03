@@ -89,9 +89,8 @@ export function mergeFormFields(headers, savedFields, translate) {
     return merged;
 }
 
-// The input a form field is filled with. Mirrors how SubmitForm reads the
-// value: a link with a single-select target takes one option, any other link
-// a list of rows.
+// Mirrors how SubmitForm reads a value: a link with a single-select target
+// takes one option, any other link a list of rows.
 export function formFieldType(field) {
     const type = (field.field_type || "").toLowerCase();
 
