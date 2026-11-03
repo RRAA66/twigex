@@ -6,6 +6,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"github.com/twigex/twigex/model"
@@ -146,12 +147,21 @@ func (w *workspaceRepository) DeleteForm(ctx context.Context, formID string) err
 
 func createFormFieldsTx(ctx context.Context, tx *sql.Tx, formID string, fields []model.WorkspaceFormField) error {
 	for _, f := range fields {
+		var rule []byte
+		if f.VisibilityRule != nil {
+			var err error
+			rule, err = json.Marshal(f.VisibilityRule)
+			if err != nil {
+				return err
+			}
+		}
+
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO workspace_form_fields
-			(id, form_id, header_id, header_name, label, placeholder, description, required, visible, sort_order, column_position)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			(id, form_id, header_id, header_name, label, placeholder, description, required, visible, sort_order, column_position, visibility_rule)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			f.ID, formID, f.HeaderID, f.HeaderName, f.Label, f.Placeholder, f.Description,
-			f.Required, f.Visible, f.SortOrder, f.ColumnPosition,
+			f.Required, f.Visible, f.SortOrder, f.ColumnPosition, rule,
 		)
 		if err != nil {
 			return err
@@ -164,7 +174,8 @@ func createFormFieldsTx(ctx context.Context, tx *sql.Tx, formID string, fields [
 func (w *workspaceRepository) getFormFields(ctx context.Context, formID, tableID string) ([]model.WorkspaceFormField, error) {
 	rows, err := w.Db.QueryContext(ctx, `
 		SELECT f.id, f.form_id, f.header_id, COALESCE(NULLIF(f.header_name, ''), wf.field_name, ''), f.label,
-		       COALESCE(f.placeholder, ''), COALESCE(f.description, ''), f.required, f.visible, f.sort_order, f.column_position
+		       COALESCE(f.placeholder, ''), COALESCE(f.description, ''), f.required, f.visible, f.sort_order, f.column_position,
+		       f.visibility_rule
 		FROM workspace_form_fields f
 		LEFT JOIN workspace_fields wf ON f.header_name = '' AND wf.id = f.header_id AND wf.deleted_at = 0
 		WHERE f.form_id = ?
@@ -178,10 +189,17 @@ func (w *workspaceRepository) getFormFields(ctx context.Context, formID, tableID
 	fields := make([]model.WorkspaceFormField, 0)
 	for rows.Next() {
 		var f model.WorkspaceFormField
+		var rule sql.NullString
 		err := rows.Scan(&f.ID, &f.FormID, &f.HeaderID, &f.HeaderName, &f.Label,
-			&f.Placeholder, &f.Description, &f.Required, &f.Visible, &f.SortOrder, &f.ColumnPosition)
+			&f.Placeholder, &f.Description, &f.Required, &f.Visible, &f.SortOrder, &f.ColumnPosition, &rule)
 		if err != nil {
 			return nil, err
+		}
+
+		if rule.Valid {
+			if err := json.Unmarshal([]byte(rule.String), &f.VisibilityRule); err != nil {
+				return nil, err
+			}
 		}
 
 		fields = append(fields, f)

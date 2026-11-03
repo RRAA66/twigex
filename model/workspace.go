@@ -601,6 +601,15 @@ type WorkspaceForm struct {
 	UpdatedAt     int64  `json:"updated_at"`
 }
 
+// VisibilityRule shows a form field only while the field named by
+// TriggerField has a value that meets it. Value is unused by is_empty and
+// is_not_empty.
+type VisibilityRule struct {
+	TriggerField string `json:"trigger_field"`
+	Operator     string `json:"operator"`
+	Value        string `json:"value"`
+}
+
 type WorkspaceFormField struct {
 	ID             string `json:"id"`
 	FormID         string `json:"form_id"`
@@ -613,6 +622,9 @@ type WorkspaceFormField struct {
 	Visible        bool   `json:"visible"`
 	SortOrder      int    `json:"sort_order"`
 	ColumnPosition string `json:"column_position,omitempty"`
+
+	VisibilityRule *VisibilityRule `json:"visibility_rule"`
+
 	// Read from the table's field and its link, not stored with the form.
 	FieldType     string `json:"field_type,omitempty"`
 	LinkedID      string `json:"linked_id,omitempty"`

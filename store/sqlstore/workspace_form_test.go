@@ -88,6 +88,35 @@ func TestGetFormUnknownIsNil(t *testing.T) {
 	}
 }
 
+func TestFormFieldKeepsItsVisibilityRule(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	rule := &model.VisibilityRule{TriggerField: "client", Operator: "equals", Value: "row-1"}
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	fields := []model.WorkspaceFormField{
+		{ID: "ff-1", HeaderName: "client", Label: "Client", SortOrder: 1},
+		{ID: "ff-2", HeaderName: "budget", Label: "Budget", SortOrder: 2, VisibilityRule: rule},
+	}
+	if err := w.CreateForm(ctx, form, fields); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	got, err := w.GetForm(ctx, "form-1")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+	if got.Fields[0].VisibilityRule != nil {
+		t.Errorf("client rule %+v, want none", got.Fields[0].VisibilityRule)
+	}
+	if got.Fields[1].VisibilityRule == nil || *got.Fields[1].VisibilityRule != *rule {
+		t.Errorf("budget rule %+v, want %+v", got.Fields[1].VisibilityRule, rule)
+	}
+}
+
 func TestUpdateFormReplacesFieldsAndRenamesItsView(t *testing.T) {
 	requireDB(t)
 	resetFormTables(t)
