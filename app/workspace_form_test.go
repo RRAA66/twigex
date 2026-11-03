@@ -364,6 +364,56 @@ func TestCreateFormStoresAFieldWithoutPositionAsFullWidth(t *testing.T) {
 	}
 }
 
+type fakeFormChangeStore struct {
+	perUserRoleStore
+	deleted []string
+}
+
+func (f *fakeFormChangeStore) GetTableWorkspaceID(_ context.Context, _ string) (string, error) {
+	return wsID, nil
+}
+
+func (f *fakeFormChangeStore) GetViewVisibility(_ context.Context, _ string) (bool, string, error) {
+	return true, "admin", nil
+}
+
+func (f *fakeFormChangeStore) GetForm(_ context.Context, formID string) (*model.WorkspaceFormWithFields, error) {
+	return &model.WorkspaceFormWithFields{WorkspaceForm: model.WorkspaceForm{ID: formID, WorkspaceID: wsID, TableID: tbl1}}, nil
+}
+
+func (f *fakeFormChangeStore) DeleteForm(_ context.Context, formID string) error {
+	f.deleted = append(f.deleted, formID)
+	return nil
+}
+
+func TestDeleteFormTellsThoseWhoSeeTheTable(t *testing.T) {
+	everyone := []string{"admin", "member", "hidden"}
+	a, clients := changeApp(everyone, changeRoles{hidden: map[string]bool{"hidden": true}})
+	ws := &fakeFormChangeStore{perUserRoleStore: a.Store.Workspace.(perUserRoleStore)}
+	a.Store.Workspace = ws
+	a.Server.License = &model.License{
+		StartsAt:  time.Now().Add(-time.Hour).Unix(),
+		ExpiresAt: time.Now().Add(time.Hour).Unix(),
+		Features:  &model.Features{Forms: boolPtr(true)},
+	}
+
+	if appErr := a.DeleteForm(context.Background(), wsID, tbl1, "form-1", workspaceAdmin); appErr != nil {
+		t.Fatalf("DeleteForm: %v", appErr)
+	}
+
+	if len(ws.deleted) != 1 {
+		t.Fatalf("deleted %v, want form-1", ws.deleted)
+	}
+	for _, id := range []string{"admin", "member"} {
+		if data := received(clients[id]); data["type"] != "DELETE_VIEW" || data["delete_id"] != "form-1" {
+			t.Errorf("%s received %v, want DELETE_VIEW of form-1", id, data)
+		}
+	}
+	if leaked := received(clients["hidden"]); leaked != nil {
+		t.Errorf("someone who cannot see the table was sent %v", leaked)
+	}
+}
+
 func TestCreateFormRefusesANameAnotherViewHas(t *testing.T) {
 	a, ws := formApp(workspaceAdminAccess(), true)
 

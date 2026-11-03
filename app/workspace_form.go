@@ -173,6 +173,12 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 		return appErr
 	}
 
+	// The audience is read from the view row, so before the delete removes it.
+	deleted := projectChange{kind: "DELETE_VIEW", workspaceID: workspaceID, tableID: tableID, data: map[string]any{"delete_id": formID}}
+	if audience, err := a.viewAudience(ctx, formID); err == nil {
+		deleted.onlyUsers = audience
+	}
+
 	if err := a.Store.Workspace.DeleteForm(ctx, formID); err != nil {
 		tlog.Errorw("Failed to delete form",
 			"form_id", formID,
@@ -180,6 +186,8 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 		)
 		return model.NewAppError("workspace.form_delete_failed", http.StatusInternalServerError)
 	}
+
+	a.publishProjectChange(ctx, deleted)
 
 	return nil
 }
