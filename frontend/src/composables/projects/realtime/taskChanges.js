@@ -270,18 +270,16 @@ export function taskChanges(ctx) {
         const i = tableData.value.findIndex((t) => String(t.id) === String(task.id));
         const merged = i === -1 ? task : { ...tableData.value[i], ...task };
 
-        if (!matches) {
-            if (i !== -1) {
-                tableData.value = tableData.value.filter((_, j) => j !== i);
-                workspaceStore.bumpGridCountToken();
-            }
+        // Under a filter, a change can move a task in or out of the total even
+        // when it is not on the page shown.
+        if (created || workspaceStore.getFilterActive) workspaceStore.bumpGridCountToken();
 
+        if (!matches) {
+            if (i !== -1) tableData.value = tableData.value.filter((_, j) => j !== i);
             removeKanbanCard(task.id);
 
             return;
         }
-
-        if (created) workspaceStore.bumpGridCountToken();
 
         if (i !== -1) {
             tableData.value = tableData.value.map((t, j) => (j === i ? merged : t));

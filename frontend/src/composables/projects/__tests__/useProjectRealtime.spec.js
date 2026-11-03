@@ -7,6 +7,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createRouter, createMemoryHistory } from "vue-router";
 import { useWorkspaceStore } from "@/store/workspaces";
+import workspaceService from "@/services/workspaceService";
 import { useProjectRealtime } from "../useProjectRealtime";
 
 let deliver;
@@ -80,6 +81,27 @@ describe("useProjectRealtime", () => {
 
         expect(store.getTableData.map((r) => r.id)).toEqual(["a"]);
         expect(store.getGridCountToken).toBe(1);
+    });
+
+    it("recounts a filtered grid when another tab changes a task off this page", async () => {
+        store.setTableData([]);
+        store.setFilterActive(true);
+        store.setSavedGroups([{ conditions: [{ field: "status" }] }]);
+        vi.spyOn(workspaceService, "taskMatchesFilter").mockResolvedValue({
+            data: { matches: false },
+        });
+        deliver(change({ type: "task_updated", table_id: "t1", task: { id: "elsewhere" } }));
+        await flushPromises();
+
+        expect(store.getGridCountToken).toBe(1);
+    });
+
+    it("does not recount an unfiltered grid for a changed task", async () => {
+        store.setTableData([{ id: "a" }]);
+        deliver(change({ type: "task_updated", table_id: "t1", task: { id: "a", name: "x" } }));
+        await flushPromises();
+
+        expect(store.getGridCountToken).toBe(0);
     });
 
     it("does not recount for a task in another table", () => {
