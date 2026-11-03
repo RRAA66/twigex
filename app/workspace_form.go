@@ -17,9 +17,8 @@ func (a *App) CreateForm(ctx context.Context, workspaceID, tableID string, form 
 		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
 	}
 
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionCreateWorkspaceView) &&
-		!a.ProjectWorkspaceTableHasPermission(user, workspaceID, tableID, "manage_views") {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionCreateWorkspaceView); appErr != nil {
+		return nil, appErr
 	}
 
 	ctx, cancel := a.dbCtx(ctx)
@@ -81,8 +80,8 @@ func (a *App) GetForm(ctx context.Context, workspaceID, tableID, formID string, 
 		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
 	}
 
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceView) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionUpdateWorkspaceView); appErr != nil {
+		return nil, appErr
 	}
 
 	ctx, cancel := a.dbCtx(ctx)
@@ -96,8 +95,8 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
 	}
 
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceView) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionUpdateWorkspaceView); appErr != nil {
+		return nil, appErr
 	}
 
 	ctx, cancel := a.dbCtx(ctx)
@@ -133,9 +132,8 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 		return model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
 	}
 
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionDeleteTableView) &&
-		!a.ProjectWorkspaceTableHasPermission(user, workspaceID, tableID, "manage_views") {
-		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionDeleteTableView); appErr != nil {
+		return appErr
 	}
 
 	ctx, cancel := a.dbCtx(ctx)
@@ -151,6 +149,22 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 			"error", err,
 		)
 		return model.NewAppError("workspace.form_delete_failed", http.StatusInternalServerError)
+	}
+
+	return nil
+}
+
+// requireFormTableAccess asks what the view endpoints ask, the workspace
+// permission or the table's manage_views, and also that the user may read the
+// table: a role can hide one table from a member who manages views elsewhere.
+func (a *App) requireFormTableAccess(ctx context.Context, user model.User, workspaceID, tableID, permission string) *model.AppError {
+	if !a.ProjectWorkspaceHasPermission(user, workspaceID, permission) &&
+		!a.ProjectWorkspaceTableHasPermission(user, workspaceID, tableID, "manage_views") {
+		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if !a.canReadTable(ctx, user, workspaceID, tableID) {
+		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
 	return nil

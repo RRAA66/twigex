@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/twigex/twigex/config"
+	"github.com/twigex/twigex/interfaces"
 	"github.com/twigex/twigex/model"
 	"github.com/twigex/twigex/store"
 )
@@ -18,6 +19,14 @@ type fakeFormStore struct {
 	fakeAccessWorkspaceStore
 	forms  map[string]*model.WorkspaceFormWithFields
 	writes int
+}
+
+func (f *fakeFormStore) GetTableWorkspaceID(_ context.Context, tableID string) (string, error) {
+	if tableID == tbl1 || tableID == tbl2 {
+		return wsID, nil
+	}
+
+	return "", nil
 }
 
 func (f *fakeFormStore) CreateForm(_ context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error {
@@ -80,6 +89,32 @@ func formApp(access fakeAccessWorkspaceStore, licensed bool) (*App, *fakeFormSto
 	return a, ws
 }
 
+// formRoles stands in for enterprise roles that grant no table permissions,
+// so only workspace permissions let a member manage views, and that hide one
+// table from everyone they resolve.
+type formRoles struct{ hiddenTable string }
+
+func (r formRoles) Resolve(interfaces.AccessInput) interfaces.WorkspaceAccess {
+	return formAccess(r)
+}
+
+type formAccess struct{ hiddenTable string }
+
+func (formAccess) AssignedOnlyAll() bool                   { return false }
+func (formAccess) AssignedOnly(string) bool                { return false }
+func (formAccess) CanPerformRowAction(_, _, _ string) bool { return true }
+func (formAccess) TableHasPermission(_, _ string) bool     { return false }
+func (f formAccess) VisibleTables(tables []model.WorkspaceTable) []model.WorkspaceTable {
+	var visible []model.WorkspaceTable
+	for _, t := range tables {
+		if t.ID != f.hiddenTable {
+			visible = append(visible, t)
+		}
+	}
+
+	return visible
+}
+
 func memberWithoutViewPermissions() fakeAccessWorkspaceStore {
 	role := model.ProjectWorkspaceRole{ID: "reader-id", Name: "reader", Permissions: []string{model.PermissionCreateTask}}
 	return fakeAccessWorkspaceStore{memberRoleName: role.Name, roles: []model.ProjectWorkspaceRole{role}}
@@ -125,6 +160,7 @@ func TestCreateFormRefusesANonMember(t *testing.T) {
 
 func TestUpdateFormRefusesAMemberWhoCannotChangeViews(t *testing.T) {
 	a, ws := formApp(memberWithoutViewPermissions(), true)
+	a.WorkspaceRoles = formRoles{}
 
 	_, appErr := a.UpdateForm(context.Background(), wsID, tbl1, "form-1", model.WorkspaceForm{Name: "Renamed"}, nil, accessUser())
 	if appErr == nil || appErr.Status != http.StatusForbidden {
@@ -154,7 +190,27 @@ func TestFormsNeedALicence(t *testing.T) {
 	}
 }
 
-func TestFormOutsideTheURLWorkspaceOrTableIsNotFound(t *testing.T) {
+func TestFormsRefuseAManagerFromWhomTheTableIsHidden(t *testing.T) {
+	a, ws := formApp(workspaceAdminAccess(), true)
+	a.WorkspaceRoles = formRoles{hiddenTable: tbl1}
+	ctx := context.Background()
+
+	_, createErr := a.CreateForm(ctx, wsID, tbl1, model.WorkspaceForm{Name: "Signup"}, nil, workspaceAdmin)
+	_, getErr := a.GetForm(ctx, wsID, tbl1, "form-1", workspaceAdmin)
+	_, updateErr := a.UpdateForm(ctx, wsID, tbl1, "form-1", model.WorkspaceForm{Name: "Renamed"}, nil, workspaceAdmin)
+	deleteErr := a.DeleteForm(ctx, wsID, tbl1, "form-1", workspaceAdmin)
+
+	for name, appErr := range map[string]*model.AppError{"create": createErr, "get": getErr, "update": updateErr, "delete": deleteErr} {
+		if appErr == nil || appErr.Status != http.StatusForbidden {
+			t.Errorf("%s: want 403, got %v", name, appErr)
+		}
+	}
+	if ws.writes != 0 || ws.forms["form-1"].Name != "Intake" {
+		t.Errorf("the form was changed: %d writes, %+v", ws.writes, ws.forms["form-1"])
+	}
+}
+
+func TestFormOutsideTheURLWorkspaceOrTableIsRefused(t *testing.T) {
 	ctx := context.Background()
 	calls := map[string]func(a *App, workspaceID, tableID string) *model.AppError{
 		"get": func(a *App, workspaceID, tableID string) *model.AppError {
@@ -169,9 +225,12 @@ func TestFormOutsideTheURLWorkspaceOrTableIsNotFound(t *testing.T) {
 			return a.DeleteForm(ctx, workspaceID, tableID, "form-1", workspaceAdmin)
 		},
 	}
-	places := map[string][2]string{
-		"another workspace": {"workspace-2", tbl1},
-		"another table":     {wsID, tbl2},
+	places := map[string]struct {
+		workspaceID, tableID string
+		want                 int
+	}{
+		"another workspace": {"workspace-2", tbl1, http.StatusForbidden},
+		"another table":     {wsID, tbl2, http.StatusNotFound},
 	}
 
 	for callName, call := range calls {
@@ -180,9 +239,9 @@ func TestFormOutsideTheURLWorkspaceOrTableIsNotFound(t *testing.T) {
 				a, ws := formApp(workspaceAdminAccess(), true)
 				ws.onlyMember = ""
 
-				appErr := call(a, place[0], place[1])
-				if appErr == nil || appErr.Status != http.StatusNotFound {
-					t.Fatalf("want 404, got %v", appErr)
+				appErr := call(a, place.workspaceID, place.tableID)
+				if appErr == nil || appErr.Status != place.want {
+					t.Fatalf("want %d, got %v", place.want, appErr)
 				}
 				if ws.writes != 0 || ws.forms["form-1"].Name != "Intake" {
 					t.Errorf("the form was changed: %d writes, %+v", ws.writes, ws.forms["form-1"])
