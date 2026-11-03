@@ -90,7 +90,7 @@ func (f *fakeFormSubmitStore) GetMembers(string) ([]model.WorkspaceMember, error
 }
 
 func (f *fakeFormSubmitStore) GetLinkableTables(context.Context, string, string) ([]model.FormLinkTable, error) {
-	return []model.FormLinkTable{{ID: tbl2, Name: "t2"}}, nil
+	return []model.FormLinkTable{{ID: tbl2, Name: "t2"}, {ID: "table-4", Name: "t4"}}, nil
 }
 
 func (f *fakeFormSubmitStore) GetLinkedRecordsLite(_ context.Context, _, _ string, _ []string, limit, offset int, access model.SQLFilter) ([]map[string]any, error) {
@@ -700,5 +700,19 @@ func TestSubmitFormNeedsTheRightToCreateRows(t *testing.T) {
 	}
 	if len(ws.created) != 0 {
 		t.Errorf("created %d rows, want none", len(ws.created))
+	}
+}
+
+func TestPublicFormListsOnlyTheLinkTablesTheUserSees(t *testing.T) {
+	a, _, _ := submitApp(model.WorkspaceFormField{HeaderName: "source", FieldType: "master link", Visible: true})
+	a.WorkspaceRoles = formRoles{hiddenTable: "table-4"}
+
+	form, appErr := a.GetPublicForm(context.Background(), "token-1", submitter)
+	if appErr != nil {
+		t.Fatalf("GetPublicForm: %v", appErr)
+	}
+
+	if want := []model.FormLinkTable{{ID: tbl2, Name: "t2"}}; !slices.Equal(form.LinkTables, want) {
+		t.Errorf("link tables %+v, want %+v", form.LinkTables, want)
 	}
 }

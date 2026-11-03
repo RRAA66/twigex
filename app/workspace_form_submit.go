@@ -46,19 +46,40 @@ func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User)
 	}
 
 	if formShows(form, isMasterLinkField) {
-		tables, err := a.Store.Workspace.GetLinkableTables(ctx, form.WorkspaceID, form.TableID)
-		if err != nil {
-			tlog.Errorw("Failed to retrieve tables for a form",
-				"form_id", form.ID,
-				"error", err,
-			)
-			return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
+		tables, appErr := a.formLinkTables(ctx, *user, form)
+		if appErr != nil {
+			return nil, appErr
 		}
 
 		public.LinkTables = tables
 	}
 
 	return &public, nil
+}
+
+// formLinkTables lists the tables a master link field of the form may name:
+// those of its workspace the user may see.
+func (a *App) formLinkTables(ctx context.Context, user model.User, form *model.WorkspaceFormWithFields) ([]model.FormLinkTable, *model.AppError) {
+	tables, err := a.Store.Workspace.GetLinkableTables(ctx, form.WorkspaceID, form.TableID)
+	if err != nil {
+		tlog.Errorw("Failed to retrieve tables for a form",
+			"form_id", form.ID,
+			"error", err,
+		)
+		return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
+	}
+
+	candidates := make([]model.WorkspaceTable, 0, len(tables))
+	for _, t := range tables {
+		candidates = append(candidates, model.WorkspaceTable{ID: t.ID})
+	}
+
+	visible := map[string]bool{}
+	for _, t := range a.resolveAccess(a.buildAccessInput(user, form.WorkspaceID)).VisibleTables(candidates) {
+		visible[t.ID] = true
+	}
+
+	return slices.DeleteFunc(tables, func(t model.FormLinkTable) bool { return !visible[t.ID] }), nil
 }
 
 // GetPublicLinkedItems pages through the rows a link or single-select field
