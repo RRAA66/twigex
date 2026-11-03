@@ -1964,6 +1964,10 @@
     "translation": "Бұл пішінде осы жазбалардан таңдайтын өріс жоқ."
   },
   {
+    "id": "workspace.form_invalid_condition",
+    "translation": "Өрістің «Тек мынада көрсету» шарты толық емес немесе пішін пайдалана алмайтын өріске сілтейді."
+  },
+  {
     "id": "workspace.form_submit_required_field",
     "translation": "Барлық міндетті өрістерді толтырыңыз."
   },

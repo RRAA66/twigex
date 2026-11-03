@@ -142,6 +142,24 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		Selects:   map[string]string{},
 	}
 
+	submitted := make(map[string]any, len(request.Fields))
+	for _, v := range request.Fields {
+		if _, ok := fields[v.Name]; ok {
+			submitted[v.Name] = v.Value
+		}
+	}
+
+	var hidden []string
+	for name := range fields {
+		if !formFieldShown(name, fields, submitted) {
+			hidden = append(hidden, name)
+		}
+	}
+
+	for _, name := range hidden {
+		delete(fields, name)
+	}
+
 	for _, v := range request.Fields {
 		field, ok := fields[v.Name]
 		if !ok {

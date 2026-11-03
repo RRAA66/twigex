@@ -22,6 +22,10 @@ func (a *App) CreateForm(ctx context.Context, workspaceID, tableID string, form 
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
+	if appErr := validateFormConditions(fields); appErr != nil {
+		return nil, appErr
+	}
+
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
@@ -104,6 +108,10 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 	defer cancel()
 
 	if _, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
+		return nil, appErr
+	}
+
+	if appErr := validateFormConditions(fields); appErr != nil {
 		return nil, appErr
 	}
 

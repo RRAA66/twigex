@@ -2024,6 +2024,10 @@
     "translation": "This form has no field that chooses from these records."
   },
   {
+    "id": "workspace.form_invalid_condition",
+    "translation": "A field's “Only show when” condition is incomplete or refers to a field the form cannot use."
+  },
+  {
     "id": "workspace.form_submit_required_field",
     "translation": "Fill in all required fields."
   },
