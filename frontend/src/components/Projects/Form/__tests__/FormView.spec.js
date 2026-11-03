@@ -54,6 +54,7 @@ async function mountAt(path, { licensed = true, user = { permissions: viewPermis
         routes: [
             { path: "/p/:id/form/:tid", name: "form-view-create", component: FormView },
             { path: "/p/:id/form/:tid/view/:fid", name: "form-view", component: FormView },
+            { path: "/forms/public/:token", name: "public-form", component: FormView },
         ],
     });
 
