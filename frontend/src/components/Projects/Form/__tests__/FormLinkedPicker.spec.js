@@ -5,14 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
 import FormLinkedPicker from "@/components/Projects/Form/FormLinkedPicker.vue";
 import formService from "@/services/formService";
-import workspaceService from "@/services/workspaceService";
 
 vi.mock("@/services/formService", () => ({
     default: { getPublicLinkedItems: vi.fn() },
-}));
-
-vi.mock("@/services/workspaceService", () => ({
-    default: { getLinkedRecordsLite: vi.fn() },
 }));
 
 function page(items, hasMore = false) {
@@ -138,21 +133,15 @@ describe("FormLinkedPicker", () => {
         expect(options.map((o) => o.textContent.trim())).toEqual(["Two"]);
     });
 
-    it("lists a workspace's rows when it has no form link", async () => {
-        const rows = Array.from({ length: 51 }, (_, i) => ({ id: i, name: `Row ${i}` }));
+    it("lists its options through a given loader", async () => {
+        const loader = vi.fn().mockResolvedValue({ items: [one], has_more: true });
 
-        workspaceService.getLinkedRecordsLite.mockResolvedValue({ data: rows });
-        w = mountPicker({ token: "", workspaceId: "ws" });
+        w = mountPicker({ token: "", tableId: "", loader });
         await open(w);
 
         expect(formService.getPublicLinkedItems).not.toHaveBeenCalled();
-        expect(workspaceService.getLinkedRecordsLite).toHaveBeenCalledWith("ws", "t-x", {
-            q: undefined,
-            limit: 51,
-            offset: 0,
-        });
-        expect(document.body.textContent).toContain("Row 49");
-        expect(document.body.textContent).not.toContain("Row 50");
+        expect(loader).toHaveBeenCalledWith({ page: 1, limit: 50, search: undefined });
+        expect(document.body.textContent).toContain("One");
         expect(document.body.textContent).toContain("Load more");
     });
 

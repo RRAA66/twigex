@@ -127,7 +127,6 @@ import { CheckIcon, ChevronUpDownIcon, XMarkIcon } from "@heroicons/vue/20/solid
 import { t } from "@/i18n/index.js";
 import { useAnchoredPopup } from "@/composables/useAnchoredPopup";
 import formService from "@/services/formService";
-import workspaceService from "@/services/workspaceService";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseSpinner from "@/components/BaseSpinner.vue";
 
@@ -139,8 +138,10 @@ const SEARCH_DELAY_MS = 250;
 const props = defineProps({
     modelValue: { type: [Object, Array], default: null },
     token: { type: String, default: "" },
-    workspaceId: { type: String, default: "" },
-    tableId: { type: String, required: true },
+    tableId: { type: String, default: "" },
+    // Lists the options in place of the form link, given { page, limit,
+    // search } and answering { items, has_more }.
+    loader: { type: Function, default: null },
     multiple: { type: Boolean, default: false },
     placeholder: { type: String, default: "" },
     id: { type: String, default: undefined },
@@ -165,28 +166,14 @@ let searchTimer = null;
 
 const chips = computed(() => (props.multiple ? props.modelValue || [] : []));
 
-// The condition editor lists rows through the workspace, as its value is
-// picked by someone building the form, not filling it.
 async function requestPage(next) {
-    if (!props.workspaceId) {
-        const { data } = await formService.getPublicLinkedItems(props.token, props.tableId, {
-            page: next,
-            limit: PAGE_SIZE,
-            search: search.value || undefined,
-        });
+    const params = { page: next, limit: PAGE_SIZE, search: search.value || undefined };
 
-        return data;
-    }
+    if (props.loader) return props.loader(params);
 
-    const { data } = await workspaceService.getLinkedRecordsLite(props.workspaceId, props.tableId, {
-        q: search.value || undefined,
-        limit: PAGE_SIZE + 1,
-        offset: (next - 1) * PAGE_SIZE,
-    });
-    const items = (data || []).map((row) => ({ id: String(row.id), name: row.name }));
+    const { data } = await formService.getPublicLinkedItems(props.token, props.tableId, params);
 
-    // These rows come uncounted, so one past the page tells there are more.
-    return { items: items.slice(0, PAGE_SIZE), has_more: items.length > PAGE_SIZE };
+    return data;
 }
 
 async function fetchPage(next) {

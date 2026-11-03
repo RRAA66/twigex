@@ -6,77 +6,81 @@ SPDX-License-Identifier: AGPL-3.0-only
     <BaseSelect
         v-if="widget === 'status'"
         :model-value="modelValue"
+        :label="label"
         :options="statusOptions"
         :placeholder="placeholder"
-        @update:model-value="update"
-    />
-    <FormLinkedPicker
-        v-else-if="widget === 'linked'"
-        :model-value="picked"
-        :workspace-id="workspaceId"
-        :table-id="linkedTableId(field)"
-        :placeholder="placeholder"
-        @update:model-value="pick"
-    />
-    <FormMemberPicker
-        v-else-if="widget === 'assignee'"
-        :model-value="modelValue"
-        :members="members"
-        :placeholder="placeholder"
-        @update:model-value="update"
-    />
-    <DatePickerField
-        v-else-if="widget === 'date'"
-        :model-value="modelValue"
-        :placeholder="t('projects.form_view.placeholder.pick_date')"
         @update:model-value="update"
     />
     <BaseSelect
         v-else-if="widget === 'checkbox'"
         :model-value="modelValue"
+        :label="label"
         :options="checkboxOptions"
         :placeholder="placeholder"
         @update:model-value="update"
     />
-    <input
-        v-else-if="widget === 'text'"
-        :value="modelValue"
-        type="text"
-        maxlength="255"
-        class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-        :placeholder="placeholder"
-        @input="update($event.target.value)"
-    />
+    <div v-else-if="widget !== 'none'">
+        <label :for="id" class="block text-sm font-medium leading-6 text-gray-900">
+            {{ label }}
+        </label>
+        <div class="mt-2">
+            <FormLinkedPicker
+                v-if="widget === 'linked' || widget === 'assignee'"
+                :id="id"
+                :model-value="picked"
+                :loader="widget === 'linked' ? loadRows : loadMembers"
+                :placeholder="placeholder"
+                @update:model-value="pick"
+            />
+            <DatePickerField
+                v-else-if="widget === 'date'"
+                :id="id"
+                :model-value="modelValue"
+                :placeholder="t('projects.form_view.placeholder.pick_date')"
+                @update:model-value="update"
+            />
+            <input
+                v-else
+                :id="id"
+                :value="modelValue"
+                type="text"
+                maxlength="255"
+                class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                :placeholder="placeholder"
+                @input="update($event.target.value)"
+            />
+        </div>
+    </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, useId, watch } from "vue";
 import { t } from "@/i18n/index.js";
 import workspaceService from "@/services/workspaceService";
 import { useAlertStore } from "@/store/alerts";
+import { useUserStore } from "@/store/user";
 import { extractErrorMessage } from "@/utils/errors";
 import { conditionValueWidget, linkedTableId } from "@/utils/projects/forms";
 import BaseSelect from "@/components/BaseSelect.vue";
 import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
 import FormLinkedPicker from "@/components/Projects/Form/FormLinkedPicker.vue";
-import FormMemberPicker from "@/components/Projects/Form/FormMemberPicker.vue";
-
-const MEMBER_LIMIT = 100;
 
 const props = defineProps({
     field: { type: Object, required: true },
     operator: { type: String, default: "equals" },
     modelValue: { type: String, default: "" },
+    label: { type: String, default: "" },
     workspaceId: { type: String, required: true },
     tableId: { type: String, required: true },
 });
 
 const emit = defineEmits(["update:modelValue"]);
 
+const id = useId();
 const alertStore = useAlertStore();
+const userStore = useUserStore();
 
 const statusOptions = ref([]);
-const members = ref([]);
 const picked = ref(null);
 
 const widget = computed(() => conditionValueWidget(props.field, props.operator));
@@ -97,47 +101,104 @@ function pick(item) {
     update(item ? item.id : "");
 }
 
+function memberName(user) {
+    return [user.name, user.lastname].filter(Boolean).join(" ") || user.username || user.id;
+}
+
+// Neither list is counted, so one row past the page tells there are more.
+function pageOf(rows, limit) {
+    return { items: rows.slice(0, limit), has_more: rows.length > limit };
+}
+
+async function loadRows({ page, limit, search }) {
+    const { data } = await workspaceService.getLinkedRecordsLite(
+        props.workspaceId,
+        linkedTableId(props.field),
+        { q: search, limit: limit + 1, offset: (page - 1) * limit },
+    );
+    const rows = (data || []).map((row) => ({ id: String(row.id), name: row.name }));
+
+    return pageOf(rows, limit);
+}
+
+async function loadMembers({ page, limit, search }) {
+    const { data } = await workspaceService.searchWorkspaceMembers(
+        props.workspaceId,
+        search || "",
+        limit + 1,
+        (page - 1) * limit,
+    );
+    const users = data || [];
+
+    userStore.addUsers(users);
+
+    return pageOf(
+        users.map((u) => ({ id: u.id, name: memberName(u) })),
+        limit,
+    );
+}
+
 async function loadStatusOptions() {
     const { data } = await workspaceService.getTableStatusTypes(props.workspaceId, props.tableId);
 
     statusOptions.value = (data.options || []).map((o) => ({ value: o.id, label: o.name }));
 }
 
-async function loadMembers() {
-    const { data } = await workspaceService.searchWorkspaceMembers(
-        props.workspaceId,
-        "",
-        MEMBER_LIMIT,
-        0,
-    );
+// A saved value is a row or user id; the picker shows its name.
+async function namePicked(kind, value) {
+    if (kind === "linked") {
+        const { data } = await workspaceService.getLinkedRecordsLite(
+            props.workspaceId,
+            linkedTableId(props.field),
+            { ids: value },
+        );
 
-    members.value = data || [];
+        return data?.[0]?.name;
+    }
+
+    await userStore.ensureUsers([value]);
+    const user = userStore.getUserById(value);
+
+    return user && memberName(user);
 }
 
-// A saved value is a row id; the picker shows the row's name.
-async function loadPicked() {
-    if (!props.modelValue) return;
-
-    const { data } = await workspaceService.getLinkedRecordsLite(
-        props.workspaceId,
-        linkedTableId(props.field),
-        { ids: props.modelValue },
-    );
-    const row = (data || [])[0];
-
-    picked.value = { id: props.modelValue, name: row?.name ?? props.modelValue };
+async function showError(load) {
+    try {
+        await load();
+    } catch (error) {
+        alertStore.showError(extractErrorMessage(error));
+    }
 }
-
-const LOADERS = { status: loadStatusOptions, assignee: loadMembers, linked: loadPicked };
 
 watch(
     widget,
-    async (kind) => {
-        try {
-            await LOADERS[kind]?.();
-        } catch (error) {
-            alertStore.showError(extractErrorMessage(error));
+    (kind) => {
+        if (kind === "status") showError(loadStatusOptions);
+    },
+    { immediate: true },
+);
+
+// Follows the value, so one cleared elsewhere, as by an operator that takes
+// none, is not still shown as picked.
+watch(
+    [widget, () => props.modelValue],
+    ([kind, value]) => {
+        if (kind !== "linked" && kind !== "assignee") return;
+
+        if (!value) {
+            picked.value = null;
+
+            return;
         }
+
+        if (picked.value?.id === value) return;
+
+        picked.value = { id: value, name: value };
+        showError(async () => {
+            const name = await namePicked(kind, value);
+
+            if (name && picked.value?.id === value) picked.value = { id: value, name };
+        });
     },
     { immediate: true },
 );
