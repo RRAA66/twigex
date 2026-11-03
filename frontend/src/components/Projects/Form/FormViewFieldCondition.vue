@@ -39,8 +39,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script setup>
 import { computed } from "vue";
 import { t } from "@/i18n/index.js";
-import { conditionValueWidget } from "@/utils/projects/conditionValueWidget";
-import { CONDITION_OPERATORS, conditionTriggers } from "@/utils/projects/forms";
+import {
+    CONDITION_OPERATORS,
+    conditionTriggers,
+    conditionValueWidget,
+} from "@/utils/projects/forms";
 import BaseCheckbox from "@/components/BaseCheckbox.vue";
 import BaseSelect from "@/components/BaseSelect.vue";
 import FormConditionValueInput from "@/components/Projects/Form/FormConditionValueInput.vue";

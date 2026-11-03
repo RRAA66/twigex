@@ -165,6 +165,19 @@ export function conditionNeedsValue(operator) {
     return operator !== "is_empty" && operator !== "is_not_empty";
 }
 
+const WIDGET_BY_TYPE = { date: "date", assignee: "assignee", checkbox: "checkbox" };
+
+// The input a condition's value is picked with. Contains matches part of
+// the text, so it always takes text.
+export function conditionValueWidget(field, operator) {
+    if (!conditionNeedsValue(operator)) return "none";
+    if (operator === "contains") return "text";
+    if (field.field_type === "status") return "status";
+    if (field.linked_id || field.parent_table_id) return "linked";
+
+    return WIDGET_BY_TYPE[formFieldType(field)] || "text";
+}
+
 // Reads a value as SubmitForm does: a link as the ids of its rows, a checkbox
 // as checked or not.
 function conditionValues(field, value) {
