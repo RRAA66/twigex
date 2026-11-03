@@ -12,12 +12,14 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <input
                     v-model="form.title"
                     type="text"
+                    :aria-label="t('projects.form_view.placeholder.form_title')"
                     class="w-full rounded-md border-0 bg-transparent text-2xl font-bold text-gray-900 placeholder:text-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                     :placeholder="t('projects.form_view.placeholder.form_title')"
                 />
                 <textarea
                     v-model="form.description"
                     rows="2"
+                    :aria-label="t('projects.form_view.placeholder.form_description')"
                     class="w-full resize-none rounded-md border-0 bg-transparent text-sm text-gray-500 placeholder:text-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                     :placeholder="t('projects.form_view.placeholder.form_description')"
                 />

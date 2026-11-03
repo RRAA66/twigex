@@ -4,42 +4,49 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
     <div class="border-b border-gray-100 last:border-b-0">
-        <div
-            class="flex cursor-pointer select-none items-center justify-between gap-x-3 px-4 py-2 hover:bg-gray-50"
-            @click="expanded = !expanded"
-        >
+        <div class="flex items-center justify-between gap-x-3 px-4 py-2 hover:bg-gray-50">
             <div class="flex min-w-0 flex-1 items-center gap-x-1.5">
                 <Bars2Icon
                     class="form-field-drag-handle h-4 w-4 shrink-0 cursor-grab text-gray-300"
                     aria-hidden="true"
-                    @click.stop
                 />
-                <ChevronRightIcon
-                    :class="[
-                        'h-3 w-3 shrink-0 text-gray-400 transition-transform',
-                        expanded ? 'rotate-90' : '',
-                    ]"
-                    aria-hidden="true"
-                />
-                <span
-                    :class="[
-                        'truncate text-sm',
-                        field.visible ? 'text-gray-700' : 'text-gray-300 line-through',
-                    ]"
+                <button
+                    type="button"
+                    class="flex min-w-0 flex-1 select-none items-center gap-x-1.5 rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                    :aria-expanded="expanded"
+                    :aria-controls="`${id}-settings`"
+                    @click="expanded = !expanded"
                 >
-                    {{ field.label || fieldName }}
-                </span>
-                <span v-if="field.required" class="shrink-0 text-xs text-red-400">*</span>
+                    <ChevronRightIcon
+                        :class="[
+                            'h-3 w-3 shrink-0 text-gray-400 transition-transform',
+                            expanded ? 'rotate-90' : '',
+                        ]"
+                        aria-hidden="true"
+                    />
+                    <span
+                        :class="[
+                            'truncate text-sm',
+                            field.visible ? 'text-gray-700' : 'text-gray-300 line-through',
+                        ]"
+                    >
+                        {{ field.label || fieldName }}
+                    </span>
+                    <span v-if="field.required" class="shrink-0 text-xs text-red-400">*</span>
+                </button>
             </div>
             <ToggleSwitch
                 v-if="!isNameField"
                 v-model="field.visible"
                 :sr-label="t('projects.form_view.field.visible')"
-                @click.stop
             />
         </div>
 
-        <div v-if="expanded" class="grid grid-cols-2 gap-3 border-t border-gray-200 bg-gray-50 p-4">
+        <div
+            v-if="expanded"
+            :id="`${id}-settings`"
+            class="grid grid-cols-2 gap-3 border-t border-gray-200 bg-gray-50 p-4"
+        >
             <div class="col-span-2">
                 <label :for="`${id}-label`" :class="labelClass">
                     {{ t("projects.form_view.field.label") }}
