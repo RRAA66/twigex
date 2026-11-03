@@ -1950,5 +1950,29 @@
   {
     "id": "workspace.form_update_failed",
     "translation": "Neizdevās atjaunināt veidlapu. Lūdzu, mēģiniet vēlreiz."
+  },
+  {
+    "id": "workspace.form_login_required",
+    "translation": "Lai atvērtu šo veidlapu, piesakieties."
+  },
+  {
+    "id": "workspace.form_linked_failed",
+    "translation": "Neizdevās ielādēt ierakstus izvēlei. Lūdzu, mēģiniet vēlreiz."
+  },
+  {
+    "id": "workspace.form_linked_not_found",
+    "translation": "Šajā veidlapā nav lauka, kurā izvēlas no šiem ierakstiem."
+  },
+  {
+    "id": "workspace.form_submit_required_field",
+    "translation": "Aizpildiet visus obligātos laukus."
+  },
+  {
+    "id": "workspace.form_submit_failed",
+    "translation": "Neizdevās iesniegt veidlapu. Lūdzu, mēģiniet vēlreiz."
+  },
+  {
+    "id": "workspace.form_submissions_failed",
+    "translation": "Neizdevās ielādēt veidlapas iesniegumus. Lūdzu, mēģiniet vēlreiz."
   }
 ]
