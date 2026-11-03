@@ -73,7 +73,10 @@ const props = defineProps({
 
 const emit = defineEmits(["update"]);
 
-const { busy, setImage, removeImage } = useFormImages(() => props.form);
+const { busy, setImage, removeImage } = useFormImages(
+    () => props.form,
+    (patch) => emit("update", patch),
+);
 
 const id = useId();
 </script>

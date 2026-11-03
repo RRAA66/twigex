@@ -9,18 +9,25 @@ import { extractErrorMessage } from "@/utils/errors";
 const IMAGE_FIELDS = { cover: "cover_image", logo: "logo" };
 
 // Uploads and removes a saved form's cover and logo. Each is stored at once,
-// apart from the form's other settings, which wait for Update.
-export function useFormImages(form) {
+// apart from the form's other settings, which wait for Update. onChange gets
+// the stored image, unless another form was opened while it was sent.
+export function useFormImages(form, onChange) {
     const alertStore = useAlertStore();
 
     const busy = ref("");
 
     async function change(kind, request) {
+        const sent = toValue(form);
+
         busy.value = kind;
         try {
-            const { data } = await request(toValue(form));
+            const { data } = await request(sent);
 
-            toValue(form)[IMAGE_FIELDS[kind]] = data[IMAGE_FIELDS[kind]] || "";
+            if (toValue(form).id !== sent.id) return;
+
+            const field = IMAGE_FIELDS[kind];
+
+            onChange({ [field]: data[field] || "" });
         } catch (error) {
             alertStore.showError(extractErrorMessage(error));
         } finally {

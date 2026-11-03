@@ -55,8 +55,16 @@ describe("FormCoverImage", () => {
 describe("FormViewSettings images", () => {
     let form;
 
+    // Applies each update as the builder does, to a new form object.
     function mountSettings() {
-        return mount(FormViewSettings, { props: { form } });
+        const w = mount(FormViewSettings, {
+            props: {
+                form,
+                onUpdate: (patch) => w.setProps({ form: { ...w.props("form"), ...patch } }),
+            },
+        });
+
+        return w;
     }
 
     beforeEach(() => {
@@ -80,7 +88,7 @@ describe("FormViewSettings images", () => {
         await flushPromises();
 
         expect(formService.setFormImage).toHaveBeenCalledWith("w1", "t1", "f1", "cover", file);
-        expect(form.cover_image).toBe("c1");
+        expect(w.emitted("update")).toEqual([[{ cover_image: "c1" }]]);
         expect(w.find("img[alt='Form cover image']").attributes("src")).toBe(
             "/api/workspaces/w1/file/c1",
         );
@@ -97,7 +105,26 @@ describe("FormViewSettings images", () => {
         await flushPromises();
 
         expect(formService.removeFormImage).toHaveBeenCalledWith("w1", "t1", "f1", "logo");
-        expect(form.logo).toBe("");
+        expect(w.emitted("update")).toEqual([[{ logo: "" }]]);
+    });
+
+    it("drops the stored image when another form was opened meanwhile", async () => {
+        let answer;
+
+        formService.setFormImage.mockReturnValue(
+            new Promise((resolve) => {
+                answer = resolve;
+            }),
+        );
+        const w = mountSettings();
+
+        await pickFile(w.find("input[aria-label='Cover image']"), new File(["png"], "a.png"));
+        await w.setProps({ form: { ...form, id: "f2", cover_image: "" } });
+        answer({ data: { cover_image: "c1", logo: "" } });
+        await flushPromises();
+
+        expect(w.emitted("update")).toBeUndefined();
+        expect(w.props("form").cover_image).toBe("");
     });
 
     it("shows the server's refusal and keeps the old image", async () => {
@@ -113,7 +140,7 @@ describe("FormViewSettings images", () => {
         await flushPromises();
 
         expect(showError).toHaveBeenCalledWith("Use a JPEG, PNG, GIF or WebP image.");
-        expect(form.cover_image).toBe("c0");
+        expect(w.emitted("update")).toBeUndefined();
     });
 
     it("asks for the form to be saved before images are added", () => {
