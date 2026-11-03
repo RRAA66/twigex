@@ -536,7 +536,7 @@ type WorkspaceStore interface {
 	ConvertTaskDatesToDays() error
 	RenameTaskAndKanbanSectionTx(workspaceID, tableID, taskID, field, newName, oldName, linkedTableName, linkedTableID string) error
 	CreateTask(workspaceID, tableID, name, userID, parentTaskID, taskID string, timestamp int64, fields map[string]any) (*map[string]interface{}, error)
-	SyncTaskKanban(workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error
+	SyncTaskKanban(ctx context.Context, workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error
 	CreateTx(workspaceID, userID, name, description, prefix string, adminRole, userRole model.ProjectWorkspaceRole, member model.WorkspaceMember) error
 	UpdateTaskTx(workspaceID, tableID, taskID, field, value string, typedValue interface{}, hasUpdatedAt, isKanbanField, syncColors bool) (*map[string]interface{}, error)
 	GenerateUniquePrefix() (string, error)

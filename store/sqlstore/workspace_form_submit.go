@@ -93,7 +93,7 @@ func (w *workspaceRepository) CreateFormTask(ctx context.Context, workspaceID, t
 		return nil, sql.ErrNoRows
 	}
 
-	if err := w.syncTaskKanbanTx(tx, workspaceID, tableID, task.ID, task.Selects, *row); err != nil {
+	if err := w.syncTaskKanbanTx(ctx, tx, workspaceID, tableID, task.ID, task.Selects, *row); err != nil {
 		return nil, err
 	}
 
