@@ -286,13 +286,13 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
 	}
 
+	ctx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
 	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceView) ||
 		!a.canReadTable(ctx, user, workspaceID, tableID) {
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
-
-	ctx, cancel := a.dbCtx(ctx)
-	defer cancel()
 
 	if _, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
 		return nil, appErr
