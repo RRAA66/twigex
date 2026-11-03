@@ -206,7 +206,7 @@ func submitApp(fields ...model.WorkspaceFormField) (*App, *fakeFormSubmitStore, 
 	return a, ws, users
 }
 
-func submit(a *App, user *model.User, values ...model.FormValue) (map[string]any, *model.AppError) {
+func submit(a *App, user *model.User, values ...model.FormValue) (string, *model.AppError) {
 	return a.SubmitForm(context.Background(), "token-1", model.FormSubmitRequest{Fields: values}, user, "10.0.0.1")
 }
 
@@ -241,7 +241,7 @@ func TestSubmitFormRequiredFieldMissing(t *testing.T) {
 func TestSubmitFormStoresTheRowWithItsSubmitter(t *testing.T) {
 	a, ws, _ := submitApp(textField("amount", true))
 
-	row, appErr := submit(a, submitter, model.FormValue{Name: "amount", Value: "42"})
+	taskID, appErr := submit(a, submitter, model.FormValue{Name: "amount", Value: "42"})
 	if appErr != nil {
 		t.Fatalf("SubmitForm: %v", appErr)
 	}
@@ -251,8 +251,8 @@ func TestSubmitFormStoresTheRowWithItsSubmitter(t *testing.T) {
 	}
 
 	task := ws.created[0]
-	if task.Values["amount"] != "42" || task.CreatedBy != submitter.ID || task.CreatedAt == 0 || row["id"] != task.ID {
-		t.Errorf("created %+v answering %v, want amount 42 created now by %s", task, row, submitter.ID)
+	if task.Values["amount"] != "42" || task.CreatedBy != submitter.ID || task.CreatedAt == 0 || taskID != task.ID {
+		t.Errorf("created %+v answering %v, want amount 42 created now by %s", task, taskID, submitter.ID)
 	}
 
 	recorded := ws.recorded[0]
@@ -299,9 +299,9 @@ func TestSubmitFormHoneypotIsSilentlyDropped(t *testing.T) {
 	a, ws, _ := submitApp(textField("name", false))
 
 	request := model.FormSubmitRequest{Fields: []model.FormValue{{Name: "name", Value: "Spam"}}, Honeypot: "http://spam.example"}
-	row, appErr := a.SubmitForm(context.Background(), "token-1", request, submitter, "10.0.0.1")
-	if appErr != nil || row != nil {
-		t.Fatalf("want a silent drop, got %v, %v", row, appErr)
+	taskID, appErr := a.SubmitForm(context.Background(), "token-1", request, submitter, "10.0.0.1")
+	if appErr != nil || taskID == "" {
+		t.Fatalf("want a silent drop answered like a submission, got %q, %v", taskID, appErr)
 	}
 	if len(ws.created) != 0 {
 		t.Errorf("created %d rows, want none", len(ws.created))

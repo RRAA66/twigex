@@ -155,11 +155,11 @@ func (a *API) submitPublicForm(w http.ResponseWriter, r *http.Request) {
 
 	user, _ := a.app.GetCurrentUser(r)
 
-	task, appErr := a.app.SubmitForm(r.Context(), mux.Vars(r)["token"], body, user, a.app.ClientIP(r))
+	taskID, appErr := a.app.SubmitForm(r.Context(), mux.Vars(r)["token"], body, user, a.app.ClientIP(r))
 	if appErr != nil {
 		respondAppError(w, r, appErr)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, task)
+	respondJSON(w, http.StatusOK, map[string]string{"id": taskID})
 }

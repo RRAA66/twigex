@@ -152,33 +152,34 @@ func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search s
 	return &response, nil
 }
 
-// SubmitForm creates a row from a submitted form. A filled honeypot is
-// dropped without an error, so a bot cannot tell it was caught.
-func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSubmitRequest, user *model.User, clientIP string) (map[string]any, *model.AppError) {
+// SubmitForm creates a row from a submitted form and returns its id. A
+// filled honeypot is dropped without an error and answered with a made-up
+// id, so a bot cannot tell it was caught.
+func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSubmitRequest, user *model.User, clientIP string) (string, *model.AppError) {
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
 	form, appErr := a.getFormByToken(ctx, token, user)
 	if appErr != nil {
-		return nil, appErr
+		return "", appErr
 	}
 
 	if !a.canSubmitForm(*user, form) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+		return "", model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
 	if request.Honeypot != "" {
-		return nil, nil
+		return model.NewID(), nil
 	}
 
 	allowed, err := a.formSubmitLimiter().Allow(clientIP, token)
 	if err != nil {
 		tlog.Errorw("Failed to check form submit rate limit", "error", err)
-		return nil, model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
+		return "", model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
 	}
 
 	if !allowed {
-		return nil, model.NewAppError("link.rate_limited", http.StatusTooManyRequests)
+		return "", model.NewAppError("link.rate_limited", http.StatusTooManyRequests)
 	}
 
 	fields := make(map[string]model.WorkspaceFormField, len(form.Fields))
@@ -202,7 +203,7 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 	if formShows(form, isMasterLinkField) {
 		tables, appErr := a.formLinkTables(ctx, *user, form)
 		if appErr != nil {
-			return nil, appErr
+			return "", appErr
 		}
 
 		for _, t := range tables {
@@ -217,7 +218,7 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		}
 
 		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, v.Value, linkTables, &task); appErr != nil {
-			return nil, appErr
+			return "", appErr
 		}
 	}
 
@@ -228,7 +229,7 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 
 		if isCheckboxField(f) {
 			if task.Values[f.HeaderName] != 1 {
-				return nil, model.NewAppError("workspace.form_submit_required_field", http.StatusBadRequest)
+				return "", model.NewAppError("workspace.form_submit_required_field", http.StatusBadRequest)
 			}
 
 			continue
@@ -236,14 +237,14 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 
 		value, ok := task.Values[f.HeaderName]
 		if (!ok || value == nil || value == "") && len(task.Links[f.HeaderName]) == 0 {
-			return nil, model.NewAppError("workspace.form_submit_required_field", http.StatusBadRequest)
+			return "", model.NewAppError("workspace.form_submit_required_field", http.StatusBadRequest)
 		}
 	}
 
 	start, _ := task.Values["start_date"].(string)
 	due, _ := task.Values["due_date"].(string)
 	if start != "" && due != "" && start > due {
-		return nil, model.NewAppError("workspace.task_dates_reversed", http.StatusBadRequest)
+		return "", model.NewAppError("workspace.task_dates_reversed", http.StatusBadRequest)
 	}
 
 	submission := model.WorkspaceFormSubmission{
@@ -257,9 +258,9 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 	row, err := a.Store.Workspace.CreateFormTask(ctx, form.WorkspaceID, form.TableID, task, submission)
 	switch {
 	case errors.Is(err, model.ErrLinkTargetMissing), errors.Is(err, model.ErrValueRejected):
-		return nil, model.NewAppError("request.invalid", http.StatusBadRequest)
+		return "", model.NewAppError("request.invalid", http.StatusBadRequest)
 	case errors.Is(err, sql.ErrNoRows):
-		return nil, model.NewAppError("workspace.view_or_field_not_found", http.StatusNotFound)
+		return "", model.NewAppError("workspace.view_or_field_not_found", http.StatusNotFound)
 	case err != nil:
 		tlog.Errorw("Failed to create a row from a form",
 			"workspace_id", form.WorkspaceID,
@@ -267,14 +268,14 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 			"form_id", form.ID,
 			"error", err,
 		)
-		return nil, model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
+		return "", model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
 	case row == nil:
-		return nil, model.NewAppError("workspace.form_not_found", http.StatusNotFound)
+		return "", model.NewAppError("workspace.form_not_found", http.StatusNotFound)
 	}
 
 	a.publishTaskRow(ctx, "task_created", form.WorkspaceID, form.TableID, task.ID)
 
-	return row, nil
+	return task.ID, nil
 }
 
 // GetFormSubmissions lists who submitted a form and which row each made.
