@@ -66,6 +66,28 @@ describe("useProjectRealtime", () => {
         expect(store.getTableData.map((r) => r.id)).toEqual(["b"]);
     });
 
+    it("recounts the grid when another tab deletes a task", () => {
+        store.setTableData([{ id: "a" }]);
+        deliver(change({ type: "task_deleted", table_id: "t1", task: { id: "a" } }));
+
+        expect(store.getGridCountToken).toBe(1);
+    });
+
+    it("recounts the grid when another tab creates a task", async () => {
+        store.setTableData([]);
+        deliver(change({ type: "task_created", table_id: "t1", task: { id: "a" } }));
+        await flushPromises();
+
+        expect(store.getTableData.map((r) => r.id)).toEqual(["a"]);
+        expect(store.getGridCountToken).toBe(1);
+    });
+
+    it("does not recount for a task in another table", () => {
+        deliver(change({ type: "task_deleted", table_id: "t2", task: { id: "a" } }));
+
+        expect(store.getGridCountToken).toBe(0);
+    });
+
     it("puts a field's new formula on the table's headers", () => {
         store.setTableHeaders([{ name: "c1" }, { name: "c2" }]);
         deliver(

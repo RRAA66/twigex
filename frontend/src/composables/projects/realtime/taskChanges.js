@@ -271,11 +271,17 @@ export function taskChanges(ctx) {
         const merged = i === -1 ? task : { ...tableData.value[i], ...task };
 
         if (!matches) {
-            if (i !== -1) tableData.value = tableData.value.filter((_, j) => j !== i);
+            if (i !== -1) {
+                tableData.value = tableData.value.filter((_, j) => j !== i);
+                workspaceStore.bumpGridCountToken();
+            }
+
             removeKanbanCard(task.id);
 
             return;
         }
+
+        if (created) workspaceStore.bumpGridCountToken();
 
         if (i !== -1) {
             tableData.value = tableData.value.map((t, j) => (j === i ? merged : t));
@@ -301,6 +307,7 @@ export function taskChanges(ctx) {
         if (String(tableId) === String(route.params.tid)) {
             rows = rows.filter((t) => String(t.id) !== String(taskId));
             removeKanbanCard(taskId);
+            workspaceStore.bumpGridCountToken();
         }
 
         tableData.value = clearReferences(rows, taskId, { isOption });

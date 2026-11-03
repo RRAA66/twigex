@@ -2419,11 +2419,17 @@ onBeforeUnmount(stopReconnect);
 // asked for beside the page and the rows are shown without waiting for it.
 const countLoad = useLatestRequest();
 
-async function loadCount(request) {
+let countedRequest = null;
+
+async function loadCount(request, { keepShown = false } = {}) {
     const req = countLoad.start();
 
-    totalRows.value = null;
-    rootTotalRows.value = null;
+    countedRequest = request;
+    if (!keepShown) {
+        totalRows.value = null;
+        rootTotalRows.value = null;
+    }
+
     try {
         const { data } = await workspaceService.getFilteredTableData(
             { ...request, count_only: true },
@@ -3102,6 +3108,13 @@ watch(
         if (!props.isDialog) {
             fetchPage(1);
         }
+    },
+);
+
+watch(
+    () => workspaceStore.getGridCountToken,
+    () => {
+        if (!props.isDialog && countedRequest) loadCount(countedRequest, { keepShown: true });
     },
 );
 
