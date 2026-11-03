@@ -16,6 +16,10 @@ import (
 // is not in the linked table.
 var ErrLinkTargetMissing = errors.New("a linked row does not exist")
 
+// ErrValueRejected is returned when the database refuses a value for its
+// column, as too long, out of range or not of the column's type.
+var ErrValueRejected = errors.New("a value does not fit its column")
+
 // NewTaskFields holds what a task may be created with besides its name. A
 // zero value leaves that field empty.
 type NewTaskFields struct {

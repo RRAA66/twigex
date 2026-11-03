@@ -7,8 +7,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"math"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -196,19 +198,39 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		Selects:   map[string]string{},
 	}
 
+	linkTables := map[string]bool{}
+	if formShows(form, isMasterLinkField) {
+		tables, appErr := a.formLinkTables(ctx, *user, form)
+		if appErr != nil {
+			return nil, appErr
+		}
+
+		for _, t := range tables {
+			linkTables[t.ID] = true
+		}
+	}
+
 	for _, v := range request.Fields {
 		field, ok := fields[v.Name]
 		if !ok {
 			continue
 		}
 
-		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, v.Value, &task); appErr != nil {
+		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, v.Value, linkTables, &task); appErr != nil {
 			return nil, appErr
 		}
 	}
 
 	for _, f := range fields {
 		if !f.Required {
+			continue
+		}
+
+		if isCheckboxField(f) {
+			if task.Values[f.HeaderName] != 1 {
+				return nil, model.NewAppError("workspace.form_submit_required_field", http.StatusBadRequest)
+			}
+
 			continue
 		}
 
@@ -234,7 +256,7 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 
 	row, err := a.Store.Workspace.CreateFormTask(ctx, form.WorkspaceID, form.TableID, task, submission)
 	switch {
-	case errors.Is(err, model.ErrLinkTargetMissing):
+	case errors.Is(err, model.ErrLinkTargetMissing), errors.Is(err, model.ErrValueRejected):
 		return nil, model.NewAppError("request.invalid", http.StatusBadRequest)
 	case errors.Is(err, sql.ErrNoRows):
 		return nil, model.NewAppError("workspace.view_or_field_not_found", http.StatusNotFound)
@@ -355,8 +377,9 @@ func (a *App) canSubmitForm(user model.User, form *model.WorkspaceFormWithFields
 }
 
 // setFormValue checks one submitted value against its field and puts it in
-// the task. An empty value leaves the column to its default.
-func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.WorkspaceFormField, value any, task *model.FormTask) *model.AppError {
+// the task. An empty value leaves the column to its default. linkTables are
+// the tables a master link may name.
+func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.WorkspaceFormField, value any, linkTables map[string]bool, task *model.FormTask) *model.AppError {
 	invalid := model.NewAppError("request.invalid", http.StatusBadRequest)
 
 	switch value.(type) {
@@ -416,7 +439,7 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 	case field.FieldType == "link":
 		return nil
 
-	case field.FieldType == "default_date":
+	case field.FieldType == "default_date" || field.FieldType == "date":
 		if value != nil && !isText {
 			return invalid
 		}
@@ -451,7 +474,7 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 
 		task.Values[name] = text
 
-	case field.FieldType == "bool" || field.FieldType == "checkbox":
+	case isCheckboxField(field):
 		checked := false
 		switch v := value.(type) {
 		case string:
@@ -469,6 +492,27 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 
 	case value == nil || value == "":
 		return nil
+
+	case field.FieldType == "number" || field.FieldType == "decimal":
+		number, ok := formNumber(value)
+		if !ok {
+			return invalid
+		}
+
+		task.Values[name] = number
+
+	case isMasterLinkField(field):
+		if !linkTables[text] {
+			return invalid
+		}
+
+		task.Values[name] = text
+
+	case field.FieldType == "url" && (!isText || !safeLink(text)):
+		return invalid
+
+	case isText && !fitsTextColumn(name, text):
+		return invalid
 
 	default:
 		task.Values[name] = value
@@ -527,6 +571,40 @@ func isAssigneeField(f model.WorkspaceFormField) bool {
 
 func isMasterLinkField(f model.WorkspaceFormField) bool {
 	return f.FieldType == "master link"
+}
+
+func isCheckboxField(f model.WorkspaceFormField) bool {
+	return f.FieldType == "bool" || f.FieldType == "checkbox"
+}
+
+// formNumber reads a number field's value, sent as a number or as text.
+func formNumber(value any) (float64, bool) {
+	var number float64
+	switch v := value.(type) {
+	case float64:
+		number = v
+	case string:
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+		if err != nil {
+			return 0, false
+		}
+
+		number = parsed
+	default:
+		return 0, false
+	}
+
+	return number, !math.IsNaN(number) && !math.IsInf(number, 0)
+}
+
+// fitsTextColumn reports whether text fits its column: a task's name is a
+// VARCHAR(255) and every other text column a TEXT.
+func fitsTextColumn(column, text string) bool {
+	if column == "name" {
+		return fitsVarchar(text)
+	}
+
+	return len(text) <= maxTaskDescription
 }
 
 // pickedTable is the table whose rows a field's picker lists. A

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -420,6 +421,7 @@ func TestSubmitFormStoreOutcomes(t *testing.T) {
 	}{
 		{"table gone", nil, true, http.StatusNotFound},
 		{"linked row gone", model.ErrLinkTargetMissing, false, http.StatusBadRequest},
+		{"a value the column cannot hold", model.ErrValueRejected, false, http.StatusBadRequest},
 		{"write failed after the insert", errors.New("kanban sync failed"), false, http.StatusInternalServerError},
 	}
 
@@ -714,5 +716,74 @@ func TestPublicFormListsOnlyTheLinkTablesTheUserSees(t *testing.T) {
 
 	if want := []model.FormLinkTable{{ID: tbl2, Name: "t2"}}; !slices.Equal(form.LinkTables, want) {
 		t.Errorf("link tables %+v, want %+v", form.LinkTables, want)
+	}
+}
+
+func TestSubmitFormChecksValuesAgainstTheirColumns(t *testing.T) {
+	field := func(name, fieldType string) model.WorkspaceFormField {
+		return model.WorkspaceFormField{HeaderName: name, FieldType: fieldType, Visible: true}
+	}
+
+	cases := []struct {
+		name      string
+		field     model.WorkspaceFormField
+		value     any
+		wantValue any
+	}{
+		{"a web link", field("site", "url"), "https://example.com", "https://example.com"},
+		{"a script link", field("site", "url"), "javascript:alert(1)", nil},
+		{"a link that is not text", field("site", "url"), 5.0, nil},
+		{"a number as text", field("amount", "number"), " 12.5 ", 12.5},
+		{"a number", field("amount", "decimal"), 3.0, 3.0},
+		{"text in a number field", field("amount", "number"), "twelve", nil},
+		{"not a number", field("amount", "decimal"), "NaN", nil},
+		{"true in a number field", field("amount", "number"), true, nil},
+		{"a linkable table", field("source", "master link"), tbl2, tbl2},
+		{"a table the user does not see", field("source", "master link"), "table-4", nil},
+		{"a table that is not linkable", field("source", "master link"), tbl1, nil},
+		{"a day in a date field", field("deadline", "date"), "2026-03-04", "2026-03-04"},
+		{"not a day in a date field", field("deadline", "date"), "next week", nil},
+		{"a name of 255 letters", field("name", "text"), strings.Repeat("ā", 255), strings.Repeat("ā", 255)},
+		{"a name too long", field("name", "text"), strings.Repeat("a", 256), nil},
+		{"a description too long", field("description", "text"), strings.Repeat("a", maxTaskDescription+1), nil},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a, ws, _ := submitApp(c.field)
+			a.WorkspaceRoles = formRoles{hiddenTable: "table-4"}
+
+			_, appErr := submit(a, submitter, model.FormValue{Name: c.field.HeaderName, Value: c.value})
+			if c.wantValue == nil {
+				if appErr == nil || appErr.Status != http.StatusBadRequest {
+					t.Fatalf("want 400, got %v", appErr)
+				}
+				if len(ws.created) != 0 {
+					t.Errorf("created %d rows, want none", len(ws.created))
+				}
+				return
+			}
+
+			if appErr != nil {
+				t.Fatalf("SubmitForm: %v", appErr)
+			}
+			if got := ws.created[0].Values[c.field.HeaderName]; got != c.wantValue {
+				t.Errorf("stored %v, want %v", got, c.wantValue)
+			}
+		})
+	}
+}
+
+func TestSubmitFormRequiredCheckboxMustBeChecked(t *testing.T) {
+	for _, checked := range []bool{false, true} {
+		a, ws, _ := submitApp(model.WorkspaceFormField{HeaderName: "agreed", FieldType: "bool", Visible: true, Required: true})
+
+		_, appErr := submit(a, submitter, model.FormValue{Name: "agreed", Value: checked})
+		if !checked && (appErr == nil || appErr.Status != http.StatusBadRequest) {
+			t.Errorf("unchecked: want 400, got %v", appErr)
+		}
+		if checked && (appErr != nil || len(ws.created) != 1) {
+			t.Errorf("checked: %v, created %d rows; want one", appErr, len(ws.created))
+		}
 	}
 }

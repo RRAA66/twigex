@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/twigex/twigex/model"
 )
 
@@ -48,7 +49,8 @@ func (w *workspaceRepository) GetLinkableTables(ctx context.Context, workspaceID
 // CreateFormTask writes a submitted form's row, its links, its place on the
 // table's Kanban boards and the submission record in one transaction, so a
 // failure leaves no row without the rest. It returns nil when the table is
-// gone, and model.ErrLinkTargetMissing when a row to link is not there.
+// gone, model.ErrLinkTargetMissing when a row to link is not there, and
+// model.ErrValueRejected when a value does not fit its column.
 func (w *workspaceRepository) CreateFormTask(ctx context.Context, workspaceID, tableID string, task model.FormTask, submission model.WorkspaceFormSubmission) (map[string]any, error) {
 	// Read committed, as changeTaskLinksTx needs.
 	tx, err := w.Db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
@@ -131,8 +133,18 @@ func insertFormTaskTx(ctx context.Context, tx *sql.Tx, tableName string, task mo
 	}
 
 	_, err = tx.ExecContext(ctx, "INSERT INTO "+table+" ("+strings.Join(columns, ", ")+") VALUES ("+sqlPlaceholders(len(args))+")", args...)
+
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) && slices.Contains(rejectedValueErrors, mysqlErr.Number) {
+		return model.ErrValueRejected
+	}
+
 	return err
 }
+
+// rejectedValueErrors are the MySQL errors for a value its column cannot
+// hold: out of range, an incorrect date, an incorrect value, too long.
+var rejectedValueErrors = []uint16{1264, 1292, 1366, 1406}
 
 func (w *workspaceRepository) GetFormSubmissions(ctx context.Context, formID string) ([]model.WorkspaceFormSubmission, error) {
 	rows, err := w.Db.QueryContext(ctx, `

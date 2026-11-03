@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/twigex/twigex/model"
@@ -81,6 +82,21 @@ func TestCreateFormTaskWritesNothingWhenALinkFails(t *testing.T) {
 	}
 	if n := countRows(t, testDB, "SELECT COUNT(*) FROM workspace_form_submissions"); n != 0 {
 		t.Errorf("kept %d submission records, want none", n)
+	}
+}
+
+func TestCreateFormTaskRefusesAValueTheColumnCannotHold(t *testing.T) {
+	w := setupFormSubmit(t)
+
+	task, submission := formTask(nil)
+	task.Values["name"] = strings.Repeat("a", 256)
+	_, err := w.CreateFormTask(context.Background(), "ws", "t-a", task, submission)
+	if !errors.Is(err, model.ErrValueRejected) {
+		t.Fatalf("CreateFormTask = %v, want ErrValueRejected", err)
+	}
+
+	if n := countRows(t, testDB, "SELECT COUNT(*) FROM zz_links_a WHERE id = 'new-1'"); n != 0 {
+		t.Errorf("kept %d rows, want none", n)
 	}
 }
 
