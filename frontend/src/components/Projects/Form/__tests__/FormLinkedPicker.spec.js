@@ -10,8 +10,8 @@ vi.mock("@/services/formService", () => ({
     default: { getPublicLinkedItems: vi.fn() },
 }));
 
-function page(items, total) {
-    return { data: { items, total } };
+function page(items, hasMore = false) {
+    return { data: { items, has_more: hasMore } };
 }
 
 function deferred() {
@@ -51,7 +51,7 @@ describe("FormLinkedPicker", () => {
     });
 
     it("loads the first page only when opened", async () => {
-        formService.getPublicLinkedItems.mockResolvedValue(page([one], 1));
+        formService.getPublicLinkedItems.mockResolvedValue(page([one]));
         w = mountPicker();
         await flushPromises();
 
@@ -69,7 +69,7 @@ describe("FormLinkedPicker", () => {
     });
 
     it("shows the list when the field is clicked, not only from its button", async () => {
-        formService.getPublicLinkedItems.mockResolvedValue(page([one, two], 2));
+        formService.getPublicLinkedItems.mockResolvedValue(page([one, two]));
         w = mountPicker();
         await w.find("input").trigger("click");
         await flushPromises();
@@ -80,8 +80,8 @@ describe("FormLinkedPicker", () => {
 
     it("adds the next page to the list", async () => {
         formService.getPublicLinkedItems
-            .mockResolvedValueOnce(page([one], 2))
-            .mockResolvedValueOnce(page([two], 2));
+            .mockResolvedValueOnce(page([one], true))
+            .mockResolvedValueOnce(page([two]));
         w = mountPicker();
         await open(w);
 
@@ -106,9 +106,9 @@ describe("FormLinkedPicker", () => {
         const slow = deferred();
 
         formService.getPublicLinkedItems
-            .mockResolvedValueOnce(page([one, two], 2))
+            .mockResolvedValueOnce(page([one, two]))
             .mockReturnValueOnce(slow.promise)
-            .mockResolvedValueOnce(page([two], 1));
+            .mockResolvedValueOnce(page([two]));
         w = mountPicker();
         await open(w);
 
@@ -120,7 +120,7 @@ describe("FormLinkedPicker", () => {
         vi.advanceTimersByTime(250);
         await flushPromises();
 
-        slow.resolve(page([one], 1));
+        slow.resolve(page([one]));
         await flushPromises();
 
         expect(formService.getPublicLinkedItems).toHaveBeenLastCalledWith("tok", "t-x", {

@@ -30,7 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-only
     <form
         v-else
         class="w-full overflow-hidden rounded-lg border-t-4 bg-white shadow-sm ring-1 ring-gray-200"
-        :style="{ borderTopColor: form.accent_color || DEFAULT_ACCENT }"
+        :style="{ borderTopColor: form.accent_color || DEFAULT_ACCENT_COLOR }"
         novalidate
         @submit.prevent="submit"
     >
@@ -46,6 +46,13 @@ SPDX-License-Identifier: AGPL-3.0-only
                 class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
             >
                 {{ t("projects.form_view.config_changed") }}
+            </p>
+            <p
+                v-if="!form.can_submit"
+                role="status"
+                class="mb-4 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
+            >
+                {{ t("projects.form_view.public.read_only") }}
             </p>
             <img
                 v-if="form.logo"
@@ -73,7 +80,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 />
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <fieldset :disabled="!form.can_submit" class="grid grid-cols-2 gap-4">
                 <FormFieldInput
                     v-for="field in fields"
                     :key="field.header_name"
@@ -84,17 +91,18 @@ SPDX-License-Identifier: AGPL-3.0-only
                     :link-tables="form.link_tables"
                     :error="fieldErrors[field.header_name]"
                 />
-            </div>
+            </fieldset>
 
             <p v-if="submitError" role="alert" class="mt-4 text-sm text-red-600">
                 {{ submitError }}
             </p>
 
             <BaseButton
+                v-if="form.can_submit"
                 type="submit"
                 class="mt-6 w-full"
                 color="text-white hover:opacity-90"
-                :style="{ backgroundColor: form.accent_color || DEFAULT_ACCENT }"
+                :style="{ backgroundColor: form.accent_color || DEFAULT_ACCENT_COLOR }"
                 :is-loading="submitting"
             >
                 {{ t("projects.form_view.action.submit") }}
@@ -113,13 +121,11 @@ import {
 } from "@heroicons/vue/24/outline";
 import { t } from "@/i18n/index.js";
 import { usePublicForm } from "@/composables/projects/usePublicForm";
-import { formImageUrl } from "@/utils/projects/forms";
+import { DEFAULT_ACCENT_COLOR, formImageUrl } from "@/utils/projects/forms";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseSpinner from "@/components/BaseSpinner.vue";
 import FormCoverImage from "@/components/Projects/Form/FormCoverImage.vue";
 import FormFieldInput from "@/components/Projects/Form/FormFieldInput.vue";
-
-const DEFAULT_ACCENT = "#4f46e5";
 
 const props = defineProps({
     token: { type: String, required: true },

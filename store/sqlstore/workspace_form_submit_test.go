@@ -5,9 +5,9 @@ package sqlstore
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/twigex/twigex/model"
@@ -110,6 +110,21 @@ func TestCreateFormTaskWritesNothingWhenALinkFails(t *testing.T) {
 	}
 }
 
+func TestCreateFormTaskRefusesAValueTheColumnCannotHold(t *testing.T) {
+	w := setupFormSubmit(t)
+
+	task, submission := formTask(nil)
+	task.Values["name"] = strings.Repeat("a", 256)
+	_, err := w.CreateFormTask(context.Background(), "ws", "t-a", task, submission)
+	if !errors.Is(err, model.ErrValueRejected) {
+		t.Fatalf("CreateFormTask = %v, want ErrValueRejected", err)
+	}
+
+	if n := countRows(t, testDB, "SELECT COUNT(*) FROM zz_links_a WHERE id = 'new-1'"); n != 0 {
+		t.Errorf("kept %d rows, want none", n)
+	}
+}
+
 func TestCreateFormTaskOnAGoneTableIsNil(t *testing.T) {
 	w := setupFormSubmit(t)
 
@@ -135,25 +150,13 @@ func TestGetFormByTokenOnlyFindsActiveForms(t *testing.T) {
 	}
 }
 
-func TestGetLinkedItemsPagesThroughTheTable(t *testing.T) {
+func TestGetFormByTokenOnADeletedTableIsNil(t *testing.T) {
 	w := setupFormSubmit(t)
-	ctx := context.Background()
+	mustExec(t, "UPDATE workspace_tables SET deleted_at = 5 WHERE id = 't-a'")
 
-	items, total, err := w.GetLinkedItems(ctx, "ws", "t-b", "task", 3, 3)
-	if err != nil {
-		t.Fatalf("GetLinkedItems: %v", err)
-	}
-	if total != 9 || len(items) != 3 || items[0] != (model.FormLinkedItem{ID: "b4", Name: "task b4"}) {
-		t.Errorf("got %+v of %d, want b4..b6 of 9", items, total)
-	}
-
-	items, total, err = w.GetLinkedItems(ctx, "ws", "t-b", "b7", 0, 50)
-	if err != nil || total != 1 || len(items) != 1 || items[0].ID != "b7" {
-		t.Errorf("search b7 = %+v of %d, %v; want b7", items, total, err)
-	}
-
-	if _, _, err := w.GetLinkedItems(ctx, "other-ws", "t-b", "", 0, 50); !errors.Is(err, sql.ErrNoRows) {
-		t.Errorf("another workspace = %v, want sql.ErrNoRows", err)
+	form, err := w.GetFormByToken(context.Background(), "token-1")
+	if err != nil || form != nil {
+		t.Errorf("token-1 = %+v, %v; want nil for a form on a deleted table", form, err)
 	}
 }
 

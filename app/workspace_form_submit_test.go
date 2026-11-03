@@ -6,11 +6,14 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/twigex/twigex/interfaces"
 	"github.com/twigex/twigex/model"
 	"github.com/twigex/twigex/store"
 )
@@ -25,7 +28,20 @@ type fakeFormSubmitStore struct {
 	created        []model.FormTask
 	recorded       []model.WorkspaceFormSubmission
 	submissions    []model.WorkspaceFormSubmission
+	linkedRows     int
 	linkedLimit    int
+	linkedOffset   int
+	linkedAccess   model.SQLFilter
+	privateView    bool
+	viewShares     []string
+}
+
+func (f *fakeFormSubmitStore) GetViewVisibility(context.Context, string) (bool, string, error) {
+	return !f.privateView, "creator", nil
+}
+
+func (f *fakeFormSubmitStore) GetViewSharedUserIDs(string) ([]string, error) {
+	return f.viewShares, nil
 }
 
 func (f *fakeFormSubmitStore) IsMember(_, userID string) (bool, error) {
@@ -75,12 +91,24 @@ func (f *fakeFormSubmitStore) GetMembers(string) ([]model.WorkspaceMember, error
 }
 
 func (f *fakeFormSubmitStore) GetLinkableTables(context.Context, string, string) ([]model.FormLinkTable, error) {
-	return []model.FormLinkTable{{ID: tbl2, Name: "t2"}}, nil
+	return []model.FormLinkTable{{ID: tbl2, Name: "t2"}, {ID: "table-4", Name: "t4"}}, nil
 }
 
-func (f *fakeFormSubmitStore) GetLinkedItems(_ context.Context, _, _, _ string, _, limit int) ([]model.FormLinkedItem, int, error) {
+func (f *fakeFormSubmitStore) GetLinkedRecordsLite(_ context.Context, _, _ string, _ []string, limit, offset int, access model.SQLFilter) ([]map[string]any, error) {
 	f.linkedLimit = limit
-	return []model.FormLinkedItem{{ID: "row-1", Name: "Acme"}}, 1, nil
+	f.linkedOffset = offset
+	f.linkedAccess = access
+
+	rows := []map[string]any{}
+	for i := range min(f.linkedRows, limit) {
+		rows = append(rows, map[string]any{"id": fmt.Sprintf("row-%d", i+1), "name": "Acme"})
+	}
+
+	return rows, nil
+}
+
+func (f *fakeFormSubmitStore) IsTableSingleSelect(string) (bool, error) {
+	return false, nil
 }
 
 func (f *fakeFormSubmitStore) CreateFormTask(_ context.Context, _, _ string, task model.FormTask, submission model.WorkspaceFormSubmission) (map[string]any, error) {
@@ -140,6 +168,18 @@ func (f *fakeFormAuthCounter) Incr(key string, _ time.Duration) (int64, error) {
 	return f.counts[key], nil
 }
 
+// noCreateRoles stand in for enterprise roles that show every table but let
+// no one create rows.
+type noCreateRoles struct{}
+
+func (noCreateRoles) Resolve(interfaces.AccessInput) interfaces.WorkspaceAccess {
+	return noCreateAccess{}
+}
+
+type noCreateAccess struct{ openAccess }
+
+func (noCreateAccess) CanPerformRowAction(_, _, _ string) bool { return false }
+
 var submitter = &model.User{ID: "submitter", Role: model.SystemUserRoleId}
 
 var outsider = &model.User{ID: "outsider", Role: model.SystemUserRoleId}
@@ -152,6 +192,7 @@ func submitApp(fields ...model.WorkspaceFormField) (*App, *fakeFormSubmitStore, 
 		fakeFormStore:  forms,
 		tableWorkspace: map[string]string{tbl1: wsID, tbl2: wsID, "table-3": "workspace-2"},
 		members:        []string{"member-1", "member-2"},
+		linkedRows:     1,
 	}
 	users := &fakeFormUserStore{users: []model.User{
 		{ID: "member-1", Name: "Anna", LastName: "Ozola", Email: "anna@example.com", Photo: "p1"},
@@ -165,7 +206,7 @@ func submitApp(fields ...model.WorkspaceFormField) (*App, *fakeFormSubmitStore, 
 	return a, ws, users
 }
 
-func submit(a *App, user *model.User, values ...model.FormValue) (map[string]any, *model.AppError) {
+func submit(a *App, user *model.User, values ...model.FormValue) (string, *model.AppError) {
 	return a.SubmitForm(context.Background(), "token-1", model.FormSubmitRequest{Fields: values}, user, "10.0.0.1")
 }
 
@@ -200,7 +241,7 @@ func TestSubmitFormRequiredFieldMissing(t *testing.T) {
 func TestSubmitFormStoresTheRowWithItsSubmitter(t *testing.T) {
 	a, ws, _ := submitApp(textField("amount", true))
 
-	row, appErr := submit(a, submitter, model.FormValue{Name: "amount", Value: "42"})
+	taskID, appErr := submit(a, submitter, model.FormValue{Name: "amount", Value: "42"})
 	if appErr != nil {
 		t.Fatalf("SubmitForm: %v", appErr)
 	}
@@ -210,8 +251,8 @@ func TestSubmitFormStoresTheRowWithItsSubmitter(t *testing.T) {
 	}
 
 	task := ws.created[0]
-	if task.Values["amount"] != "42" || task.CreatedBy != submitter.ID || task.CreatedAt == 0 || row["id"] != task.ID {
-		t.Errorf("created %+v answering %v, want amount 42 created now by %s", task, row, submitter.ID)
+	if task.Values["amount"] != "42" || task.CreatedBy != submitter.ID || task.CreatedAt == 0 || taskID != task.ID {
+		t.Errorf("created %+v answering %v, want amount 42 created now by %s", task, taskID, submitter.ID)
 	}
 
 	recorded := ws.recorded[0]
@@ -258,9 +299,9 @@ func TestSubmitFormHoneypotIsSilentlyDropped(t *testing.T) {
 	a, ws, _ := submitApp(textField("name", false))
 
 	request := model.FormSubmitRequest{Fields: []model.FormValue{{Name: "name", Value: "Spam"}}, Honeypot: "http://spam.example"}
-	row, appErr := a.SubmitForm(context.Background(), "token-1", request, submitter, "10.0.0.1")
-	if appErr != nil || row != nil {
-		t.Fatalf("want a silent drop, got %v, %v", row, appErr)
+	taskID, appErr := a.SubmitForm(context.Background(), "token-1", request, submitter, "10.0.0.1")
+	if appErr != nil || taskID == "" {
+		t.Fatalf("want a silent drop answered like a submission, got %q, %v", taskID, appErr)
 	}
 	if len(ws.created) != 0 {
 		t.Errorf("created %d rows, want none", len(ws.created))
@@ -380,6 +421,7 @@ func TestSubmitFormStoreOutcomes(t *testing.T) {
 	}{
 		{"table gone", nil, true, http.StatusNotFound},
 		{"linked row gone", model.ErrLinkTargetMissing, false, http.StatusBadRequest},
+		{"a value the column cannot hold", model.ErrValueRejected, false, http.StatusBadRequest},
 		{"write failed after the insert", errors.New("kanban sync failed"), false, http.StatusInternalServerError},
 	}
 
@@ -467,8 +509,43 @@ func TestPublicLinkedItemsOnlyForTheFormsFields(t *testing.T) {
 	if appErr != nil {
 		t.Fatalf("GetPublicLinkedItems: %v", appErr)
 	}
-	if ws.linkedLimit != 50 || items.Limit != 50 || len(items.Items) != 1 {
-		t.Errorf("asked the store for %d, answered %+v, want a page of at most 50", ws.linkedLimit, items)
+	if ws.linkedLimit != 51 || len(items.Items) != 1 || items.HasMore {
+		t.Errorf("asked the store for %d, answered %+v, want a page of at most 50 and one more to tell if there are more", ws.linkedLimit, items)
+	}
+}
+
+func TestPublicLinkedItemsSaysWhetherMoreFollow(t *testing.T) {
+	a, ws, _ := submitApp(model.WorkspaceFormField{HeaderName: "customers", FieldType: "link", LinkedID: "link-table", ParentTableID: tbl2, Visible: true})
+	ws.linkedRows = 25
+
+	items, appErr := a.GetPublicLinkedItems(context.Background(), "token-1", tbl2, "", 2, 10, submitter)
+	if appErr != nil {
+		t.Fatalf("GetPublicLinkedItems: %v", appErr)
+	}
+	if ws.linkedOffset != 10 || len(items.Items) != 10 || !items.HasMore || items.Items[0] != (model.FormLinkedItem{ID: "row-1", Name: "Acme"}) {
+		t.Errorf("read from %d, answered %+v; want the second page of 10 with more to follow", ws.linkedOffset, items)
+	}
+}
+
+func TestPublicLinkedItemsOfATableTheUserCannotReadAreNotFound(t *testing.T) {
+	a, _, _ := submitApp(model.WorkspaceFormField{HeaderName: "customers", FieldType: "link", LinkedID: "link-table", ParentTableID: tbl2, Visible: true})
+	a.WorkspaceRoles = formRoles{hiddenTable: tbl2}
+
+	_, appErr := a.GetPublicLinkedItems(context.Background(), "token-1", tbl2, "", 1, 10, submitter)
+	if appErr == nil || appErr.Status != http.StatusNotFound {
+		t.Fatalf("want 404, got %v", appErr)
+	}
+}
+
+func TestPublicLinkedItemsListOnlyTheUsersOwnTasksWhereTheySeeNoOthers(t *testing.T) {
+	a, ws, _ := submitApp(model.WorkspaceFormField{HeaderName: "customers", FieldType: "link", LinkedID: "link-table", ParentTableID: tbl2, Visible: true})
+	a.WorkspaceRoles = assignedOnlyRoles{tables: map[string]bool{tbl2: true}}
+
+	if _, appErr := a.GetPublicLinkedItems(context.Background(), "token-1", tbl2, "", 1, 10, submitter); appErr != nil {
+		t.Fatalf("GetPublicLinkedItems: %v", appErr)
+	}
+	if len(ws.linkedAccess.Args) != 1 || ws.linkedAccess.Args[0] != submitter.ID {
+		t.Errorf("filtered by %+v, want the submitter's own tasks", ws.linkedAccess)
 	}
 }
 
@@ -548,5 +625,165 @@ func TestPublicFormIsOnlyForWorkspaceMembers(t *testing.T) {
 
 	if len(ws.created) != 0 {
 		t.Errorf("created %d rows, want none", len(ws.created))
+	}
+}
+
+func TestPublicFormFollowsTheViewsVisibility(t *testing.T) {
+	cases := []struct {
+		name       string
+		shares     []string
+		wantStatus int
+	}{
+		{"a private view not shared with the user", []string{"member-1"}, http.StatusNotFound},
+		{"a private view shared with the user", []string{submitter.ID}, 0},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a, ws, _ := submitApp(textField("name", false))
+			ws.privateView = true
+			ws.viewShares = c.shares
+
+			_, openErr := a.GetPublicForm(context.Background(), "token-1", submitter)
+			_, submitErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"})
+
+			for what, appErr := range map[string]*model.AppError{"open": openErr, "submit": submitErr} {
+				if c.wantStatus == 0 && appErr != nil {
+					t.Errorf("%s: %v", what, appErr)
+				}
+				if c.wantStatus != 0 && (appErr == nil || appErr.Status != c.wantStatus) {
+					t.Errorf("%s: want %d, got %v", what, c.wantStatus, appErr)
+				}
+			}
+		})
+	}
+}
+
+func TestPublicFormOnATableTheUserCannotReadIsForbidden(t *testing.T) {
+	a, ws, _ := submitApp(textField("name", false))
+	a.WorkspaceRoles = formRoles{hiddenTable: tbl1}
+
+	if _, appErr := a.GetPublicForm(context.Background(), "token-1", submitter); appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("open: want 403, got %v", appErr)
+	}
+
+	if _, appErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"}); appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("submit: want 403, got %v", appErr)
+	}
+
+	if len(ws.created) != 0 {
+		t.Errorf("created %d rows, want none", len(ws.created))
+	}
+}
+
+func TestPublicFormSaysWhetherTheUserMaySubmit(t *testing.T) {
+	a, _, _ := submitApp(textField("name", false))
+
+	form, appErr := a.GetPublicForm(context.Background(), "token-1", submitter)
+	if appErr != nil || !form.CanSubmit {
+		t.Errorf("with the right to create rows: %+v, %v; want can_submit", form, appErr)
+	}
+
+	a.WorkspaceRoles = noCreateRoles{}
+
+	form, appErr = a.GetPublicForm(context.Background(), "token-1", submitter)
+	if appErr != nil || form.CanSubmit {
+		t.Errorf("without the right to create rows: %+v, %v; want the form, not to submit", form, appErr)
+	}
+}
+
+func TestSubmitFormNeedsTheRightToCreateRows(t *testing.T) {
+	a, ws, _ := submitApp(textField("name", false))
+	a.WorkspaceRoles = noCreateRoles{}
+
+	_, appErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"})
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Fatalf("want 403, got %v", appErr)
+	}
+	if len(ws.created) != 0 {
+		t.Errorf("created %d rows, want none", len(ws.created))
+	}
+}
+
+func TestPublicFormListsOnlyTheLinkTablesTheUserSees(t *testing.T) {
+	a, _, _ := submitApp(model.WorkspaceFormField{HeaderName: "source", FieldType: "master link", Visible: true})
+	a.WorkspaceRoles = formRoles{hiddenTable: "table-4"}
+
+	form, appErr := a.GetPublicForm(context.Background(), "token-1", submitter)
+	if appErr != nil {
+		t.Fatalf("GetPublicForm: %v", appErr)
+	}
+
+	if want := []model.FormLinkTable{{ID: tbl2, Name: "t2"}}; !slices.Equal(form.LinkTables, want) {
+		t.Errorf("link tables %+v, want %+v", form.LinkTables, want)
+	}
+}
+
+func TestSubmitFormChecksValuesAgainstTheirColumns(t *testing.T) {
+	field := func(name, fieldType string) model.WorkspaceFormField {
+		return model.WorkspaceFormField{HeaderName: name, FieldType: fieldType, Visible: true}
+	}
+
+	cases := []struct {
+		name      string
+		field     model.WorkspaceFormField
+		value     any
+		wantValue any
+	}{
+		{"a web link", field("site", "url"), "https://example.com", "https://example.com"},
+		{"a script link", field("site", "url"), "javascript:alert(1)", nil},
+		{"a link that is not text", field("site", "url"), 5.0, nil},
+		{"a number as text", field("amount", "number"), " 12.5 ", 12.5},
+		{"a number", field("amount", "decimal"), 3.0, 3.0},
+		{"text in a number field", field("amount", "number"), "twelve", nil},
+		{"not a number", field("amount", "decimal"), "NaN", nil},
+		{"true in a number field", field("amount", "number"), true, nil},
+		{"a linkable table", field("source", "master link"), tbl2, tbl2},
+		{"a table the user does not see", field("source", "master link"), "table-4", nil},
+		{"a table that is not linkable", field("source", "master link"), tbl1, nil},
+		{"a day in a date field", field("deadline", "date"), "2026-03-04", "2026-03-04"},
+		{"not a day in a date field", field("deadline", "date"), "next week", nil},
+		{"a name of 255 letters", field("name", "text"), strings.Repeat("ā", 255), strings.Repeat("ā", 255)},
+		{"a name too long", field("name", "text"), strings.Repeat("a", 256), nil},
+		{"a description too long", field("description", "text"), strings.Repeat("a", maxTaskDescription+1), nil},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a, ws, _ := submitApp(c.field)
+			a.WorkspaceRoles = formRoles{hiddenTable: "table-4"}
+
+			_, appErr := submit(a, submitter, model.FormValue{Name: c.field.HeaderName, Value: c.value})
+			if c.wantValue == nil {
+				if appErr == nil || appErr.Status != http.StatusBadRequest {
+					t.Fatalf("want 400, got %v", appErr)
+				}
+				if len(ws.created) != 0 {
+					t.Errorf("created %d rows, want none", len(ws.created))
+				}
+				return
+			}
+
+			if appErr != nil {
+				t.Fatalf("SubmitForm: %v", appErr)
+			}
+			if got := ws.created[0].Values[c.field.HeaderName]; got != c.wantValue {
+				t.Errorf("stored %v, want %v", got, c.wantValue)
+			}
+		})
+	}
+}
+
+func TestSubmitFormRequiredCheckboxMustBeChecked(t *testing.T) {
+	for _, checked := range []bool{false, true} {
+		a, ws, _ := submitApp(model.WorkspaceFormField{HeaderName: "agreed", FieldType: "bool", Visible: true, Required: true})
+
+		_, appErr := submit(a, submitter, model.FormValue{Name: "agreed", Value: checked})
+		if !checked && (appErr == nil || appErr.Status != http.StatusBadRequest) {
+			t.Errorf("unchecked: want 400, got %v", appErr)
+		}
+		if checked && (appErr != nil || len(ws.created) != 1) {
+			t.Errorf("checked: %v, created %d rows; want one", appErr, len(ws.created))
+		}
 	}
 }

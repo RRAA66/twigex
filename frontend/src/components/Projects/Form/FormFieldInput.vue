@@ -4,23 +4,42 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
     <div :class="halfWidth ? 'col-span-2 sm:col-span-1' : 'col-span-2'">
-        <label :for="id" class="mb-1 block text-xs font-medium text-gray-600">
-            {{ field.label || field.display_name || field.header_name }}
+        <label
+            v-if="!labelledBySelect"
+            :for="id"
+            class="mb-1 block text-xs font-medium text-gray-600"
+        >
+            {{ label }}
             <span v-if="field.required" class="text-red-500">*</span>
         </label>
-        <p v-if="field.description" class="mb-1 text-xs text-gray-400">{{ field.description }}</p>
+        <p
+            v-if="field.description && !labelledBySelect"
+            :id="descriptionId"
+            class="mb-1 text-xs text-gray-400"
+        >
+            {{ field.description }}
+        </p>
 
-        <BaseCheckbox
-            v-if="type === 'checkbox'"
-            :model-value="Boolean(modelValue)"
-            :label="field.placeholder || t('projects.form_view.placeholder.yes')"
-            @update:model-value="update"
-        />
+        <div v-if="type === 'checkbox'" class="flex items-center gap-x-2">
+            <input
+                :id="id"
+                type="checkbox"
+                :checked="Boolean(modelValue)"
+                v-bind="aria"
+                class="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-600"
+                :class="error ? 'border-red-600' : 'border-gray-300'"
+                @change="update($event.target.checked)"
+            />
+            <label :for="id" class="text-sm text-gray-900">
+                {{ field.placeholder || t("projects.form_view.placeholder.yes") }}
+            </label>
+        </div>
         <DatePickerField
             v-else-if="type === 'date'"
             :id="id"
             :model-value="modelValue || ''"
             :placeholder="field.placeholder || t('projects.form_view.placeholder.pick_date')"
+            :error="Boolean(error)"
             @update:model-value="update"
         />
         <input
@@ -28,7 +47,9 @@ SPDX-License-Identifier: AGPL-3.0-only
             :id="id"
             type="color"
             :value="modelValue || '#000000'"
-            class="h-9 w-16 cursor-pointer rounded-md border border-gray-300 bg-white p-1"
+            v-bind="aria"
+            class="h-9 w-16 cursor-pointer rounded-md border bg-white p-1"
+            :class="error ? 'border-red-600' : 'border-gray-300'"
             @input="update($event.target.value)"
         />
         <FormLinkedPicker
@@ -46,12 +67,16 @@ SPDX-License-Identifier: AGPL-3.0-only
                         : 'projects.form_view.placeholder.select_option',
                 )
             "
+            :error="Boolean(error)"
+            v-bind="aria"
             @update:model-value="update"
         />
         <FormMemberPicker
             v-else-if="type === 'assignee'"
             :model-value="modelValue || ''"
             :members="members"
+            :label="selectLabel"
+            :error="Boolean(error)"
             :placeholder="field.placeholder || t('projects.form_view.placeholder.select_person')"
             @update:model-value="update"
         />
@@ -59,6 +84,8 @@ SPDX-License-Identifier: AGPL-3.0-only
             v-else-if="type === 'master-link'"
             :model-value="modelValue || ''"
             :options="tableOptions"
+            :label="selectLabel"
+            :error="Boolean(error)"
             :placeholder="field.placeholder || t('projects.form_view.placeholder.select_table')"
             @update:model-value="update"
         />
@@ -75,13 +102,21 @@ SPDX-License-Identifier: AGPL-3.0-only
             :value="modelValue ?? ''"
             :type="inputType"
             :step="type === 'decimal' ? '0.01' : undefined"
+            v-bind="aria"
             class="block w-full rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             :class="error ? 'ring-red-600' : 'ring-gray-300'"
             :placeholder="field.placeholder || t(placeholderKey)"
             @input="update($event.target.value)"
         />
+        <p
+            v-if="field.description && labelledBySelect"
+            :id="descriptionId"
+            class="mt-1 text-xs text-gray-400"
+        >
+            {{ field.description }}
+        </p>
 
-        <p v-if="error" class="mt-1 text-xs text-red-600">{{ error }}</p>
+        <p v-if="error" :id="errorId" class="mt-1 text-xs text-red-600">{{ error }}</p>
     </div>
 </template>
 
@@ -89,7 +124,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, useId } from "vue";
 import { t } from "@/i18n/index.js";
 import { formFieldType, linkedTableId } from "@/utils/projects/forms";
-import BaseCheckbox from "@/components/BaseCheckbox.vue";
 import BaseSelect from "@/components/BaseSelect.vue";
 import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
 import FormFileInput from "@/components/Projects/Form/FormFileInput.vue";
@@ -114,8 +148,32 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const id = useId();
+const descriptionId = `${id}-description`;
+const errorId = `${id}-error`;
 
 const type = computed(() => formFieldType(props.field));
+
+const label = computed(
+    () => props.field.label || props.field.display_name || props.field.header_name,
+);
+
+// BaseSelect labels its own button, so its label carries the required mark.
+const labelledBySelect = computed(() => ["assignee", "master-link"].includes(type.value));
+
+const selectLabel = computed(() => (props.field.required ? `${label.value} *` : label.value));
+
+const aria = computed(() => {
+    const describedBy = [];
+
+    if (props.field.description) describedBy.push(descriptionId);
+    if (props.error) describedBy.push(errorId);
+
+    return {
+        "aria-describedby": describedBy.join(" ") || undefined,
+        "aria-invalid": props.error ? "true" : undefined,
+        "aria-required": props.field.required ? "true" : undefined,
+    };
+});
 
 const halfWidth = computed(() => ["left", "right"].includes(props.field.column_position));
 

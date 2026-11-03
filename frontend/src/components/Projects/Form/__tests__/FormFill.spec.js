@@ -22,6 +22,7 @@ const form = {
     title: "Intake",
     description: "Tell us",
     accent_color: "#ff0000",
+    can_submit: true,
     members: [{ id: "u1", name: "Ann", lastname: "Lee", photo: "" }],
     link_tables: [],
     fields: [
@@ -71,7 +72,8 @@ describe("FormFill", () => {
 
         const labels = w.findAll("label.mb-1").map((l) => l.text().replace(/\s+/g, " "));
 
-        expect(labels).toEqual(["Title *", "Budget", "Done", "Due", "Owner", "Files"]);
+        expect(labels).toEqual(["Title *", "Budget", "Done", "Due", "Files"]);
+        expect(w.find("[id^='headlessui-listbox-label']").text()).toBe("Owner");
         expect(w.find("input[type='number']").exists()).toBe(true);
         expect(w.find("input[type='checkbox']").exists()).toBe(true);
         expect(w.text()).toContain("Pick a date");
@@ -170,6 +172,18 @@ describe("FormFill", () => {
         expect(cover.attributes("style")).toContain("50% 20%");
         expect(logo.attributes("src")).toBe("/api/workspaces/w1/file/l1");
         expect(w.text()).not.toContain("Reposition");
+        w.unmount();
+    });
+
+    it("shows the form without a way to send it to someone who may not add rows", async () => {
+        formService.getPublicForm.mockResolvedValue({ data: { ...form, can_submit: false } });
+        const w = await mountFill();
+
+        expect(w.text()).toContain(
+            "You can view this form but you're not allowed to add records to this table.",
+        );
+        expect(w.find("fieldset").attributes("disabled")).toBeDefined();
+        expect(w.find("button[type='submit']").exists()).toBe(false);
         w.unmount();
     });
 

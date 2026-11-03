@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS workspace_forms (
     logo           VARCHAR(255),
     accent_color   VARCHAR(7),
     public_token   VARCHAR(64)  NOT NULL UNIQUE,
-    requires_login TINYINT(1)   NOT NULL DEFAULT 0,
     active         TINYINT(1)   NOT NULL DEFAULT 1,
     created_by     VARCHAR(36)  NOT NULL,
     created_at     BIGINT       NOT NULL,

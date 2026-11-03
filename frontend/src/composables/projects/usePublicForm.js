@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { computed, onUnmounted, ref, toValue } from "vue";
+import { computed, onUnmounted, ref, toValue, watch } from "vue";
 import { t } from "@/i18n/index.js";
 import { close, initialize, onProjectChange } from "@/js/websocket";
 import formService from "@/services/formService";
@@ -20,8 +20,8 @@ const STATUS_BY_HTTP = {
     404: "not_found",
 };
 
-// Fills in a form through its link, as the public page and the builder's
-// preview both do. live keeps the page's form current while it is open.
+// live opens the app's websocket and closes it on unmount, so only a page
+// outside the app shell, which has no connection of its own, may pass it.
 export function usePublicForm(token, { live = false } = {}) {
     const alertStore = useAlertStore();
 
@@ -35,6 +35,7 @@ export function usePublicForm(token, { live = false } = {}) {
     const submitting = ref(false);
     const submitted = ref(false);
     const configChanged = ref(false);
+    let reloadRequest = 0;
 
     const fields = computed(() => fillableFormFields(form.value?.fields));
 
@@ -56,12 +57,19 @@ export function usePublicForm(token, { live = false } = {}) {
     }
 
     async function reloadChanged() {
+        const current = ++reloadRequest;
+
         try {
             const { data } = await formService.getPublicForm(toValue(token));
 
+            if (current !== reloadRequest) return;
+
             form.value = data;
             configChanged.value = true;
+            clearFilledErrors();
         } catch (error) {
+            if (current !== reloadRequest) return;
+
             if (STATUS_BY_HTTP[error?.response?.status]) failLoad(error);
             else alertStore.showError(extractErrorMessage(error));
         }
@@ -92,6 +100,16 @@ export function usePublicForm(token, { live = false } = {}) {
         }
     }
 
+    function clearFilledErrors() {
+        if (Object.keys(fieldErrors.value).length === 0) return;
+
+        const missing = new Set(missingRequiredFields(fields.value, values.value));
+
+        fieldErrors.value = Object.fromEntries(
+            Object.entries(fieldErrors.value).filter(([name]) => missing.has(name)),
+        );
+    }
+
     function startOver() {
         values.value = {};
         fieldErrors.value = {};
@@ -99,6 +117,8 @@ export function usePublicForm(token, { live = false } = {}) {
         submitted.value = false;
         configChanged.value = false;
     }
+
+    watch(values, clearFilledErrors, { deep: true });
 
     if (live) {
         initialize();

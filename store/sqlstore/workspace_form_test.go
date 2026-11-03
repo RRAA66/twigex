@@ -173,6 +173,53 @@ func TestDeleteFormRemovesItsFieldsAndView(t *testing.T) {
 	}
 }
 
+func TestDeleteTableViewDeletesTheFormItShows(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	if err := w.CreateForm(ctx, form, []model.WorkspaceFormField{{ID: "ff-1", HeaderName: "budget", Label: "Budget"}}); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	if _, err := w.DeleteTableView("w1", "t1", "form-1"); err != nil {
+		t.Fatalf("DeleteTableView: %v", err)
+	}
+
+	for _, table := range []string{"workspace_forms", "workspace_view"} {
+		if n := countRows(t, testDB, "SELECT COUNT(*) FROM `"+table+"` WHERE id = 'form-1'"); n != 0 {
+			t.Errorf("%s keeps %d rows of the form", table, n)
+		}
+	}
+	if n := countRows(t, testDB, `SELECT COUNT(*) FROM workspace_form_fields WHERE form_id = 'form-1'`); n != 0 {
+		t.Errorf("workspace_form_fields keeps %d rows of the form", n)
+	}
+}
+
+func TestDeleteTableViewKeepsAFormOfAnotherTable(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	if err := w.CreateForm(ctx, form, nil); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	if _, err := w.DeleteTableView("w1", "t2", "form-1"); err != nil {
+		t.Fatalf("DeleteTableView: %v", err)
+	}
+
+	if n := countRows(t, testDB, `SELECT COUNT(*) FROM workspace_forms WHERE id = 'form-1'`); n != 1 {
+		t.Errorf("found %d forms, want the form kept", n)
+	}
+}
+
 func TestSetFormImageReplacesTheOldAttachment(t *testing.T) {
 	requireDB(t)
 	resetFormTables(t)
