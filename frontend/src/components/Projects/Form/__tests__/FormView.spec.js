@@ -275,7 +275,7 @@ describe("FormView", () => {
 
             await w
                 .findAll("button")
-                .find((b) => b.text() === "Share")
+                .find((b) => b.text() === "Form link")
                 .trigger("click");
             await flushPromises();
             expect(document.body.querySelector("input[readonly]").value).toBe(
