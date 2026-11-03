@@ -2465,6 +2465,7 @@
     "projects.form_view.action.replace_image": "Ауыстыру",
     "projects.form_view.action.reposition": "Орнын өзгерту",
     "projects.form_view.action.reposition_done": "Дайын",
+    "projects.form_view.error.too_many_files": "Өріске ең көбі {max} файл қосуға болады. Қалғандары қосылмады.",
     "projects.form_view.settings.cover_image": "Мұқаба суреті",
     "projects.form_view.settings.logo": "Логотип",
     "projects.form_view.settings.images_after_save": "Мұқаба суреті мен логотипті қосу үшін пішінді сақтаңыз.",

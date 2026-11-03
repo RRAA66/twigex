@@ -4,6 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
+import { createPinia, setActivePinia } from "pinia";
 import FormFieldInput from "@/components/Projects/Form/FormFieldInput.vue";
 
 vi.mock("@/services/formService", () => ({
@@ -92,6 +93,24 @@ describe("FormFieldInput", () => {
         ]);
         expect(input.attributes("aria-invalid")).toBe("true");
         expect(input.attributes("aria-required")).toBe("true");
+    });
+
+    it("labels a file field's button and ties its error and description to it", () => {
+        setActivePinia(createPinia());
+        mountField(
+            { field_type: "file", required: true, description: "Why" },
+            { error: "Required" },
+        );
+
+        const button = w.find("button");
+        const describedBy = button.attributes("aria-describedby").split(" ");
+
+        expect(labelFor(button.element)).toContain("Agree");
+        expect(describedBy.map((id) => document.getElementById(id).textContent.trim())).toEqual([
+            "Why",
+            "Required",
+        ]);
+        expect(button.attributes("aria-invalid")).toBe("true");
     });
 
     it("leaves a valid optional field unmarked", () => {

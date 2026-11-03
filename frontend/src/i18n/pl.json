@@ -2465,6 +2465,7 @@
     "projects.form_view.action.replace_image": "Zastąp",
     "projects.form_view.action.reposition": "Zmień położenie",
     "projects.form_view.action.reposition_done": "Gotowe",
+    "projects.form_view.error.too_many_files": "Pole przyjmuje najwyżej {max} plików. Pozostałe zostały pominięte.",
     "projects.form_view.settings.cover_image": "Obraz okładki",
     "projects.form_view.settings.logo": "Logo",
     "projects.form_view.settings.images_after_save": "Zapisz formularz, aby dodać obraz okładki i logo.",

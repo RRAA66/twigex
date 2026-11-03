@@ -2465,6 +2465,7 @@
     "projects.form_view.action.replace_image": "Replace",
     "projects.form_view.action.reposition": "Reposition",
     "projects.form_view.action.reposition_done": "Done",
+    "projects.form_view.error.too_many_files": "A field takes up to {max} files. The others were left out.",
     "projects.form_view.settings.cover_image": "Cover image",
     "projects.form_view.settings.logo": "Logo",
     "projects.form_view.settings.images_after_save": "Save the form to add a cover image and a logo.",

@@ -94,6 +94,8 @@ SPDX-License-Identifier: AGPL-3.0-only
             :id="id"
             :model-value="modelValue"
             :token="token"
+            :aria-describedby="aria['aria-describedby']"
+            :aria-invalid="aria['aria-invalid']"
             @update:model-value="update"
         />
         <input

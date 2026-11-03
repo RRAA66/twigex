@@ -27,16 +27,18 @@ SPDX-License-Identifier: AGPL-3.0-only
         </ul>
 
         <BaseButton
+            :id="id"
             size="small"
             variant="secondary"
             :prepend-icon="ArrowUpTrayIcon"
             :is-loading="uploading"
             :is-disabled="files.length >= MAX_FILES"
+            v-bind="$attrs"
             @click="input.click()"
         >
             {{ t("projects.form_view.action.add_files") }}
         </BaseButton>
-        <input :id="id" ref="input" type="file" multiple class="hidden" @change="pick" />
+        <input ref="input" type="file" multiple class="hidden" @change="pick" />
     </div>
 </template>
 
@@ -52,6 +54,9 @@ import BaseButton from "@/components/BaseButton.vue";
 
 // The server keeps no more files than this for one field.
 const MAX_FILES = 10;
+
+// The field's label names the button, which takes its aria attributes.
+defineOptions({ inheritAttrs: false });
 
 const props = defineProps({
     id: { type: String, required: true },
@@ -69,9 +74,16 @@ const uploading = ref(false);
 const files = computed(() => props.modelValue || []);
 
 async function pick(event) {
-    const picked = [...event.target.files].slice(0, MAX_FILES - files.value.length);
+    const all = [...event.target.files];
+    const picked = all.slice(0, MAX_FILES - files.value.length);
 
     event.target.value = "";
+    if (picked.length < all.length) {
+        alertStore.showError(
+            t.value("projects.form_view.error.too_many_files", { max: MAX_FILES }),
+        );
+    }
+
     if (picked.length === 0) return;
 
     uploading.value = true;

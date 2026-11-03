@@ -2465,6 +2465,7 @@
     "projects.form_view.action.replace_image": "Aizstāt",
     "projects.form_view.action.reposition": "Mainīt novietojumu",
     "projects.form_view.action.reposition_done": "Gatavs",
+    "projects.form_view.error.too_many_files": "Laukam var pievienot ne vairāk kā {max} failus. Pārējie netika pievienoti.",
     "projects.form_view.settings.cover_image": "Vāka attēls",
     "projects.form_view.settings.logo": "Logotips",
     "projects.form_view.settings.images_after_save": "Saglabājiet veidlapu, lai pievienotu vāka attēlu un logotipu.",

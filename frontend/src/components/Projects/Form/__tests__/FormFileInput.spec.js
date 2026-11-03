@@ -63,10 +63,11 @@ describe("FormFileInput", () => {
         expect(w.emitted("update:modelValue")).toBeUndefined();
     });
 
-    it("sends no more files than a field keeps", async () => {
+    it("sends no more files than a field keeps and says so", async () => {
         formService.uploadPublicFormFiles.mockResolvedValue({ data: [uploaded] });
         const nine = Array.from({ length: 9 }, (_, i) => ({ id: `f${i}`, name: `${i}.pdf` }));
         const w = mountInput(nine);
+        const showError = vi.spyOn(useAlertStore(), "showError");
 
         await pickFiles(w.find("input[type='file']"), [
             new File(["1"], "x.pdf"),
@@ -75,5 +76,19 @@ describe("FormFileInput", () => {
         await flushPromises();
 
         expect(formService.uploadPublicFormFiles.mock.calls[0][1]).toHaveLength(1);
+        expect(showError).toHaveBeenCalledWith(
+            "A field takes up to 10 files. The others were left out.",
+        );
+    });
+
+    it("says nothing when every file fits", async () => {
+        formService.uploadPublicFormFiles.mockResolvedValue({ data: [uploaded] });
+        const w = mountInput();
+        const showError = vi.spyOn(useAlertStore(), "showError");
+
+        await pickFiles(w.find("input[type='file']"), [new File(["1"], "x.pdf")]);
+        await flushPromises();
+
+        expect(showError).not.toHaveBeenCalled();
     });
 });
