@@ -10,34 +10,41 @@ SPDX-License-Identifier: AGPL-3.0-only
                 :style="{ borderTopColor: form.accent_color }"
             >
                 <input
-                    v-model="form.title"
+                    :value="form.title"
                     type="text"
                     :aria-label="t('projects.form_view.placeholder.form_title')"
                     class="w-full rounded-md border-0 bg-transparent text-2xl font-bold text-gray-900 placeholder:text-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                     :placeholder="t('projects.form_view.placeholder.form_title')"
+                    @input="emit('change-settings', { title: $event.target.value })"
                 />
                 <textarea
-                    v-model="form.description"
+                    :value="form.description"
                     rows="2"
                     :aria-label="t('projects.form_view.placeholder.form_description')"
                     class="w-full resize-none rounded-md border-0 bg-transparent text-sm text-gray-500 placeholder:text-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                     :placeholder="t('projects.form_view.placeholder.form_description')"
+                    @input="emit('change-settings', { description: $event.target.value })"
                 />
             </div>
 
             <draggable
-                :list="fields"
+                :model-value="fields"
                 item-key="header_name"
                 handle=".form-field-drag-handle"
                 class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
+                @update:model-value="emit('reorder', $event)"
             >
                 <template #item="{ element }">
-                    <FormViewFieldRow :field="element" :field-name="fieldName(element)" />
+                    <FormViewFieldRow
+                        :field="element"
+                        :field-name="fieldName(element)"
+                        @update="emit('change-field', element.header_name, $event)"
+                    />
                 </template>
             </draggable>
         </div>
 
-        <FormViewSettings :form="form" />
+        <FormViewSettings :form="form" @update="emit('change-settings', $event)" />
     </div>
 </template>
 
@@ -62,6 +69,8 @@ const props = defineProps({
         default: () => [],
     },
 });
+
+const emit = defineEmits(["change-settings", "change-field", "reorder"]);
 
 function fieldName(field) {
     return headerLabel(

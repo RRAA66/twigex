@@ -139,4 +139,20 @@ describe("useFormBuilder", () => {
 
         expect(formService.getForm).toHaveBeenLastCalledWith("w1", "t2", "f1");
     });
+
+    it("changes a field and the order without touching the old objects", async () => {
+        const { builder } = await mountBuilder("/p/w1/form/t1");
+        const before = builder.formFields.value;
+
+        builder.updateField("name", { label: "Title" });
+        builder.updateSettings({ title: "Signup" });
+
+        expect(builder.formFields.value[0].label).toBe("Title");
+        expect(before[0].label).not.toBe("Title");
+        expect(builder.formData.value.title).toBe("Signup");
+
+        builder.reorderFields([]);
+
+        expect(builder.formFields.value).toEqual([]);
+    });
 });

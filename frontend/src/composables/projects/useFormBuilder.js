@@ -84,6 +84,20 @@ export function useFormBuilder() {
         }
     }
 
+    function updateSettings(patch) {
+        formData.value = { ...formData.value, ...patch };
+    }
+
+    function updateField(headerName, patch) {
+        formFields.value = formFields.value.map((f) =>
+            f.header_name === headerName ? { ...f, ...patch } : f,
+        );
+    }
+
+    function reorderFields(fields) {
+        formFields.value = fields;
+    }
+
     function payloadFields() {
         return formFields.value.map((f, i) => ({ ...f, sort_order: i }));
     }
@@ -162,6 +176,9 @@ export function useFormBuilder() {
         status,
         saving,
         load,
+        updateSettings,
+        updateField,
+        reorderFields,
         updateForm,
         createForm,
     };

@@ -63,7 +63,14 @@ SPDX-License-Identifier: AGPL-3.0-only
             </BaseButton>
         </div>
 
-        <FormViewBuild :form="formData" :fields="formFields" :headers="headers" />
+        <FormViewBuild
+            :form="formData"
+            :fields="formFields"
+            :headers="headers"
+            @change-settings="updateSettings"
+            @change-field="updateField"
+            @reorder="reorderFields"
+        />
 
         <FormViewNameDialog
             :open="dialogMode !== null"
@@ -90,8 +97,19 @@ import FormViewNameDialog from "@/components/Projects/Form/FormViewNameDialog.vu
 
 const route = useRoute();
 const rolesStore = useWorkspaceRolesStore();
-const { formData, formFields, headers, status, saving, load, updateForm, createForm } =
-    useFormBuilder();
+const {
+    formData,
+    formFields,
+    headers,
+    status,
+    saving,
+    load,
+    updateSettings,
+    updateField,
+    reorderFields,
+    updateForm,
+    createForm,
+} = useFormBuilder();
 
 // The server also lets a role that manages this table's views build its
 // forms, which only a per-table role can grant.

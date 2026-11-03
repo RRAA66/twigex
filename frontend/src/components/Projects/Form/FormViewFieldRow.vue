@@ -37,8 +37,9 @@ SPDX-License-Identifier: AGPL-3.0-only
             </div>
             <ToggleSwitch
                 v-if="!isNameField"
-                v-model="field.visible"
+                :model-value="field.visible"
                 :sr-label="t('projects.form_view.field.visible')"
+                @update:model-value="emit('update', { visible: $event })"
             />
         </div>
 
@@ -53,10 +54,11 @@ SPDX-License-Identifier: AGPL-3.0-only
                 </label>
                 <input
                     :id="`${id}-label`"
-                    v-model="field.label"
+                    :value="field.label"
                     type="text"
                     :class="inputClass"
                     :placeholder="fieldName"
+                    @input="emit('update', { label: $event.target.value })"
                 />
             </div>
             <div class="col-span-2">
@@ -65,19 +67,25 @@ SPDX-License-Identifier: AGPL-3.0-only
                 </label>
                 <input
                     :id="`${id}-placeholder`"
-                    v-model="field.placeholder"
+                    :value="field.placeholder"
                     type="text"
                     :class="inputClass"
                     :placeholder="t('projects.form_view.placeholder.your_answer')"
+                    @input="emit('update', { placeholder: $event.target.value })"
                 />
             </div>
             <BaseSelect
-                v-model="field.column_position"
+                :model-value="field.column_position"
                 :label="t('projects.form_view.field.column_width')"
                 :options="columnOptions"
+                @update:model-value="emit('update', { column_position: $event })"
             />
             <div v-if="!isNameField" class="flex items-end pb-1.5">
-                <BaseCheckbox v-model="field.required" :label="t('projects.form_view.required')" />
+                <BaseCheckbox
+                    :model-value="field.required"
+                    :label="t('projects.form_view.required')"
+                    @update:model-value="emit('update', { required: $event })"
+                />
             </div>
         </div>
     </div>
@@ -101,6 +109,8 @@ const props = defineProps({
         default: "",
     },
 });
+
+const emit = defineEmits(["update"]);
 
 const id = useId();
 
