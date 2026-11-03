@@ -16,10 +16,11 @@ SPDX-License-Identifier: AGPL-3.0-only
             class="absolute left-0 top-full z-50 mt-1 grid w-max grid-cols-5 gap-1 rounded-lg bg-white p-2 shadow-lg ring-1 ring-black/5"
         >
             <button
-                v-for="(component, name, index) in tableIcons"
+                v-for="(component, name) in tableIcons"
                 :key="name"
                 type="button"
-                :aria-label="t('projects.table_icon.option', { number: index + 1 })"
+                :aria-label="t(`projects.table_icon.name.${name}`)"
+                :title="t(`projects.table_icon.name.${name}`)"
                 :aria-pressed="name === selected"
                 :class="[
                     'flex items-center justify-center rounded p-1.5 hover:bg-indigo-50',
