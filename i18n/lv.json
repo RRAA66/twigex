@@ -1930,5 +1930,25 @@
   {
     "id": "channel.role_invalid",
     "translation": "Šī nav derīga kanāla loma."
+  },
+  {
+    "id": "workspace.form_create_failed",
+    "translation": "Neizdevās izveidot veidlapu. Lūdzu, mēģiniet vēlreiz."
+  },
+  {
+    "id": "workspace.form_delete_failed",
+    "translation": "Neizdevās dzēst veidlapu. Lūdzu, mēģiniet vēlreiz."
+  },
+  {
+    "id": "workspace.form_get_failed",
+    "translation": "Neizdevās ielādēt veidlapu. Lūdzu, mēģiniet vēlreiz."
+  },
+  {
+    "id": "workspace.form_not_found",
+    "translation": "Veidlapa netika atrasta."
+  },
+  {
+    "id": "workspace.form_update_failed",
+    "translation": "Neizdevās atjaunināt veidlapu. Lūdzu, mēģiniet vēlreiz."
   }
 ]

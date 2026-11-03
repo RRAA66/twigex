@@ -1930,5 +1930,25 @@
   {
     "id": "channel.role_invalid",
     "translation": "To nie jest prawidłowa rola w kanale."
+  },
+  {
+    "id": "workspace.form_create_failed",
+    "translation": "Nie udało się utworzyć formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_delete_failed",
+    "translation": "Nie udało się usunąć formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_get_failed",
+    "translation": "Nie udało się wczytać formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_not_found",
+    "translation": "Nie znaleziono formularza."
+  },
+  {
+    "id": "workspace.form_update_failed",
+    "translation": "Nie udało się zaktualizować formularza. Spróbuj ponownie."
   }
 ]

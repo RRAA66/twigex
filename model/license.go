@@ -78,6 +78,7 @@ type Features struct {
 	Groups                       *bool `json:"groups"`
 	WorkspaceRoles               *bool `json:"workspace_roles"`
 	SystemRoles                  *bool `json:"system_roles"`
+	Forms                        *bool `json:"forms"`
 	OAuthProviders               *bool `json:"oauth_providers"`
 	LDAP                         *bool `json:"ldap"`
 }
@@ -141,6 +142,10 @@ func (l *License) HasWorkspaceRoles() bool {
 
 func (l *License) HasSystemRoles() bool {
 	return l.enabled(func(f *Features) *bool { return f.SystemRoles })
+}
+
+func (l *License) HasForms() bool {
+	return l.enabled(func(f *Features) *bool { return f.Forms })
 }
 
 func (l *License) HasOAuthProviders() bool {
@@ -353,6 +358,10 @@ func (l *License) SetDefaults() {
 
 	if l.Features.SystemRoles == nil {
 		l.Features.SystemRoles = NewBool(l.MinimumLicenseBusiness())
+	}
+
+	if l.Features.Forms == nil {
+		l.Features.Forms = NewBool(l.MinimumLicenseBusiness())
 	}
 
 	if l.Features.OAuthProviders == nil {

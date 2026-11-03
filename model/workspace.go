@@ -625,3 +625,8 @@ type WorkspaceFormWithFields struct {
 	WorkspaceForm
 	Fields []WorkspaceFormField `json:"fields"`
 }
+
+type WorkspaceFormRequest struct {
+	Form   WorkspaceForm        `json:"form"`
+	Fields []WorkspaceFormField `json:"fields"`
+}

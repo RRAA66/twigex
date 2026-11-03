@@ -1990,5 +1990,25 @@
   {
     "id": "channel.role_invalid",
     "translation": "That is not a valid channel role."
+  },
+  {
+    "id": "workspace.form_create_failed",
+    "translation": "Failed to create form. Please try again."
+  },
+  {
+    "id": "workspace.form_delete_failed",
+    "translation": "Failed to delete form. Please try again."
+  },
+  {
+    "id": "workspace.form_get_failed",
+    "translation": "Failed to load form. Please try again."
+  },
+  {
+    "id": "workspace.form_not_found",
+    "translation": "Form not found."
+  },
+  {
+    "id": "workspace.form_update_failed",
+    "translation": "Failed to update form. Please try again."
   }
 ]
