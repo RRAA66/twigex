@@ -44,15 +44,20 @@ type pendingFormFile struct {
 	MimeType string `json:"mime_type"`
 }
 
-// UploadFormFiles keeps files for a form's file fields until the form is
-// submitted, which makes them attachments of the new row.
-func (a *App) UploadFormFiles(ctx context.Context, token string, files []*multipart.FileHeader, user *model.User, clientIP string) ([]model.ProjectFileMetadata, *model.AppError) {
+// CheckFormUpload answers the form a user may upload files to through its
+// link. It is asked before the files are read, so a request that would be
+// refused is not made to send them.
+func (a *App) CheckFormUpload(ctx context.Context, token string, user *model.User, clientIP string) (*model.WorkspaceFormWithFields, *model.AppError) {
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
 	form, appErr := a.getFormByToken(ctx, token, user)
 	if appErr != nil {
 		return nil, appErr
+	}
+
+	if !a.canSubmitForm(*user, form) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
 	if !formShows(form, isFileField) {
@@ -69,6 +74,13 @@ func (a *App) UploadFormFiles(ctx context.Context, token string, files []*multip
 		return nil, model.NewAppError("link.rate_limited", http.StatusTooManyRequests)
 	}
 
+	return form, nil
+}
+
+// UploadFormFiles keeps files for a form's file fields until the form is
+// submitted, which makes them attachments of the new row. The form is the
+// one CheckFormUpload answered.
+func (a *App) UploadFormFiles(ctx context.Context, form *model.WorkspaceFormWithFields, files []*multipart.FileHeader, user model.User) ([]model.ProjectFileMetadata, *model.AppError) {
 	if len(files) == 0 || len(files) > maxFormFiles {
 		return nil, model.NewAppError("request.invalid", http.StatusBadRequest)
 	}

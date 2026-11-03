@@ -95,10 +95,21 @@ func fileField(name string, required bool) model.WorkspaceFormField {
 	return model.WorkspaceFormField{HeaderID: "field-" + name, HeaderName: name, FieldType: "file", Visible: true, Required: required}
 }
 
+// uploadFiles checks the upload and then stores the files, as the endpoint
+// does.
+func uploadFiles(a *App, user *model.User, files []*multipart.FileHeader) ([]model.ProjectFileMetadata, *model.AppError) {
+	form, appErr := a.CheckFormUpload(context.Background(), "token-1", user, "10.0.0.1")
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	return a.UploadFormFiles(context.Background(), form, files, *user)
+}
+
 func uploadToForm(t *testing.T, a *App, user *model.User, name, content string) model.ProjectFileMetadata {
 	t.Helper()
 
-	uploaded, appErr := a.UploadFormFiles(context.Background(), "token-1", uploadedFiles(t, "files", map[string]string{name: content}), user, "10.0.0.1")
+	uploaded, appErr := uploadFiles(a, user, uploadedFiles(t, "files", map[string]string{name: content}))
 	if appErr != nil {
 		t.Fatalf("UploadFormFiles: %v", appErr)
 	}
@@ -127,12 +138,22 @@ func TestUploadFormFilesRefusesANonMember(t *testing.T) {
 
 	files := uploadedFiles(t, "files", map[string]string{"report.pdf": "%PDF-1.4"})
 
-	_, appErr := a.UploadFormFiles(context.Background(), "token-1", files, outsider, "10.0.0.1")
+	_, appErr := uploadFiles(a, outsider, files)
 	if appErr == nil || appErr.Status != http.StatusForbidden {
 		t.Fatalf("want 403, got %v", appErr)
 	}
 	if _, err := os.Stat(root); !os.IsNotExist(err) {
 		t.Errorf("wrote files for a non-member: %v", err)
+	}
+}
+
+func TestUploadFormFilesNeedsTheRightToCreateRows(t *testing.T) {
+	a, _, _ := submitApp(fileField("docs", false))
+	a.WorkspaceRoles = noCreateRoles{}
+
+	_, appErr := a.CheckFormUpload(context.Background(), "token-1", submitter, "10.0.0.1")
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Fatalf("want 403, got %v", appErr)
 	}
 }
 
@@ -142,7 +163,7 @@ func TestUploadFormFilesRefusesATypeNotAllowed(t *testing.T) {
 
 	files := uploadedFiles(t, "files", map[string]string{"run.exe": "MZ"})
 
-	_, appErr := a.UploadFormFiles(context.Background(), "token-1", files, submitter, "10.0.0.1")
+	_, appErr := uploadFiles(a, submitter, files)
 	if appErr == nil || appErr.Status != http.StatusBadRequest {
 		t.Fatalf("want 400, got %v", appErr)
 	}
@@ -154,7 +175,7 @@ func TestUploadFormFilesNeedsAFileFieldOnTheForm(t *testing.T) {
 
 	files := uploadedFiles(t, "files", map[string]string{"report.pdf": "%PDF-1.4"})
 
-	_, appErr := a.UploadFormFiles(context.Background(), "token-1", files, submitter, "10.0.0.1")
+	_, appErr := uploadFiles(a, submitter, files)
 	if appErr == nil || appErr.Status != http.StatusBadRequest {
 		t.Fatalf("want 400, got %v", appErr)
 	}

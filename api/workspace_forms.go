@@ -173,14 +173,24 @@ func (a *API) submitPublicForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) uploadPublicFormFiles(w http.ResponseWriter, r *http.Request) {
+	user, appErr := a.app.GetCurrentUser(r)
+	if appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
+	form, appErr := a.app.CheckFormUpload(r.Context(), mux.Vars(r)["token"], user, a.app.ClientIP(r))
+	if appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
 	files, ok := parseUploadedFiles(w, r, maxFormUploadBytes, "files")
 	if !ok {
 		return
 	}
 
-	user, _ := a.app.GetCurrentUser(r)
-
-	uploaded, appErr := a.app.UploadFormFiles(r.Context(), mux.Vars(r)["token"], files, user, a.app.ClientIP(r))
+	uploaded, appErr := a.app.UploadFormFiles(r.Context(), form, files, *user)
 	if appErr != nil {
 		respondAppError(w, r, appErr)
 		return
