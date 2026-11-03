@@ -10,18 +10,11 @@ SPDX-License-Identifier: AGPL-3.0-only
             {{ t("projects.form_view.settings.title") }}
         </h3>
 
-        <ToggleSwitch v-model="form.active" :label="t('projects.form_view.settings.active')" />
-
-        <div>
-            <ToggleSwitch
-                :model-value="true"
-                :label="t('projects.form_view.settings.requires_login')"
-                disabled
-            />
-            <p class="mt-1 text-xs text-gray-400">
-                {{ t("projects.form_view.settings.requires_login_disabled_note") }}
-            </p>
-        </div>
+        <ToggleSwitch
+            :model-value="form.active"
+            :label="t('projects.form_view.settings.active')"
+            @update:model-value="emit('update', { active: $event })"
+        />
 
         <div>
             <label :for="`${id}-accent`" class="block text-sm font-medium text-gray-900">
@@ -29,9 +22,10 @@ SPDX-License-Identifier: AGPL-3.0-only
             </label>
             <input
                 :id="`${id}-accent`"
-                v-model="form.accent_color"
+                :value="form.accent_color"
                 type="color"
                 class="mt-1 h-8 w-full cursor-pointer rounded border border-gray-200 p-0.5"
+                @input="emit('update', { accent_color: $event.target.value })"
             />
         </div>
     </aside>
@@ -48,6 +42,8 @@ defineProps({
         required: true,
     },
 });
+
+const emit = defineEmits(["update"]);
 
 const id = useId();
 </script>

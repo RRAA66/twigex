@@ -1,10 +1,9 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { t } from "@/i18n/index.js";
 import { fieldLabel } from "@/utils/projects/rows";
 
-const DEFAULT_ACCENT_COLOR = "#4f46e5";
+export const DEFAULT_ACCENT_COLOR = "#4f46e5";
 
 const DEFAULT_FIELD_NAMES = {
     name: "projects.grid_view.name",
@@ -19,10 +18,10 @@ const SKIPPED_FIELDS = new Set(["id", "created_by", "created_at", "updated_at", 
 
 const NEW_FIELD_SORT_OFFSET = 9000;
 
-export function headerLabel(header) {
+export function headerLabel(header, translate) {
     const key = DEFAULT_FIELD_NAMES[header?.name];
 
-    return key ? t.value(key) : fieldLabel(header);
+    return key ? translate(key) : fieldLabel(header);
 }
 
 export function emptyFormData(workspaceId, tableId) {
@@ -42,7 +41,6 @@ export function normalizeFormData(data, workspaceId, tableId) {
         logo: data.logo || "",
         accent_color: data.accent_color || DEFAULT_ACCENT_COLOR,
         public_token: data.public_token || "",
-        requires_login: data.requires_login || false,
         active: data.active ?? true,
         created_by: data.created_by || "",
     };
@@ -51,7 +49,7 @@ export function normalizeFormData(data, workspaceId, tableId) {
 // Every field of the table is listed: a saved field keeps its settings, a
 // field added to the table since the form was saved comes last and hidden,
 // and the name is always shown and required because a row needs one.
-export function mergeFormFields(headers, savedFields) {
+export function mergeFormFields(headers, savedFields, translate) {
     const savedByName = new Map(savedFields.map((f) => [f.header_name, f]));
 
     const merged = headers
@@ -69,7 +67,7 @@ export function mergeFormFields(headers, savedFields) {
                 id: "",
                 header_id: h.id || h.name,
                 header_name: h.name,
-                label: headerLabel(h),
+                label: headerLabel(h, translate),
                 placeholder: "",
                 description: "",
                 required: false,
@@ -106,9 +104,8 @@ export function mergeFormFields(headers, savedFields) {
     return merged;
 }
 
-// The input a form field is filled with. Mirrors how SubmitForm reads the
-// value: a link with a single-select target takes one option, any other link
-// a list of rows.
+// Mirrors how SubmitForm reads a value: a link with a single-select target
+// takes one option, any other link a list of rows.
 export function formFieldType(field) {
     const type = (field.field_type || "").toLowerCase();
 
@@ -136,7 +133,12 @@ export function fillableFormFields(fields) {
 }
 
 function isEmptyFormValue(value) {
-    return value == null || value === "" || (Array.isArray(value) && value.length === 0);
+    return (
+        value == null ||
+        value === "" ||
+        value === false ||
+        (Array.isArray(value) && value.length === 0)
+    );
 }
 
 export function missingRequiredFields(fields, values) {

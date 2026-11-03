@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
+import { t } from "@/i18n/index.js";
 import {
     conditionTriggers,
     emptyFormData,
@@ -18,14 +19,16 @@ import {
 
 describe("headerLabel", () => {
     it("translates a built-in field and reads a custom field's display name", () => {
-        expect(headerLabel({ name: "due_date" })).toBe("Due Date");
-        expect(headerLabel({ name: "budget", display_name: { String: "Budget" } })).toBe("Budget");
-        expect(headerLabel({ name: "budget", display_name: "Budget" })).toBe("Budget");
+        expect(headerLabel({ name: "due_date" }, t.value)).toBe("Due Date");
+        expect(headerLabel({ name: "budget", display_name: { String: "Budget" } }, t.value)).toBe(
+            "Budget",
+        );
+        expect(headerLabel({ name: "budget", display_name: "Budget" }, t.value)).toBe("Budget");
     });
 
     it("falls back to the column name", () => {
-        expect(headerLabel({ name: "c_123" })).toBe("c_123");
-        expect(headerLabel(null)).toBe("");
+        expect(headerLabel({ name: "c_123" }, t.value)).toBe("c_123");
+        expect(headerLabel(null, t.value)).toBe("");
     });
 });
 
@@ -72,7 +75,7 @@ describe("mergeFormFields", () => {
     ];
 
     it("lists every editable field, hidden except the name", () => {
-        const fields = mergeFormFields(headers, []);
+        const fields = mergeFormFields(headers, [], t.value);
 
         expect(fields.map((f) => f.header_name)).toEqual(["name", "status", "budget"]);
         expect(fields.map((f) => f.visible)).toEqual([true, false, false]);
@@ -90,7 +93,7 @@ describe("mergeFormFields", () => {
             { header_name: "name", label: "Title", visible: true, sort_order: 1 },
         ];
 
-        const fields = mergeFormFields(headers, saved);
+        const fields = mergeFormFields(headers, saved, t.value);
 
         expect(fields.map((f) => f.header_name)).toEqual(["budget", "name", "status"]);
         expect(fields[0]).toMatchObject({ label: "Cost", column_position: "full" });
@@ -108,7 +111,7 @@ describe("mergeFormFields", () => {
             },
         ];
 
-        const client = mergeFormFields(linked, []).find((f) => f.header_name === "client");
+        const client = mergeFormFields(linked, [], t.value).find((f) => f.header_name === "client");
 
         expect(client).toMatchObject({
             field_type: "link",
@@ -133,7 +136,7 @@ describe("mergeFormFields", () => {
             },
         ];
 
-        const [budget, status] = mergeFormFields(headers, saved);
+        const [budget, status] = mergeFormFields(headers, saved, t.value);
 
         expect(budget.visibility_rule).toBeNull();
         expect(status.visibility_rule).toEqual(saved[1].visibility_rule);
@@ -142,7 +145,7 @@ describe("mergeFormFields", () => {
     it("always shows and requires the name", () => {
         const saved = [{ header_name: "name", visible: false, required: false, sort_order: 0 }];
 
-        const [name] = mergeFormFields(headers, saved);
+        const [name] = mergeFormFields(headers, saved, t.value);
 
         expect(name).toMatchObject({ visible: true, required: true });
     });
@@ -205,7 +208,7 @@ describe("fillableFormFields", () => {
 });
 
 describe("missingRequiredFields", () => {
-    it("names required fields left empty, and counts an unticked box as filled", () => {
+    it("names required fields left empty, an unticked box among them", () => {
         const fields = [
             { header_name: "name", required: true },
             { header_name: "tags", required: true },
@@ -216,10 +219,14 @@ describe("missingRequiredFields", () => {
         expect(missingRequiredFields(fields, { name: "", tags: [], agree: false })).toEqual([
             "name",
             "tags",
+            "agree",
         ]);
         expect(missingRequiredFields(fields, { name: "A", tags: [{ id: "1" }] })).toEqual([
             "agree",
         ]);
+        expect(
+            missingRequiredFields(fields, { name: "A", tags: [{ id: "1" }], agree: true }),
+        ).toEqual([]);
     });
 });
 

@@ -15,7 +15,8 @@ SPDX-License-Identifier: AGPL-3.0-only
         <div
             ref="anchor"
             @focusin="loadFirstPage"
-            class="relative flex w-full flex-wrap items-center gap-1 rounded-md bg-white py-1 pl-2 pr-10 shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-indigo-600"
+            class="relative flex w-full flex-wrap items-center gap-1 rounded-md bg-white py-1 pl-2 pr-10 shadow-sm ring-1 ring-inset focus-within:ring-2 focus-within:ring-indigo-600"
+            :class="error ? 'ring-red-600' : 'ring-gray-300'"
         >
             <span
                 v-for="item in chips"
@@ -34,6 +35,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             </span>
             <ComboboxInput
                 :id="id"
+                v-bind="$attrs"
                 class="min-w-[6rem] flex-1 border-0 bg-transparent px-1 py-0.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-0"
                 :display-value="(item) => (multiple ? '' : item?.name || '')"
                 :placeholder="chips.length ? '' : placeholder"
@@ -94,7 +96,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         />
                     </li>
                 </ComboboxOption>
-                <li v-if="!loading && items.length < total" class="px-3 py-1">
+                <li v-if="!loading && hasMore" class="px-3 py-1">
                     <BaseButton
                         type="button"
                         size="small"
@@ -129,6 +131,8 @@ import workspaceService from "@/services/workspaceService";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseSpinner from "@/components/BaseSpinner.vue";
 
+defineOptions({ inheritAttrs: false });
+
 const PAGE_SIZE = 50;
 const SEARCH_DELAY_MS = 250;
 
@@ -140,6 +144,7 @@ const props = defineProps({
     multiple: { type: Boolean, default: false },
     placeholder: { type: String, default: "" },
     id: { type: String, default: undefined },
+    error: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue"]);
@@ -150,7 +155,7 @@ const { floating, floatingStyles } = useAnchoredPopup({ matchWidth: true, anchor
 
 const search = ref("");
 const items = ref([]);
-const total = ref(0);
+const hasMore = ref(false);
 const page = ref(0);
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -160,7 +165,8 @@ let searchTimer = null;
 
 const chips = computed(() => (props.multiple ? props.modelValue || [] : []));
 
-// The builder has no form link yet, so it lists rows through the workspace.
+// The condition editor lists rows through the workspace, as its value is
+// picked by someone building the form, not filling it.
 async function requestPage(next) {
     if (!props.workspaceId) {
         const { data } = await formService.getPublicLinkedItems(props.token, props.tableId, {
@@ -174,15 +180,13 @@ async function requestPage(next) {
 
     const { data } = await workspaceService.getLinkedRecordsLite(props.workspaceId, props.tableId, {
         q: search.value || undefined,
-        limit: PAGE_SIZE,
+        limit: PAGE_SIZE + 1,
         offset: (next - 1) * PAGE_SIZE,
     });
     const items = (data || []).map((row) => ({ id: String(row.id), name: row.name }));
 
-    // These rows come uncounted, so a full page stands for one more to load.
-    const more = items.length === PAGE_SIZE ? 1 : 0;
-
-    return { items, total: (next - 1) * PAGE_SIZE + items.length + more };
+    // These rows come uncounted, so one past the page tells there are more.
+    return { items: items.slice(0, PAGE_SIZE), has_more: items.length > PAGE_SIZE };
 }
 
 async function fetchPage(next) {
@@ -199,7 +203,7 @@ async function fetchPage(next) {
         if (current !== request) return;
 
         items.value = next === 1 ? data.items : [...items.value, ...data.items];
-        total.value = data.total;
+        hasMore.value = data.has_more;
         page.value = next;
     } catch {
         if (current === request) loadFailed.value = true;

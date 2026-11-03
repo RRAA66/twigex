@@ -23,6 +23,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script setup>
 import { computed } from "vue";
+import { useRouter } from "vue-router";
 import { t } from "@/i18n/index.js";
 import { useAlertStore } from "@/store/alerts";
 import FormDialog from "@/components/FormDialog.vue";
@@ -34,9 +35,14 @@ const props = defineProps({
 
 const emit = defineEmits(["close"]);
 
+const router = useRouter();
 const alertStore = useAlertStore();
 
-const link = computed(() => `${window.location.origin}/forms/public/${props.token}`);
+const link = computed(() => {
+    const { href } = router.resolve({ name: "public-form", params: { token: props.token } });
+
+    return `${window.location.origin}${href}`;
+});
 
 async function copyLink() {
     try {

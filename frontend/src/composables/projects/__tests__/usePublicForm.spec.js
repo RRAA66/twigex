@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { defineComponent } from "vue";
+import { defineComponent, nextTick } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { close, initialize } from "@/js/websocket";
@@ -38,6 +38,13 @@ const form = {
 
 function httpError(status, error = "Nope") {
     return Object.assign(new Error(error), { response: { status, data: { error } } });
+}
+
+function deferred() {
+    let resolve;
+    const promise = new Promise((r) => (resolve = r));
+
+    return { promise, resolve };
 }
 
 async function setup(options) {
@@ -95,6 +102,16 @@ describe("usePublicForm", () => {
         expect(formService.submitPublicForm).not.toHaveBeenCalled();
         expect(Object.keys(state.fieldErrors.value)).toEqual(["name"]);
         expect(state.submitted.value).toBe(false);
+    });
+
+    it("clears a required field's error once it is filled in", async () => {
+        const { state } = await setup();
+
+        await state.submit();
+        state.values.value = { ...state.values.value, name: "Order" };
+        await nextTick();
+
+        expect(state.fieldErrors.value).toEqual({});
     });
 
     it("sends the visible fields with the honeypot and thanks the user", async () => {
@@ -155,6 +172,38 @@ describe("usePublicForm", () => {
 
             expect(state.form.value.title).toBe("New");
             expect(state.configChanged.value).toBe(true);
+        });
+
+        it("keeps the latest of several quick changes", async () => {
+            const { state } = await setup({ live: true });
+            const older = deferred();
+
+            formService.getPublicForm
+                .mockReturnValueOnce(older.promise)
+                .mockResolvedValueOnce({ data: { ...form, title: "Newest" } });
+            deliver({ type: "FORM_CONFIG_CHANGED", form_id: "f1" });
+            deliver({ type: "FORM_CONFIG_CHANGED", form_id: "f1" });
+            await flushPromises();
+
+            older.resolve({ data: { ...form, title: "Older" } });
+            await flushPromises();
+
+            expect(state.form.value.title).toBe("Newest");
+        });
+
+        it("drops the error of a field the change removed", async () => {
+            const { state } = await setup({ live: true });
+
+            await state.submit();
+            expect(Object.keys(state.fieldErrors.value)).toEqual(["name"]);
+
+            formService.getPublicForm.mockResolvedValue({
+                data: { ...form, fields: form.fields.slice(1) },
+            });
+            deliver({ type: "FORM_CONFIG_CHANGED", form_id: "f1" });
+            await flushPromises();
+
+            expect(state.fieldErrors.value).toEqual({});
         });
 
         it("shows a form switched off meanwhile as not found", async () => {

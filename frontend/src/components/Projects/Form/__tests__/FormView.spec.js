@@ -8,10 +8,12 @@ import { createMemoryHistory, createRouter } from "vue-router";
 // Registers the time zones the submissions table formats dates with.
 import "moment-timezone";
 import FormView from "@/components/Projects/Form/FormView.vue";
+import FormViewNameDialog from "@/components/Projects/Form/FormViewNameDialog.vue";
 import formService from "@/services/formService";
 import workspaceService from "@/services/workspaceService";
 import { useAlertStore } from "@/store/alerts";
 import { useSettingsStore } from "@/store/settings";
+import { useWorkspaceRolesStore } from "@/store/workspaceRoles";
 
 vi.mock("@/services/formService", () => ({
     default: {
@@ -38,17 +40,21 @@ const nav = {
     ],
 };
 
-async function mountAt(path, { licensed = true } = {}) {
+const viewPermissions = ["create_workspace_view", "update_workspace_view"];
+
+async function mountAt(path, { licensed = true, user = { permissions: viewPermissions } } = {}) {
     const pinia = createPinia();
 
     setActivePinia(pinia);
     useSettingsStore().setLicense({ forms: licensed });
+    useWorkspaceRolesStore().setUser(user);
 
     const router = createRouter({
         history: createMemoryHistory(),
         routes: [
             { path: "/p/:id/form/:tid", name: "form-view-create", component: FormView },
             { path: "/p/:id/form/:tid/view/:fid", name: "form-view", component: FormView },
+            { path: "/forms/public/:token", name: "public-form", component: FormView },
         ],
     });
 
@@ -59,17 +65,29 @@ async function mountAt(path, { licensed = true } = {}) {
 
     await flushPromises();
 
-    return w;
+    return { w, router };
+}
+
+function button(w, label) {
+    return w.findAll("button").find((b) => b.text() === label);
 }
 
 describe("FormView", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.stubGlobal(
+            "ResizeObserver",
+            class {
+                observe() {}
+                unobserve() {}
+                disconnect() {}
+            },
+        );
         workspaceService.getWorkspaceNav.mockResolvedValue({ data: nav });
     });
 
     it("asks for a licence before loading anything", async () => {
-        const w = await mountAt("/p/w1/form/t1/view/f1", { licensed: false });
+        const { w } = await mountAt("/p/w1/form/t1/view/f1", { licensed: false });
 
         expect(w.text()).toContain("Build forms on your workspace tables");
         expect(formService.getForm).not.toHaveBeenCalled();
@@ -77,7 +95,7 @@ describe("FormView", () => {
     });
 
     it("lists the table's fields for a new form", async () => {
-        const w = await mountAt("/p/w1/form/t1");
+        const { w } = await mountAt("/p/w1/form/t1");
 
         expect(formService.getForm).not.toHaveBeenCalled();
         expect(w.text()).toContain("New form");
@@ -94,7 +112,7 @@ describe("FormView", () => {
             },
         });
 
-        const w = await mountAt("/p/w1/form/t1/view/f1");
+        const { w } = await mountAt("/p/w1/form/t1/view/f1");
 
         expect(formService.getForm).toHaveBeenCalledWith("w1", "t1", "f1");
         expect(w.text()).toContain("Intake");
@@ -105,10 +123,78 @@ describe("FormView", () => {
     it("explains a missing permission instead of showing an error", async () => {
         formService.getForm.mockRejectedValue({ response: { status: 403 } });
 
-        const w = await mountAt("/p/w1/form/t1/view/f1");
+        const { w } = await mountAt("/p/w1/form/t1/view/f1");
 
         expect(w.text()).toContain("You need permission to edit views");
         expect(useAlertStore().show).toBeFalsy();
+        w.unmount();
+    });
+
+    it("creates a form under the name given and opens it", async () => {
+        formService.createForm.mockResolvedValue({ data: { id: "f9", name: "Intake" } });
+        const { w, router } = await mountAt("/p/w1/form/t1");
+
+        await button(w, "Save").trigger("click");
+        w.findComponent(FormViewNameDialog).vm.$emit("confirm", "Intake");
+        await flushPromises();
+
+        expect(formService.createForm).toHaveBeenCalledWith(
+            "w1",
+            "t1",
+            expect.objectContaining({ name: "Intake" }),
+            expect.any(Array),
+        );
+        expect(router.currentRoute.value.params.fid).toBe("f9");
+        expect(w.findComponent(FormViewNameDialog).props("open")).toBe(false);
+        w.unmount();
+    });
+
+    it("updates a saved form with the edited title", async () => {
+        formService.getForm.mockResolvedValue({ data: { id: "f1", name: "Intake", fields: [] } });
+        formService.updateForm.mockResolvedValue({ data: { id: "f1", name: "Intake" } });
+        const { w } = await mountAt("/p/w1/form/t1/view/f1");
+
+        await w.find("input[type=text]").setValue("Signup");
+        await button(w, "Update").trigger("click");
+        await flushPromises();
+
+        expect(formService.updateForm).toHaveBeenCalledWith(
+            "w1",
+            "t1",
+            "f1",
+            expect.objectContaining({ title: "Signup" }),
+            expect.any(Array),
+        );
+        w.unmount();
+    });
+
+    it("offers no save to a member who may not create or change views", async () => {
+        formService.getForm.mockResolvedValue({ data: { id: "f1", name: "Intake", fields: [] } });
+
+        const created = await mountAt("/p/w1/form/t1", { user: { permissions: ["create_task"] } });
+
+        expect(button(created.w, "Save")).toBeUndefined();
+        created.w.unmount();
+
+        const saved = await mountAt("/p/w1/form/t1/view/f1", {
+            user: { permissions: ["create_task"] },
+        });
+
+        expect(button(saved.w, "Update")).toBeUndefined();
+        expect(button(saved.w, "Save as new")).toBeUndefined();
+        saved.w.unmount();
+    });
+
+    it("lets a per-table role that manages the table's views save", async () => {
+        const { w } = await mountAt("/p/w1/form/t1", {
+            user: {
+                permissions: ["create_task"],
+                per_table_mode: true,
+                table_permissions: [{ table_id: "t1", action: "manage_views" }],
+            },
+        });
+
+        expect(button(w, "Save")).toBeDefined();
         w.unmount();
     });
 
@@ -135,10 +221,11 @@ describe("FormView", () => {
                 data: {
                     ...saved,
                     title: "Tell us",
+                    can_submit: true,
                     fields: [{ ...saved.fields[0], field_type: "text" }],
                 },
             });
-            const w = await mountAt("/p/w1/form/t1/view/f1");
+            const { w } = await mountAt("/p/w1/form/t1/view/f1");
 
             await tab(w, "Preview").trigger("click");
             await flushPromises();
@@ -161,7 +248,7 @@ describe("FormView", () => {
                     },
                 ],
             });
-            const w = await mountAt("/p/w1/form/t1/view/f1");
+            const { w } = await mountAt("/p/w1/form/t1/view/f1");
 
             await tab(w, "Submissions").trigger("click");
             await flushPromises();
@@ -183,7 +270,7 @@ describe("FormView", () => {
             Object.assign(navigator, {
                 clipboard: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
             });
-            const w = await mountAt("/p/w1/form/t1/view/f1");
+            const { w } = await mountAt("/p/w1/form/t1/view/f1");
             const showError = vi.spyOn(useAlertStore(), "showError");
 
             await w

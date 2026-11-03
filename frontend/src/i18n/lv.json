@@ -2418,8 +2418,6 @@
     "projects.form_view.required": "Obligāts",
     "projects.form_view.settings.title": "Iestatījumi",
     "projects.form_view.settings.active": "Aktīva",
-    "projects.form_view.settings.requires_login": "Nepieciešama pieteikšanās",
-    "projects.form_view.settings.requires_login_disabled_note": "Anonīma aizpildīšana pagaidām nav pieejama — pašlaik nepieciešama pieteikšanās neatkarīgi no šī iestatījuma.",
     "projects.form_view.settings.accent_color": "Akcenta krāsa",
     "projects.form_view.success.saved": "Veidlapa veiksmīgi saglabāta",
     "projects.form_view.view_type": "Veidlapa",
@@ -2470,5 +2468,6 @@
     "projects.form_view.share.desc": "Šīs darbvietas dalībnieki var aizpildīt veidlapu, izmantojot šo saiti.",
     "projects.form_view.error.copy_failed": "Neizdevās nokopēt saiti.",
     "projects.form_view.public.no_access": "Jums nav piekļuves šai veidlapai. Lūdziet tās darbvietas dalībniekam jūs pievienot.",
-    "projects.form_view.public.not_found": "Šī veidlapa neeksistē vai vairs nav atvērta."
+    "projects.form_view.public.not_found": "Šī veidlapa neeksistē vai vairs nav atvērta.",
+    "projects.form_view.public.read_only": "Jūs varat skatīt šo veidlapu, taču jums nav atļauts pievienot ierakstus šai tabulai."
 }

@@ -2418,8 +2418,6 @@
     "projects.form_view.required": "Wymagane",
     "projects.form_view.settings.title": "Ustawienia",
     "projects.form_view.settings.active": "Aktywny",
-    "projects.form_view.settings.requires_login": "Wymaga zalogowania",
-    "projects.form_view.settings.requires_login_disabled_note": "Anonimowe wypełnianie nie jest jeszcze dostępne — obecnie wymagane jest zalogowanie niezależnie od tego ustawienia.",
     "projects.form_view.settings.accent_color": "Kolor akcentu",
     "projects.form_view.success.saved": "Formularz zapisany pomyślnie",
     "projects.form_view.view_type": "Formularz",
@@ -2470,5 +2468,6 @@
     "projects.form_view.share.desc": "Członkowie tego obszaru roboczego mogą wypełnić formularz za pomocą tego linku.",
     "projects.form_view.error.copy_failed": "Nie udało się skopiować linku.",
     "projects.form_view.public.no_access": "Nie masz dostępu do tego formularza. Poproś członka jego obszaru roboczego o dodanie Cię.",
-    "projects.form_view.public.not_found": "Ten formularz nie istnieje lub nie jest już otwarty."
+    "projects.form_view.public.not_found": "Ten formularz nie istnieje lub nie jest już otwarty.",
+    "projects.form_view.public.read_only": "Możesz wyświetlić ten formularz, ale nie masz uprawnień do dodawania rekordów do tej tabeli."
 }

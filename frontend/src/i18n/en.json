@@ -2418,8 +2418,6 @@
     "projects.form_view.required": "Required",
     "projects.form_view.settings.title": "Settings",
     "projects.form_view.settings.active": "Active",
-    "projects.form_view.settings.requires_login": "Requires login",
-    "projects.form_view.settings.requires_login_disabled_note": "Anonymous filling isn't available yet — a login is required for now regardless of this setting.",
     "projects.form_view.settings.accent_color": "Accent color",
     "projects.form_view.success.saved": "Form saved successfully",
     "projects.form_view.view_type": "Form",
@@ -2470,5 +2468,6 @@
     "projects.form_view.share.desc": "Members of this workspace can fill out the form with this link.",
     "projects.form_view.error.copy_failed": "Failed to copy link.",
     "projects.form_view.public.no_access": "You don't have access to this form. Ask a member of its workspace to add you.",
-    "projects.form_view.public.not_found": "This form doesn't exist or is no longer open."
+    "projects.form_view.public.not_found": "This form doesn't exist or is no longer open.",
+    "projects.form_view.public.read_only": "You can view this form but you're not allowed to add records to this table."
 }

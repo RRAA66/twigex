@@ -5,9 +5,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
     <div class="space-y-2">
         <BaseCheckbox
-            v-model="enabled"
+            :model-value="Boolean(rule)"
             :label="t('projects.form_view.field.conditional_label')"
             :description="rule ? t('projects.form_view.field.conditional_hint') : ''"
+            @update:model-value="setEnabled"
         />
         <div v-if="rule" class="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <BaseSelect
@@ -24,11 +25,12 @@ SPDX-License-Identifier: AGPL-3.0-only
             <FormConditionValueInput
                 v-if="trigger"
                 :key="rule.trigger_field"
-                v-model="rule.value"
+                :model-value="rule.value"
                 :field="trigger"
                 :operator="rule.operator"
                 :workspace-id="workspaceId"
                 :table-id="tableId"
+                @update:model-value="change({ value: $event })"
             />
         </div>
     </div>
@@ -50,16 +52,17 @@ const props = defineProps({
     tableId: { type: String, required: true },
 });
 
+const emit = defineEmits(["update"]);
+
 const rule = computed(() => props.field.visibility_rule);
 
-const enabled = computed({
-    get: () => Boolean(rule.value),
-    set: (on) => {
-        props.field.visibility_rule = on
-            ? { trigger_field: "", operator: "equals", value: "" }
-            : null;
-    },
-});
+function setEnabled(on) {
+    emit("update", on ? { trigger_field: "", operator: "equals", value: "" } : null);
+}
+
+function change(patch) {
+    emit("update", { ...rule.value, ...patch });
+}
 
 const trigger = computed(() =>
     props.fields.find((f) => f.header_name === rule.value?.trigger_field),
@@ -80,20 +83,15 @@ const operatorOptions = computed(() =>
 );
 
 function setTrigger(name) {
-    rule.value.trigger_field = name;
-    rule.value.value = "";
+    change({ trigger_field: name, value: "" });
 }
 
 // A value picked with one input, such as a row id, means nothing to another.
 function setOperator(operator) {
     const field = trigger.value || {};
+    const kept =
+        conditionValueWidget(field, operator) === conditionValueWidget(field, rule.value.operator);
 
-    if (
-        conditionValueWidget(field, operator) !== conditionValueWidget(field, rule.value.operator)
-    ) {
-        rule.value.value = "";
-    }
-
-    rule.value.operator = operator;
+    change({ operator, value: kept ? rule.value.value : "" });
 }
 </script>
