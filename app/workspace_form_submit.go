@@ -566,13 +566,13 @@ func isMasterLinkField(f model.WorkspaceFormField) bool {
 	return f.FieldType == "master link"
 }
 
-// pickedTable is the table whose rows a link field's picker lists: the
-// target of a link, or the options of a single-select field, whose own
-// table has no parent.
+// pickedTable is the table whose rows a field's picker lists. A
+// single-select's options table has the field's own table as its parent, so
+// the parent is the target only for a link.
 func pickedTable(f model.WorkspaceFormField) string {
-	if f.ParentTableID != "" {
-		return f.ParentTableID
+	if f.SingleSelect || f.ParentTableID == "" {
+		return f.LinkedID
 	}
 
-	return f.LinkedID
+	return f.ParentTableID
 }

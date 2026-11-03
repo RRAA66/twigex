@@ -4,6 +4,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 -->
 <template>
     <Combobox
+        v-slot="{ open }"
         as="div"
         by="id"
         :model-value="modelValue"
@@ -13,6 +14,7 @@ SPDX-License-Identifier: AGPL-3.0-only
     >
         <div
             ref="anchor"
+            @focusin="loadFirstPage"
             class="relative flex w-full flex-wrap items-center gap-1 rounded-md bg-white py-1 pl-2 pr-10 shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-indigo-600"
         >
             <span
@@ -36,9 +38,10 @@ SPDX-License-Identifier: AGPL-3.0-only
                 :display-value="(item) => (multiple ? '' : item?.name || '')"
                 :placeholder="chips.length ? '' : placeholder"
                 @change="search = $event.target.value"
-                @focus="loadFirstPage"
+                @click="open || openList()"
             />
             <ComboboxButton
+                ref="button"
                 class="absolute inset-y-0 right-0 flex items-center px-2"
                 @click="loadFirstPage"
             >
@@ -140,6 +143,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const anchor = ref(null);
+const button = ref(null);
 const { floating, floatingStyles } = useAnchoredPopup({ matchWidth: true, anchor });
 
 const search = ref("");
@@ -182,6 +186,12 @@ async function fetchPage(next) {
             loadingMore.value = false;
         }
     }
+}
+
+// This Headless UI version ignores Combobox's `immediate`, so a click in the
+// field opens the list through its button.
+function openList() {
+    button.value?.$el.click();
 }
 
 function loadFirstPage() {
