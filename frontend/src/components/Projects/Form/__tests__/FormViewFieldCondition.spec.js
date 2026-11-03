@@ -77,6 +77,22 @@ describe("FormViewFieldCondition", () => {
         w.unmount();
     });
 
+    it("labels the field, operator and value controls", async () => {
+        const field = {
+            header_name: "reason",
+            visible: true,
+            visibility_rule: { trigger_field: "status", operator: "equals", value: "" },
+        };
+        const w = mountWith(FormViewFieldCondition, { field, fields: [status, field] });
+
+        await flushPromises();
+
+        expect(w.findAll("label").map((l) => l.text())).toEqual(
+            expect.arrayContaining(["When field", "Condition", "Value"]),
+        );
+        w.unmount();
+    });
+
     it("clears the value when the operator takes another kind of input", async () => {
         const field = {
             header_name: "reason",

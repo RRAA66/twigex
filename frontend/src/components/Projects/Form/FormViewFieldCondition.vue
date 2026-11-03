@@ -13,12 +13,14 @@ SPDX-License-Identifier: AGPL-3.0-only
         <div v-if="rule" class="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <BaseSelect
                 :model-value="rule.trigger_field"
+                :label="t('projects.form_view.field.condition_field_label')"
                 :options="triggerOptions"
                 :placeholder="t('projects.form_view.field.condition_field_placeholder')"
                 @update:model-value="setTrigger"
             />
             <BaseSelect
                 :model-value="rule.operator"
+                :label="t('projects.form_view.field.condition_operator_label')"
                 :options="operatorOptions"
                 @update:model-value="setOperator"
             />
@@ -26,6 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 v-if="trigger"
                 :key="rule.trigger_field"
                 :model-value="rule.value"
+                :label="t('projects.form_view.field.condition_value_label')"
                 :field="trigger"
                 :operator="rule.operator"
                 :workspace-id="workspaceId"
