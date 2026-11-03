@@ -12,7 +12,7 @@ import (
 )
 
 const formColumns = `id, workspace_id, table_id, name, title, COALESCE(description, ''), COALESCE(cover_image, ''),
-	cover_position, COALESCE(logo, ''), COALESCE(accent_color, ''), public_token, requires_login, active,
+	cover_position, COALESCE(logo, ''), COALESCE(accent_color, ''), public_token, active,
 	created_by, created_at, updated_at`
 
 // CreateForm writes the form with the workspace_view row that shows it as a
@@ -37,11 +37,11 @@ func (w *workspaceRepository) CreateForm(ctx context.Context, form model.Workspa
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO workspace_forms
 		(id, workspace_id, table_id, name, title, description, cover_image, cover_position, logo, accent_color,
-		 public_token, requires_login, active, created_by, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 public_token, active, created_by, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		form.ID, form.WorkspaceID, form.TableID, form.Name, form.Title, form.Description,
 		form.CoverImage, form.CoverPosition, form.Logo, form.AccentColor,
-		form.PublicToken, form.RequiresLogin, form.Active, form.CreatedBy, form.CreatedAt, form.UpdatedAt,
+		form.PublicToken, form.Active, form.CreatedBy, form.CreatedAt, form.UpdatedAt,
 	)
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func (w *workspaceRepository) GetForm(ctx context.Context, formID string) (*mode
 	err := w.Db.QueryRowContext(ctx, `SELECT `+formColumns+` FROM workspace_forms WHERE id = ?`, formID).Scan(
 		&form.ID, &form.WorkspaceID, &form.TableID, &form.Name, &form.Title, &form.Description,
 		&form.CoverImage, &form.CoverPosition, &form.Logo, &form.AccentColor, &form.PublicToken,
-		&form.RequiresLogin, &form.Active, &form.CreatedBy, &form.CreatedAt, &form.UpdatedAt,
+		&form.Active, &form.CreatedBy, &form.CreatedAt, &form.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -89,10 +89,10 @@ func (w *workspaceRepository) UpdateForm(ctx context.Context, form model.Workspa
 	_, err = tx.ExecContext(ctx, `
 		UPDATE workspace_forms
 		SET name = ?, title = ?, description = ?, cover_image = ?, cover_position = ?, logo = ?, accent_color = ?,
-		    requires_login = ?, active = ?, updated_at = ?
+		    active = ?, updated_at = ?
 		WHERE id = ?`,
 		form.Name, form.Title, form.Description, form.CoverImage, form.CoverPosition, form.Logo, form.AccentColor,
-		form.RequiresLogin, form.Active, form.UpdatedAt, form.ID,
+		form.Active, form.UpdatedAt, form.ID,
 	)
 	if err != nil {
 		return err
