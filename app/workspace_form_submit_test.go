@@ -472,6 +472,18 @@ func TestPublicLinkedItemsOnlyForTheFormsFields(t *testing.T) {
 	}
 }
 
+func TestPublicLinkedItemsOfAStatusAreItsOptionsNotTheFormsTable(t *testing.T) {
+	a, _, _ := submitApp(model.WorkspaceFormField{HeaderName: "status", FieldType: "status", LinkedID: "status-options", SingleSelect: true, ParentTableID: tbl1, Visible: true})
+
+	if _, appErr := a.GetPublicLinkedItems(context.Background(), "token-1", "status-options", "", 1, 10, submitter); appErr != nil {
+		t.Errorf("the status options: %v", appErr)
+	}
+
+	if _, appErr := a.GetPublicLinkedItems(context.Background(), "token-1", tbl1, "", 1, 10, submitter); appErr == nil || appErr.Status != http.StatusNotFound {
+		t.Errorf("the form's own table: want 404, got %v", appErr)
+	}
+}
+
 func TestFormSubmissionsNamesTheSubmitters(t *testing.T) {
 	a, ws, users := submitApp()
 	ws.submissions = []model.WorkspaceFormSubmission{

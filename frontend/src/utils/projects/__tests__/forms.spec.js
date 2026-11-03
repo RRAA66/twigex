@@ -178,6 +178,16 @@ describe("linkedTableId", () => {
         expect(linkedTableId({ linked_id: "t-status" })).toBe("t-status");
         expect(linkedTableId({})).toBe("");
     });
+
+    it("lists a single-select's own options, not the table it belongs to", () => {
+        expect(
+            linkedTableId({
+                linked_id: "t-status",
+                single_select: true,
+                parent_table_id: "t-form",
+            }),
+        ).toBe("t-status");
+    });
 });
 
 describe("fillableFormFields", () => {

@@ -125,6 +125,8 @@ export function formFieldType(field) {
 
 // The table whose rows a link field's picker lists, as the server checks it.
 export function linkedTableId(field) {
+    if (field.single_select) return field.linked_id || "";
+
     return field.parent_table_id || field.linked_id || "";
 }
 

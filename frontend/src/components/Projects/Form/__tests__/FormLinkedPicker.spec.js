@@ -73,6 +73,16 @@ describe("FormLinkedPicker", () => {
         expect(document.body.textContent).toContain("One");
     });
 
+    it("shows the list when the field is clicked, not only from its button", async () => {
+        formService.getPublicLinkedItems.mockResolvedValue(page([one, two], 2));
+        w = mountPicker();
+        await w.find("input").trigger("click");
+        await flushPromises();
+
+        expect(document.body.textContent).toContain("One");
+        expect(document.body.textContent).toContain("Two");
+    });
+
     it("adds the next page to the list", async () => {
         formService.getPublicLinkedItems
             .mockResolvedValueOnce(page([one], 2))
