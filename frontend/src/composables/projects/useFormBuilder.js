@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { ref, onMounted, watch } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { t } from "@/i18n/index.js";
 import formService from "@/services/formService";
@@ -9,7 +9,12 @@ import { useAlertStore } from "@/store/alerts";
 import { useSettingsStore } from "@/store/settings";
 import { useWorkspaceStore } from "@/store/workspaces";
 import { extractErrorMessage } from "@/utils/errors";
-import { emptyFormData, normalizeFormData, mergeFormFields } from "@/utils/projects/forms";
+import {
+    emptyFormData,
+    incompleteConditionFields,
+    normalizeFormData,
+    mergeFormFields,
+} from "@/utils/projects/forms";
 import { workspaceTables } from "@/utils/projects/tree";
 
 export function useFormBuilder() {
@@ -24,6 +29,13 @@ export function useFormBuilder() {
     const headers = ref([]);
     const status = ref("loading");
     const saving = ref(false);
+    const conditionsChecked = ref(false);
+
+    // Flagged only once a save was tried, so a condition being set up is not
+    // marked as wrong.
+    const incompleteFields = computed(() =>
+        conditionsChecked.value ? incompleteConditionFields(formFields.value) : [],
+    );
 
     let loadRequest = 0;
 
@@ -52,6 +64,7 @@ export function useFormBuilder() {
 
         formData.value = emptyFormData(id, tid);
         formFields.value = [];
+        conditionsChecked.value = false;
 
         if (!settingsStore.getLicenseFeature("forms")) {
             status.value = "unlicensed";
@@ -98,6 +111,16 @@ export function useFormBuilder() {
         formFields.value = fields;
     }
 
+    function checkConditions() {
+        conditionsChecked.value = true;
+
+        if (incompleteFields.value.length === 0) return true;
+
+        alertStore.showError(t.value("projects.form_view.error.incomplete_conditions"));
+
+        return false;
+    }
+
     function payloadFields() {
         return formFields.value.map((f, i) => ({ ...f, sort_order: i }));
     }
@@ -109,6 +132,8 @@ export function useFormBuilder() {
     }
 
     async function updateForm() {
+        if (!checkConditions()) return;
+
         saving.value = true;
         try {
             const { data } = await formService.updateForm(
@@ -130,6 +155,8 @@ export function useFormBuilder() {
     }
 
     async function createForm(name) {
+        if (!checkConditions()) return false;
+
         saving.value = true;
         try {
             const { data } = await formService.createForm(
@@ -175,7 +202,9 @@ export function useFormBuilder() {
         headers,
         status,
         saving,
+        incompleteFields,
         load,
+        checkConditions,
         updateSettings,
         updateField,
         reorderFields,

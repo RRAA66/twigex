@@ -94,6 +94,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 :fields="fields"
                 :workspace-id="workspaceId"
                 :table-id="tableId"
+                :incomplete="incomplete"
                 @update="emit('update', { visibility_rule: $event })"
             />
         </div>
@@ -101,7 +102,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { computed, ref, useId } from "vue";
+import { computed, ref, useId, watch } from "vue";
 import { Bars2Icon, ChevronRightIcon } from "@heroicons/vue/24/outline";
 import { t } from "@/i18n/index.js";
 import BaseCheckbox from "@/components/BaseCheckbox.vue";
@@ -130,6 +131,10 @@ const props = defineProps({
         type: String,
         required: true,
     },
+    incomplete: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const emit = defineEmits(["update"]);
@@ -141,6 +146,14 @@ const inputClass =
     "mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6";
 
 const expanded = ref(false);
+
+watch(
+    () => props.incomplete,
+    (incomplete) => {
+        if (incomplete) expanded.value = true;
+    },
+    { immediate: true },
+);
 
 const isNameField = computed(() => props.field.header_name === "name");
 

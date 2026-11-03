@@ -61,12 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 >
                     {{ t("projects.form_view.action.share") }}
                 </BaseButton>
-                <BaseButton
-                    v-if="canUpdateForm"
-                    size="small"
-                    :is-loading="saving"
-                    @click="updateForm"
-                >
+                <BaseButton v-if="canUpdateForm" size="small" :is-loading="saving" @click="update">
                     {{ t("projects.form_view.action.update") }}
                 </BaseButton>
                 <BaseButton
@@ -74,7 +69,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     size="small"
                     variant="secondary"
                     :is-disabled="saving"
-                    @click="dialogMode = 'saveAsNew'"
+                    @click="openNameDialog('saveAsNew')"
                 >
                     {{ t("projects.form_view.action.save_as_new") }}
                 </BaseButton>
@@ -83,7 +78,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 v-else-if="canCreateForm"
                 size="small"
                 :is-disabled="saving"
-                @click="dialogMode = 'create'"
+                @click="openNameDialog('create')"
             >
                 {{ t("projects.form_view.action.save") }}
             </BaseButton>
@@ -94,6 +89,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             :form="formData"
             :fields="formFields"
             :headers="headers"
+            :incomplete-fields="incompleteFields"
             @change-settings="updateSettings"
             @change-field="updateField"
             @reorder="reorderFields"
@@ -157,7 +153,9 @@ const {
     headers,
     status,
     saving,
+    incompleteFields,
     load,
+    checkConditions,
     updateSettings,
     updateField,
     reorderFields,
@@ -183,6 +181,23 @@ const canUpdateForm = computed(
 const dialogMode = ref(null);
 const activeTab = ref("build");
 const shareOpen = ref(false);
+
+// An incomplete condition is flagged on the build tab, so that is shown.
+function conditionsReady() {
+    if (checkConditions()) return true;
+
+    activeTab.value = "build";
+
+    return false;
+}
+
+function update() {
+    if (conditionsReady()) updateForm();
+}
+
+function openNameDialog(mode) {
+    if (conditionsReady()) dialogMode.value = mode;
+}
 
 async function createWithName(name) {
     if (await createForm(name)) dialogMode.value = null;

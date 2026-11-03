@@ -41,6 +41,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         :fields="fields"
                         :workspace-id="form.workspace_id"
                         :table-id="form.table_id"
+                        :incomplete="incompleteFields.includes(element.header_name)"
                         @update="emit('change-field', element.header_name, $event)"
                     />
                 </template>
@@ -68,6 +69,10 @@ const props = defineProps({
         required: true,
     },
     headers: {
+        type: Array,
+        default: () => [],
+    },
+    incompleteFields: {
         type: Array,
         default: () => [],
     },

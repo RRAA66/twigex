@@ -178,6 +178,20 @@ export function conditionValueWidget(field, operator) {
     return WIDGET_BY_TYPE[formFieldType(field)] || "text";
 }
 
+// The fields whose condition lacks a field to watch or a value to compare,
+// which the server would refuse.
+export function incompleteConditionFields(fields) {
+    return fields
+        .filter((f) => {
+            const rule = f.visibility_rule;
+
+            if (!rule) return false;
+
+            return !rule.trigger_field || (conditionNeedsValue(rule.operator) && !rule.value);
+        })
+        .map((f) => f.header_name);
+}
+
 // Reads a value as SubmitForm does: a link as the ids of its rows, a checkbox
 // as checked or not.
 function conditionValues(field, value) {

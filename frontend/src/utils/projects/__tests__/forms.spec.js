@@ -11,6 +11,7 @@ import {
     formFieldType,
     formSubmitFields,
     headerLabel,
+    incompleteConditionFields,
     linkedTableId,
     mergeFormFields,
     missingRequiredFields,
@@ -370,5 +371,20 @@ describe("conditionValueWidget", () => {
         expect(conditionValueWidget(field, "contains")).toBe("text");
         expect(conditionValueWidget(field, "is_empty")).toBe("none");
         expect(conditionValueWidget(field, "is_not_empty")).toBe("none");
+    });
+});
+
+describe("incompleteConditionFields", () => {
+    it("names the fields whose condition lacks a field or a value", () => {
+        const rule = (trigger_field, operator, value) => ({ trigger_field, operator, value });
+        const fields = [
+            { header_name: "plain", visibility_rule: null },
+            { header_name: "no_field", visibility_rule: rule("", "equals", "x") },
+            { header_name: "no_value", visibility_rule: rule("name", "equals", "") },
+            { header_name: "empty_check", visibility_rule: rule("name", "is_empty", "") },
+            { header_name: "done", visibility_rule: rule("name", "equals", "x") },
+        ];
+
+        expect(incompleteConditionFields(fields)).toEqual(["no_field", "no_value"]);
     });
 });

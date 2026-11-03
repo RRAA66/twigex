@@ -6,6 +6,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import BaseSelect from "@/components/BaseSelect.vue";
 import FormViewFieldCondition from "@/components/Projects/Form/FormViewFieldCondition.vue";
+import FormViewFieldRow from "@/components/Projects/Form/FormViewFieldRow.vue";
 import workspaceService from "@/services/workspaceService";
 
 vi.mock("@/services/workspaceService", () => ({
@@ -107,6 +108,28 @@ describe("FormViewFieldCondition", () => {
         expect(w.emitted("update")[0]).toEqual([
             { trigger_field: "status", operator: "is_empty", value: "" },
         ]);
+        w.unmount();
+    });
+});
+
+describe("FormViewFieldRow with an incomplete condition", () => {
+    it("opens and says what is missing, and sends a change as the row's update", async () => {
+        const field = {
+            header_name: "reason",
+            visible: true,
+            column_position: "full",
+            visibility_rule: { trigger_field: "", operator: "equals", value: "" },
+        };
+        const w = mountWith(FormViewFieldRow, { field, fields: [status, field], incomplete: true });
+
+        expect(w.text()).toContain("Choose a field and a value for this condition");
+
+        await w
+            .findComponent(FormViewFieldCondition)
+            .find("input[type='checkbox']")
+            .setValue(false);
+
+        expect(w.emitted("update").at(-1)).toEqual([{ visibility_rule: null }]);
         w.unmount();
     });
 });

@@ -155,4 +155,31 @@ describe("useFormBuilder", () => {
 
         expect(builder.formFields.value).toEqual([]);
     });
+
+    it("flags an incomplete condition and sends nothing until it is finished", async () => {
+        formService.getForm.mockResolvedValue({ data: { id: "f1", name: "Intake", fields: [] } });
+        formService.updateForm.mockResolvedValue({ data: { id: "f1", name: "Intake" } });
+        const { builder } = await mountBuilder("/p/w1/form/t1/view/f1");
+
+        builder.updateField("name", {
+            visibility_rule: { trigger_field: "", operator: "equals", value: "" },
+        });
+
+        expect(builder.incompleteFields.value).toEqual([]);
+
+        await builder.updateForm();
+
+        expect(formService.updateForm).not.toHaveBeenCalled();
+        expect(builder.incompleteFields.value).toEqual(["name"]);
+        expect(await builder.createForm("Copy")).toBe(false);
+        expect(formService.createForm).not.toHaveBeenCalled();
+
+        builder.updateField("name", { visibility_rule: null });
+
+        expect(builder.incompleteFields.value).toEqual([]);
+
+        await builder.updateForm();
+
+        expect(formService.updateForm).toHaveBeenCalledTimes(1);
+    });
 });

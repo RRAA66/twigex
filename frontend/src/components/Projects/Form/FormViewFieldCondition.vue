@@ -36,6 +36,9 @@ SPDX-License-Identifier: AGPL-3.0-only
                 @update:model-value="change({ value: $event })"
             />
         </div>
+        <p v-if="incomplete" class="text-sm text-red-600">
+            {{ t("projects.form_view.field.condition_incomplete") }}
+        </p>
     </div>
 </template>
 
@@ -56,6 +59,7 @@ const props = defineProps({
     fields: { type: Array, default: () => [] },
     workspaceId: { type: String, required: true },
     tableId: { type: String, required: true },
+    incomplete: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update"]);
