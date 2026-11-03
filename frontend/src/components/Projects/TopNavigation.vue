@@ -66,7 +66,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 </BaseButton>
 
                 <BaseButton
-                    v-if="route.name !== 'gantt-view' && route.name !== 'calendar-view'"
+                    v-if="!['gantt-view', 'calendar-view', ...FORM_ROUTES].includes(route.name)"
                     type="button"
                     size="small"
                     variant="secondary"
@@ -528,6 +528,7 @@ import {
     TableCellsIcon,
     ViewColumnsIcon,
     CalendarDaysIcon,
+    DocumentTextIcon,
 } from "@heroicons/vue/24/outline";
 
 const gridViewDialog = ref(false);
@@ -555,9 +556,22 @@ const ALL_VIEW_TYPES = [
         color: "#be185d",
         bg: "#fce7f3",
     },
+    {
+        type: "form",
+        get label() {
+            return t.value("projects.form_view.view_type");
+        },
+        icon: DocumentTextIcon,
+        color: "#15803d",
+        bg: "#dcfce7",
+    },
 ];
 
-const CREATABLE_VIEW_TYPES = ALL_VIEW_TYPES.filter((vt) => ["grid", "kanban"].includes(vt.type));
+const CREATABLE_VIEW_TYPES = ALL_VIEW_TYPES.filter((vt) =>
+    ["grid", "kanban", "form"].includes(vt.type),
+);
+
+const FORM_ROUTES = ["form-view", "form-view-create"];
 
 const router = useRouter();
 const route = useRoute();
@@ -689,6 +703,8 @@ function isTypeActive(type) {
             return route.name === "gantt-view";
         case "calendar":
             return route.name === "calendar-view";
+        case "form":
+            return FORM_ROUTES.includes(route.name);
         default:
             return false;
     }
@@ -733,6 +749,12 @@ async function createView(type) {
             await router.push({
                 name: "calendar-view",
                 params: { id: routeId, tid: routeTid, fid: "calendar" },
+            });
+            break;
+        case "form":
+            await router.push({
+                name: "form-view-create",
+                params: { id: routeId, tid: routeTid },
             });
             break;
     }
@@ -1071,6 +1093,7 @@ const VIEW_ROUTES = {
     kanban: "kanban-view",
     gantt: "gantt-view",
     calendar: "calendar-view",
+    form: "form-view",
 };
 
 async function navigateToView(view, newView) {
