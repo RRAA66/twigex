@@ -109,6 +109,16 @@ func TestGetFormByTokenOnlyFindsActiveForms(t *testing.T) {
 	}
 }
 
+func TestGetFormByTokenOnADeletedTableIsNil(t *testing.T) {
+	w := setupFormSubmit(t)
+	mustExec(t, "UPDATE workspace_tables SET deleted_at = 5 WHERE id = 't-a'")
+
+	form, err := w.GetFormByToken(context.Background(), "token-1")
+	if err != nil || form != nil {
+		t.Errorf("token-1 = %+v, %v; want nil for a form on a deleted table", form, err)
+	}
+}
+
 func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 	w := setupFormSubmit(t)
 
