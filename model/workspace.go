@@ -139,7 +139,6 @@ type WorkspaceMember struct {
 	UserInfo         User              `json:"user_info"`
 }
 
-// TableIcons are the icons a table can show instead of the default one.
 var TableIcons = map[string]bool{
 	"DocumentIcon": true, "TableCellsIcon": true, "ChartBarIcon": true, "CalendarIcon": true,
 	"ListBulletIcon": true, "ClipboardDocumentListIcon": true, "CircleStackIcon": true,
