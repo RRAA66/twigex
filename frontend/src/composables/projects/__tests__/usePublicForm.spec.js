@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { defineComponent } from "vue";
+import { defineComponent, nextTick } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { close, initialize } from "@/js/websocket";
@@ -95,6 +95,16 @@ describe("usePublicForm", () => {
         expect(formService.submitPublicForm).not.toHaveBeenCalled();
         expect(Object.keys(state.fieldErrors.value)).toEqual(["name"]);
         expect(state.submitted.value).toBe(false);
+    });
+
+    it("clears a required field's error once it is filled in", async () => {
+        const { state } = await setup();
+
+        await state.submit();
+        state.values.value = { ...state.values.value, name: "Order" };
+        await nextTick();
+
+        expect(state.fieldErrors.value).toEqual({});
     });
 
     it("sends the visible fields with the honeypot and thanks the user", async () => {

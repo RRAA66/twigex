@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { computed, onUnmounted, ref, toValue } from "vue";
+import { computed, onUnmounted, ref, toValue, watch } from "vue";
 import { t } from "@/i18n/index.js";
 import { close, initialize, onProjectChange } from "@/js/websocket";
 import formService from "@/services/formService";
@@ -92,6 +92,16 @@ export function usePublicForm(token, { live = false } = {}) {
         }
     }
 
+    function clearFilledErrors() {
+        if (Object.keys(fieldErrors.value).length === 0) return;
+
+        const missing = new Set(missingRequiredFields(fields.value, values.value));
+
+        fieldErrors.value = Object.fromEntries(
+            Object.entries(fieldErrors.value).filter(([name]) => missing.has(name)),
+        );
+    }
+
     function startOver() {
         values.value = {};
         fieldErrors.value = {};
@@ -99,6 +109,8 @@ export function usePublicForm(token, { live = false } = {}) {
         submitted.value = false;
         configChanged.value = false;
     }
+
+    watch(values, clearFilledErrors, { deep: true });
 
     if (live) {
         initialize();
