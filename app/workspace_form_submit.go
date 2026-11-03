@@ -260,8 +260,8 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	return submissions, nil
 }
 
-// getFormByToken refuses anyone not logged in: anonymous access is disabled
-// for every form for now, whatever its RequiresLogin says.
+// getFormByToken serves only members of the form's workspace: anonymous
+// access is disabled for every form for now, whatever its RequiresLogin says.
 func (a *App) getFormByToken(ctx context.Context, token string, user *model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
 	if user == nil {
 		return nil, model.NewAppError("workspace.form_login_required", http.StatusUnauthorized)
@@ -279,6 +279,10 @@ func (a *App) getFormByToken(ctx context.Context, token string, user *model.User
 
 	if form == nil {
 		return nil, model.NewAppError("workspace.form_not_found", http.StatusNotFound)
+	}
+
+	if !a.IsWorkspaceMemberOrGroupMember(form.WorkspaceID, user.ID) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
 	return form, nil

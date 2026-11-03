@@ -28,6 +28,10 @@ type fakeFormSubmitStore struct {
 	linkedLimit    int
 }
 
+func (f *fakeFormSubmitStore) IsMember(_, userID string) (bool, error) {
+	return userID != outsider.ID, nil
+}
+
 func (f *fakeFormSubmitStore) GetFormByToken(_ context.Context, token string) (*model.WorkspaceFormWithFields, error) {
 	for _, form := range f.forms {
 		if form.PublicToken == token && form.Active {
@@ -137,6 +141,8 @@ func (f *fakeFormAuthCounter) Incr(key string, _ time.Duration) (int64, error) {
 }
 
 var submitter = &model.User{ID: "submitter", Role: model.SystemUserRoleId}
+
+var outsider = &model.User{ID: "outsider", Role: model.SystemUserRoleId}
 
 func submitApp(fields ...model.WorkspaceFormField) (*App, *fakeFormSubmitStore, *fakeFormUserStore) {
 	a, forms := formApp(workspaceAdminAccess(), true)
@@ -514,5 +520,21 @@ func TestFormSubmissionsOfAnotherTableIsNotFound(t *testing.T) {
 				t.Fatalf("want 404, got %v", appErr)
 			}
 		})
+	}
+}
+
+func TestPublicFormIsOnlyForWorkspaceMembers(t *testing.T) {
+	a, ws, _ := submitApp(textField("name", false))
+
+	if _, appErr := a.GetPublicForm(context.Background(), "token-1", outsider); appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("open: want 403, got %v", appErr)
+	}
+
+	if _, appErr := submit(a, outsider, model.FormValue{Name: "name", Value: "Order"}); appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("submit: want 403, got %v", appErr)
+	}
+
+	if len(ws.created) != 0 {
+		t.Errorf("created %d rows, want none", len(ws.created))
 	}
 }
