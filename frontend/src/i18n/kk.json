@@ -2396,5 +2396,8 @@
     "login.password_reset.requirements": "Құпия сөзге қойылатын талаптар:",
     "chat.access_restricted.description": "Сізде чатқа кіру рұқсаты жоқ. Қатынас сұрау үшін әкімшіңізге хабарласыңыз.",
     "files.access_restricted.description": "Сізде файлдарды көру рұқсаты жоқ. Қатынас сұрау үшін әкімшіңізге хабарласыңыз.",
-    "collimato.access_restricted.description": "Сізде Collimato-ға кіру рұқсаты жоқ. Қатынас сұрау үшін әкімшіңізге хабарласыңыз."
+    "collimato.access_restricted.description": "Сізде Collimato-ға кіру рұқсаты жоқ. Қатынас сұрау үшін әкімшіңізге хабарласыңыз.",
+    "projects.table_icon.change": "Белгішені өзгерту",
+    "projects.table_icon.option": "Белгіше {number}",
+    "projects.table_icon.update_failed": "Кесте белгішесін өзгерту мүмкін болмады."
 }

@@ -1,0 +1,61 @@
+// Copyright (c) 2022 Twigex, SIA.
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import {
+    BoltIcon,
+    BookOpenIcon,
+    CalendarIcon,
+    ChartBarIcon,
+    CircleStackIcon,
+    ClipboardDocumentListIcon,
+    DocumentIcon,
+    FireIcon,
+    FlagIcon,
+    GlobeAltIcon,
+    HomeIcon,
+    ListBulletIcon,
+    MapPinIcon,
+    NumberedListIcon,
+    PhotoIcon,
+    PresentationChartBarIcon,
+    QueueListIcon,
+    RectangleStackIcon,
+    ServerIcon,
+    SparklesIcon,
+    Squares2X2Icon,
+    StarIcon,
+    TableCellsIcon,
+    TagIcon,
+    UserCircleIcon,
+} from "@heroicons/vue/24/outline";
+
+// The server accepts only these names (model.TableIcons).
+const tableIcons = {
+    TableCellsIcon,
+    DocumentIcon,
+    ChartBarIcon,
+    CalendarIcon,
+    ListBulletIcon,
+    ClipboardDocumentListIcon,
+    CircleStackIcon,
+    ServerIcon,
+    BookOpenIcon,
+    SparklesIcon,
+    Squares2X2Icon,
+    RectangleStackIcon,
+    QueueListIcon,
+    PresentationChartBarIcon,
+    NumberedListIcon,
+    FlagIcon,
+    StarIcon,
+    BoltIcon,
+    UserCircleIcon,
+    MapPinIcon,
+    GlobeAltIcon,
+    PhotoIcon,
+    TagIcon,
+    FireIcon,
+    HomeIcon,
+};
+
+export { tableIcons };

@@ -2900,6 +2900,35 @@ func (a *App) UpdateWorkspaceTable(ctx context.Context, workspaceID, tableID, na
 	return data, nil
 }
 
+func (a *App) UpdateTableIcon(ctx context.Context, workspaceID, tableID, icon string, user model.User) *model.AppError {
+	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceTable) &&
+		!a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionCreateFields, model.PermissionCreateFields) {
+		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if icon != "" && !model.TableIcons[icon] {
+		return model.NewAppError("request.invalid", http.StatusBadRequest)
+	}
+
+	ctx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	if err := a.Store.Workspace.UpdateTableIcon(ctx, workspaceID, tableID, icon); err != nil {
+		tlog.Errorw("Failed to update table icon",
+			"workspace_id", workspaceID,
+			"table_id", tableID,
+			"error", err,
+		)
+
+		return model.NewAppError("workspace.table_update_failed", http.StatusInternalServerError)
+	}
+
+	a.publishProjectChange(ctx, projectChange{kind: "UPDATE_TABLE_ICON", workspaceID: workspaceID, tableID: tableID,
+		data: map[string]any{"data": map[string]any{"id": tableID, "icon": icon}}})
+
+	return nil
+}
+
 // UpdateWorkspace renames a workspace and, when description is not nil,
 // replaces its description.
 func (a *App) UpdateWorkspace(workspaceID, name string, description *string, user model.User) (*string, *model.AppError) {
@@ -4907,8 +4936,8 @@ func (a *App) requireViewAccess(ctx context.Context, userID, viewID string) *mod
 	return model.NewAppError("workspace.view_or_field_not_found", http.StatusNotFound)
 }
 
-func (a *App) hydrateWorkspaceTables(workspaceID, userID string, assignedOnlyTables map[string]bool, va interfaces.WorkspaceAccess, navOnly bool, pageNum, pageLimit int) ([]model.WorkspaceTable, error) {
-	rawTables, err := a.Store.Workspace.GetTableList(workspaceID, userID)
+func (a *App) hydrateWorkspaceTables(ctx context.Context, workspaceID, userID string, assignedOnlyTables map[string]bool, va interfaces.WorkspaceAccess, navOnly bool, pageNum, pageLimit int) ([]model.WorkspaceTable, error) {
+	rawTables, err := a.Store.Workspace.GetTableList(ctx, workspaceID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -5215,7 +5244,7 @@ func (a *App) filterTablesByPerTableModeFromInput(in interfaces.AccessInput, tab
 	return a.resolveAccess(in).VisibleTables(tables)
 }
 
-func (a *App) GetWorkspaceTables(workspaceID string, user model.User, data string, pageNum, pageLimit int) ([]model.WorkspaceTable, *model.AppError) {
+func (a *App) GetWorkspaceTables(ctx context.Context, workspaceID string, user model.User, data string, pageNum, pageLimit int) ([]model.WorkspaceTable, *model.AppError) {
 	// Only the navigation form or one page of each table: the rows of a whole
 	// workspace are too large to send.
 	const maxWorkspaceTablesPage = 500
@@ -5227,11 +5256,14 @@ func (a *App) GetWorkspaceTables(workspaceID string, user model.User, data strin
 	pageLimit = min(pageLimit, maxWorkspaceTablesPage)
 	pageNum = max(pageNum, 1)
 
+	ctx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
 	in := a.buildAccessInput(user, workspaceID)
 	assignedOnlyTables := a.buildAssignedOnlyMapFromInput(user, workspaceID, in)
 	va := a.buildViewAccessStateFromInput(user, in)
 
-	tables, err := a.hydrateWorkspaceTables(workspaceID, user.ID, assignedOnlyTables, va, navOnly, pageNum, pageLimit)
+	tables, err := a.hydrateWorkspaceTables(ctx, workspaceID, user.ID, assignedOnlyTables, va, navOnly, pageNum, pageLimit)
 	if err != nil {
 		tlog.Errorw("Failed to get workspace tables", "workspace_id", workspaceID, "error", err)
 		return nil, model.NewAppError("workspace.tables_retrieval_failed", http.StatusInternalServerError)
@@ -5483,7 +5515,10 @@ func buildFolderStructure(rawFolders []model.WorkspaceFolder, tables []model.Wor
 	return build("")
 }
 
-func (a *App) GetProjectWorkspaceDetails(user model.User, workspaceID string) (*model.Workspace, *model.AppError) {
+func (a *App) GetProjectWorkspaceDetails(ctx context.Context, user model.User, workspaceID string) (*model.Workspace, *model.AppError) {
+	ctx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
 	workspace, err := a.Store.Workspace.GetRow(workspaceID)
 	if err != nil {
 		tlog.Errorw("Failed to get workspace row", "workspace_id", workspaceID, "error", err)
@@ -5517,7 +5552,7 @@ func (a *App) GetProjectWorkspaceDetails(user model.User, workspaceID string) (*
 	}()
 	go func() {
 		defer wg.Done()
-		tables, tablesErr = a.hydrateWorkspaceTables(workspaceID, user.ID, assignedOnlyTables, va, true, 0, 0)
+		tables, tablesErr = a.hydrateWorkspaceTables(ctx, workspaceID, user.ID, assignedOnlyTables, va, true, 0, 0)
 	}()
 	wg.Wait()
 

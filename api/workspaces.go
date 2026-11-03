@@ -74,6 +74,7 @@ func (a *API) initWorkspaces() {
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/view/{view_id}/filter", a.getFilteredTableData)
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/update", a.updateWorkspace)
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/update", a.updateWorkspaceTable)
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/icon", a.updateTableIcon).Methods("PATCH")
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/folder/{folder_id}/delete", a.deleteWorkspaceFolder)
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/folder/{folder_id}/linking-tables", a.getLinkingTables).Methods("GET")
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/linking-tables", a.getLinkingTables).Methods("GET")
@@ -806,6 +807,30 @@ func (a *API) updateWorkspaceTable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, data)
+}
+
+func (a *API) updateTableIcon(w http.ResponseWriter, r *http.Request) {
+	user, appErr := a.app.GetCurrentUser(r)
+	if appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
+	var s struct {
+		Icon string `json:"icon"`
+	}
+	if !decodeBody(w, r, &s) {
+		return
+	}
+
+	params := mux.Vars(r)
+
+	if appErr := a.app.UpdateTableIcon(r.Context(), params["id"], params["tid"], s.Icon, *user); appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (a *API) updateWorkspace(w http.ResponseWriter, r *http.Request) {
@@ -2170,7 +2195,7 @@ func (a *API) getWorkspaceTables(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	pageNum := parse.Int(r.URL.Query().Get("page"), 1)
 	pageLimit := parse.Int(r.URL.Query().Get("limit"), 0)
-	workspaceTables, appErr := a.app.GetWorkspaceTables(params["id"], *user, params["data"], pageNum, pageLimit)
+	workspaceTables, appErr := a.app.GetWorkspaceTables(r.Context(), params["id"], *user, params["data"], pageNum, pageLimit)
 	if appErr != nil {
 		respondAppError(w, r, appErr)
 		return
@@ -2284,7 +2309,7 @@ func (a *API) getProjectWorkspaceDetails(w http.ResponseWriter, r *http.Request)
 
 	params := mux.Vars(r)
 
-	workspaces, appErr := a.app.GetProjectWorkspaceDetails(*user, params["id"])
+	workspaces, appErr := a.app.GetProjectWorkspaceDetails(r.Context(), *user, params["id"])
 	if appErr != nil {
 		respondAppError(w, r, appErr)
 		return

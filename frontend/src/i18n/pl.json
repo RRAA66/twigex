@@ -2396,5 +2396,8 @@
     "login.password_reset.requirements": "Wymagania dotyczące hasła:",
     "chat.access_restricted.description": "Nie masz uprawnień, aby korzystać z czatu. Skontaktuj się z administratorem, aby poprosić o dostęp.",
     "files.access_restricted.description": "Nie masz uprawnień, aby wyświetlać pliki. Skontaktuj się z administratorem, aby poprosić o dostęp.",
-    "collimato.access_restricted.description": "Nie masz uprawnień, aby korzystać z Collimato. Skontaktuj się z administratorem, aby poprosić o dostęp."
+    "collimato.access_restricted.description": "Nie masz uprawnień, aby korzystać z Collimato. Skontaktuj się z administratorem, aby poprosić o dostęp.",
+    "projects.table_icon.change": "Zmień ikonę",
+    "projects.table_icon.option": "Ikona {number}",
+    "projects.table_icon.update_failed": "Nie udało się zmienić ikony tabeli."
 }

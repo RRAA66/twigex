@@ -172,6 +172,15 @@ export function navigationChanges(ctx) {
         }
     }
 
+    function onUpdateTableIcon(fromSocket) {
+        if (fromSocket.client_id === workspaceStore.getConnectionID || !fromSocket.data?.id) return;
+        workspaceStore.setTableIcon(
+            fromSocket.workspace_id,
+            fromSocket.data.id,
+            fromSocket.data.icon,
+        );
+    }
+
     function onMoveItem(fromSocket) {
         if (fromSocket.client_id != workspaceStore.getConnectionID && foldersStore.value?.length) {
             moveTreeNode(
@@ -294,6 +303,7 @@ export function navigationChanges(ctx) {
         onDeleteTable,
         onCreateFolder,
         onUpdateTableName,
+        onUpdateTableIcon,
         onMoveItem,
         onUpdateFolderName,
         onUpdateTables,

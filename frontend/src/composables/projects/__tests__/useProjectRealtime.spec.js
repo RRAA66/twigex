@@ -107,6 +107,13 @@ describe("useProjectRealtime", () => {
         expect(store.getKanbanTaskList.map((c) => c.tasks.map((t) => t.id))).toEqual([[], ["a"]]);
     });
 
+    it("shows a table icon another tab chose", () => {
+        store.setWorkspaceFolders([{ id: "f1", isFolder: true, children: [{ id: "t1" }] }]);
+        deliver(change({ type: "UPDATE_TABLE_ICON", data: { id: "t1", icon: "StarIcon" } }));
+
+        expect(store.getWorkspaceFolders[0].children[0].icon).toBe("StarIcon");
+    });
+
     it("renames a folder in the navigation", async () => {
         store.setWorkspaceFolders([{ id: "f1", name: "Old" }]);
         deliver(change({ type: "UPDATE_FOLDER_NAME", folder_id: "f1", data: { name: "New" } }));

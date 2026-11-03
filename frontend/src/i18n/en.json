@@ -2396,5 +2396,8 @@
     "login.password_reset.requirements": "Password requirements:",
     "chat.access_restricted.description": "You don't have permission to access chat. Contact your administrator to request access.",
     "files.access_restricted.description": "You don't have permission to view files. Contact your administrator to request access.",
-    "collimato.access_restricted.description": "You don't have permission to access Collimato. Contact your administrator to request access."
+    "collimato.access_restricted.description": "You don't have permission to access Collimato. Contact your administrator to request access.",
+    "projects.table_icon.change": "Change icon",
+    "projects.table_icon.option": "Icon {number}",
+    "projects.table_icon.update_failed": "Failed to change the table icon."
 }

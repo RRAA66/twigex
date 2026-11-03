@@ -2396,5 +2396,8 @@
     "login.password_reset.requirements": "Paroles prasības:",
     "chat.access_restricted.description": "Jums nav atļaujas piekļūt tērzēšanai. Sazinieties ar administratoru, lai pieprasītu piekļuvi.",
     "files.access_restricted.description": "Jums nav atļaujas skatīt failus. Sazinieties ar administratoru, lai pieprasītu piekļuvi.",
-    "collimato.access_restricted.description": "Jums nav atļaujas piekļūt Collimato. Sazinieties ar administratoru, lai pieprasītu piekļuvi."
+    "collimato.access_restricted.description": "Jums nav atļaujas piekļūt Collimato. Sazinieties ar administratoru, lai pieprasītu piekļuvi.",
+    "projects.table_icon.change": "Mainīt ikonu",
+    "projects.table_icon.option": "Ikona {number}",
+    "projects.table_icon.update_failed": "Neizdevās nomainīt tabulas ikonu."
 }

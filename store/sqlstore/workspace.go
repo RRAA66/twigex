@@ -2526,9 +2526,9 @@ func (w *workspaceRepository) Delete(workspaceID string) (bool, error) {
 	return true, nil
 }
 
-func (w *workspaceRepository) GetTableList(workspaceID, userID string) ([]model.WorkspaceTable, error) {
-	rows, err := w.Db.Query(`
-		SELECT wt.id, wt.name, wt.display_name, wt.parent_table_id, wt.linked, wt.single_select, folder_id
+func (w *workspaceRepository) GetTableList(ctx context.Context, workspaceID, userID string) ([]model.WorkspaceTable, error) {
+	rows, err := w.Db.QueryContext(ctx, `
+		SELECT wt.id, wt.name, wt.display_name, wt.icon, wt.parent_table_id, wt.linked, wt.single_select, folder_id
 		FROM workspace_tables wt
 		WHERE wt.workspace_id = ? AND wt.deleted_at = 0
 		  AND (
@@ -2555,6 +2555,7 @@ func (w *workspaceRepository) GetTableList(workspaceID, userID string) ([]model.
 			&t.ID,
 			&t.Name,
 			&t.DisplayName,
+			&t.Icon,
 			&parentTableID,
 			&t.Linked,
 			&t.SingleSelect,
@@ -7698,4 +7699,10 @@ func (w *workspaceRepository) GetTablePermissionsForRoles(roleIDs []string, work
 	}
 
 	return perms, rows.Err()
+}
+
+func (w *workspaceRepository) UpdateTableIcon(ctx context.Context, workspaceID, tableID, icon string) error {
+	_, err := w.Db.ExecContext(ctx, `UPDATE workspace_tables SET icon = ? WHERE workspace_id = ? AND id = ?`, icon, workspaceID, tableID)
+
+	return err
 }
