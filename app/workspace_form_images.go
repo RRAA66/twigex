@@ -83,7 +83,7 @@ func (a *App) SetFormImage(ctx context.Context, workspaceID, tableID, formID, ki
 		ID:          model.NewID(),
 		WorkspaceID: workspaceID,
 		TableID:     tableID,
-		FieldID:     "form_" + kind,
+		FieldID:     formImageFieldID(kind),
 		TaskID:      formID,
 		UserID:      user.ID,
 		Name:        kind + ext,
@@ -218,4 +218,51 @@ func (a *App) formImageChanged(ctx context.Context, workspaceID, tableID, formID
 	a.publishFormChanged(ctx, workspaceID, tableID, formID)
 
 	return updated, nil
+}
+
+// formOfImage is the form whose cover or logo the attachment is, or nil.
+func (a *App) formOfImage(ctx context.Context, attachment *model.WorkspaceAttachment) *model.WorkspaceFormWithFields {
+	if attachment.FieldID != formImageFieldID(model.FormImageCover) && attachment.FieldID != formImageFieldID(model.FormImageLogo) {
+		return nil
+	}
+
+	form, err := a.Store.Workspace.GetForm(ctx, attachment.TaskID)
+	if err != nil {
+		tlog.Errorw("Failed to retrieve the form of an image",
+			"file_id", attachment.ID,
+			"error", err,
+		)
+		return nil
+	}
+
+	if form == nil || form.WorkspaceID != attachment.WorkspaceID || form.TableID != attachment.TableID {
+		return nil
+	}
+
+	if attachment.ID != form.CoverImage && attachment.ID != form.Logo {
+		return nil
+	}
+
+	return form
+}
+
+// requireFormOpen asks what opening the form by its link asks.
+func (a *App) requireFormOpen(ctx context.Context, user model.User, form *model.WorkspaceFormWithFields) *model.AppError {
+	if !a.IsWorkspaceMemberOrGroupMember(form.WorkspaceID, user.ID) {
+		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if appErr := a.requireViewAccess(ctx, user.ID, form.ID); appErr != nil {
+		return appErr
+	}
+
+	if !a.canReadTable(ctx, user, form.WorkspaceID, form.TableID) {
+		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	return nil
+}
+
+func formImageFieldID(kind string) string {
+	return "form_" + kind
 }

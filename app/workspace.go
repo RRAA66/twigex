@@ -4595,7 +4595,7 @@ func (a *App) GetWorkspaceTablesForRoleEditor(workspaceID string, user model.Use
 }
 
 func (a *App) DeleteWorkspaceAttachment(ctx context.Context, fileID, workspaceID string, user model.User) *model.AppError {
-	attachment, appErr := a.GetWorkspaceAttachment(fileID, workspaceID, user)
+	attachment, appErr := a.workspaceAttachment(fileID, workspaceID, user)
 	if appErr != nil {
 		return appErr
 	}
@@ -4655,7 +4655,49 @@ func (a *App) DeleteWorkspaceAttachment(ctx context.Context, fileID, workspaceID
 	return nil
 }
 
+// GetWorkspaceAttachment answers an attachment the user may open. A form's
+// cover and logo are shown to whoever may open the form, which includes
+// members through a group and members who see only their own tasks.
 func (a *App) GetWorkspaceAttachment(fileID, workspaceID string, user model.User) (*model.WorkspaceAttachment, *model.AppError) {
+	isMember, appErr := a.IsWorkspaceMember(workspaceID, user.ID)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	if !isMember && !a.IsWorkspaceMemberOrGroupMember(workspaceID, user.ID) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	attachment, appErr := a.getAttachment(fileID, workspaceID)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	ctx, cancel := a.dbCtx(context.Background())
+	defer cancel()
+
+	if form := a.formOfImage(ctx, attachment); form != nil {
+		if appErr := a.requireFormOpen(ctx, user, form); appErr != nil {
+			return nil, appErr
+		}
+
+		return attachment, nil
+	}
+
+	if !isMember {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if appErr := a.requireTaskAccess(user, workspaceID, attachment.TableID, attachment.TaskID); appErr != nil {
+		return nil, appErr
+	}
+
+	return attachment, nil
+}
+
+// workspaceAttachment is an attachment of a task the user, a member of the
+// workspace, may see.
+func (a *App) workspaceAttachment(fileID, workspaceID string, user model.User) (*model.WorkspaceAttachment, *model.AppError) {
 	isMember, appErr := a.IsWorkspaceMember(workspaceID, user.ID)
 	if appErr != nil {
 		return nil, appErr
@@ -4665,6 +4707,19 @@ func (a *App) GetWorkspaceAttachment(fileID, workspaceID string, user model.User
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
+	attachment, appErr := a.getAttachment(fileID, workspaceID)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	if appErr := a.requireTaskAccess(user, workspaceID, attachment.TableID, attachment.TaskID); appErr != nil {
+		return nil, appErr
+	}
+
+	return attachment, nil
+}
+
+func (a *App) getAttachment(fileID, workspaceID string) (*model.WorkspaceAttachment, *model.AppError) {
 	attachment, err := a.Store.Workspace.GetAttachment(fileID, workspaceID)
 	if err != nil {
 		tlog.Errorw("Failed to get workspace attachment", "file_id", fileID, "workspace_id", workspaceID, "error", err)
@@ -4673,10 +4728,6 @@ func (a *App) GetWorkspaceAttachment(fileID, workspaceID string, user model.User
 
 	if attachment == nil {
 		return nil, model.NewAppError("workspace.attachment_not_found", http.StatusNotFound)
-	}
-
-	if appErr := a.requireTaskAccess(user, workspaceID, attachment.TableID, attachment.TaskID); appErr != nil {
-		return nil, appErr
 	}
 
 	return attachment, nil

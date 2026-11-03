@@ -247,3 +247,71 @@ func TestDeleteFormRemovesItsImages(t *testing.T) {
 		t.Errorf("cover file is still there: %v", err)
 	}
 }
+
+// fakeFormImageReaders has the admin and "assigned" as direct members and
+// "grouped" as a member through a group only. Every row is someone else's.
+type fakeFormImageReaders struct {
+	*fakeFormImageStore
+	privateView bool
+}
+
+func (f *fakeFormImageReaders) IsMember(_, userID string) (bool, error) {
+	return userID == workspaceAdmin.ID || userID == "assigned", nil
+}
+
+func (f *fakeFormImageReaders) UserHasAnyGroupAccess(_, userID string) (bool, error) {
+	return userID == "grouped", nil
+}
+
+func (f *fakeFormImageReaders) GetTaskAssigneeID(string, string) (string, error) {
+	return "someone-else", nil
+}
+
+func (f *fakeFormImageReaders) IsTableSingleSelect(string) (bool, error) {
+	return false, nil
+}
+
+func (f *fakeFormImageReaders) GetViewSharedUserIDs(string) ([]string, error) {
+	return nil, nil
+}
+
+func (f *fakeFormImageReaders) GetViewVisibility(context.Context, string) (bool, string, error) {
+	return !f.privateView, "creator", nil
+}
+
+func TestFormImagesAreShownToWhoeverMayOpenTheForm(t *testing.T) {
+	a, ws, _ := imageApp(t)
+
+	cover, appErr := setImage(t, a, model.FormImageCover, "a.png", pngHeader)
+	if appErr != nil {
+		t.Fatalf("SetFormImage: %v", appErr)
+	}
+
+	ws.attachments["row-file"] = model.WorkspaceAttachment{ID: "row-file", WorkspaceID: wsID, TableID: tbl1, FieldID: "field-docs", TaskID: "task-1"}
+	ws.attachments["forged"] = model.WorkspaceAttachment{ID: "forged", WorkspaceID: wsID, TableID: tbl1, FieldID: "form_cover", TaskID: "task-1"}
+
+	readers := &fakeFormImageReaders{fakeFormImageStore: ws}
+	a.Store.Workspace = readers
+	a.WorkspaceRoles = assignedOnlyRoles{tables: map[string]bool{tbl1: true}}
+
+	for _, user := range []model.User{{ID: "grouped"}, {ID: "assigned"}} {
+		if _, appErr := a.GetWorkspaceAttachment(cover.CoverImage, wsID, user); appErr != nil {
+			t.Errorf("%s: cover refused with %v", user.ID, appErr)
+		}
+
+		for _, other := range []string{"row-file", "forged"} {
+			if _, appErr := a.GetWorkspaceAttachment(other, wsID, user); appErr == nil || appErr.Status != http.StatusForbidden {
+				t.Errorf("%s: %s answered %v, want 403", user.ID, other, appErr)
+			}
+		}
+	}
+
+	if _, appErr := a.GetWorkspaceAttachment(cover.CoverImage, wsID, *outsider); appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("outsider: cover answered %v, want 403", appErr)
+	}
+
+	readers.privateView = true
+	if _, appErr := a.GetWorkspaceAttachment(cover.CoverImage, wsID, model.User{ID: "grouped"}); appErr == nil {
+		t.Error("cover of a form in a private view was shown to a member it is not shared with")
+	}
+}

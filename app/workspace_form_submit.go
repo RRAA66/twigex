@@ -432,16 +432,8 @@ func (a *App) getFormByToken(ctx context.Context, token string, user *model.User
 		return nil, model.NewAppError("workspace.form_not_found", http.StatusNotFound)
 	}
 
-	if !a.IsWorkspaceMemberOrGroupMember(form.WorkspaceID, user.ID) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
-	}
-
-	if appErr := a.requireViewAccess(ctx, user.ID, form.ID); appErr != nil {
+	if appErr := a.requireFormOpen(ctx, *user, form); appErr != nil {
 		return nil, appErr
-	}
-
-	if !a.canReadTable(ctx, *user, form.WorkspaceID, form.TableID) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
 	return form, nil
