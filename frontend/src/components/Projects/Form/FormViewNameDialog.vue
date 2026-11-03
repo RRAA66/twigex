@@ -21,7 +21,11 @@ SPDX-License-Identifier: AGPL-3.0-only
         @confirm="emit('confirm', name.trim())"
         @close="emit('close')"
     >
+        <label :for="`${id}-name`" class="sr-only">
+            {{ t("projects.form_view.dialog.placeholder") }}
+        </label>
         <input
+            :id="`${id}-name`"
             v-model="name"
             type="text"
             class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
@@ -31,7 +35,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { ref, useId, watch } from "vue";
 import { t } from "@/i18n/index.js";
 import FormDialog from "@/components/FormDialog.vue";
 
@@ -51,6 +55,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["confirm", "close"]);
+
+const id = useId();
 
 const name = ref("");
 

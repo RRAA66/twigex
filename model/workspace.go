@@ -594,7 +594,6 @@ type WorkspaceForm struct {
 	Logo          string `json:"logo"`
 	AccentColor   string `json:"accent_color"`
 	PublicToken   string `json:"public_token"`
-	RequiresLogin bool   `json:"requires_login"`
 	Active        bool   `json:"active"`
 	CreatedBy     string `json:"created_by"`
 	CreatedAt     int64  `json:"created_at"`

@@ -15,7 +15,7 @@ import (
 // the tab.
 const formColumns = `id, workspace_id, table_id,
 	COALESCE((SELECT v.name FROM workspace_view v WHERE v.id = workspace_forms.id), workspace_forms.name), title, COALESCE(description, ''), COALESCE(cover_image, ''),
-	cover_position, COALESCE(logo, ''), COALESCE(accent_color, ''), public_token, requires_login, active,
+	cover_position, COALESCE(logo, ''), COALESCE(accent_color, ''), public_token, active,
 	created_by, created_at, updated_at`
 
 // CreateForm writes the form with the workspace_view row that shows it as a
@@ -40,11 +40,11 @@ func (w *workspaceRepository) CreateForm(ctx context.Context, form model.Workspa
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO workspace_forms
 		(id, workspace_id, table_id, name, title, description, cover_image, cover_position, logo, accent_color,
-		 public_token, requires_login, active, created_by, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 public_token, active, created_by, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		form.ID, form.WorkspaceID, form.TableID, form.Name, form.Title, form.Description,
 		form.CoverImage, form.CoverPosition, form.Logo, form.AccentColor,
-		form.PublicToken, form.RequiresLogin, form.Active, form.CreatedBy, form.CreatedAt, form.UpdatedAt,
+		form.PublicToken, form.Active, form.CreatedBy, form.CreatedAt, form.UpdatedAt,
 	)
 	if err != nil {
 		return err
@@ -70,7 +70,7 @@ func (w *workspaceRepository) getFormWhere(ctx context.Context, where, arg strin
 	err := w.Db.QueryRowContext(ctx, `SELECT `+formColumns+` FROM workspace_forms WHERE `+where, arg).Scan(
 		&form.ID, &form.WorkspaceID, &form.TableID, &form.Name, &form.Title, &form.Description,
 		&form.CoverImage, &form.CoverPosition, &form.Logo, &form.AccentColor, &form.PublicToken,
-		&form.RequiresLogin, &form.Active, &form.CreatedBy, &form.CreatedAt, &form.UpdatedAt,
+		&form.Active, &form.CreatedBy, &form.CreatedAt, &form.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -100,10 +100,10 @@ func (w *workspaceRepository) UpdateForm(ctx context.Context, form model.Workspa
 	_, err = tx.ExecContext(ctx, `
 		UPDATE workspace_forms
 		SET name = ?, title = ?, description = ?, cover_image = ?, cover_position = ?, logo = ?, accent_color = ?,
-		    requires_login = ?, active = ?, updated_at = ?
+		    active = ?, updated_at = ?
 		WHERE id = ?`,
 		form.Name, form.Title, form.Description, form.CoverImage, form.CoverPosition, form.Logo, form.AccentColor,
-		form.RequiresLogin, form.Active, form.UpdatedAt, form.ID,
+		form.Active, form.UpdatedAt, form.ID,
 	)
 	if err != nil {
 		return err
@@ -191,68 +191,35 @@ func (w *workspaceRepository) getFormFields(ctx context.Context, formID, tableID
 		return nil, err
 	}
 
-	for i, f := range fields {
-		if f.HeaderName == "" {
-			continue
-		}
-
-		field, err := w.getField(ctx, tableID, f.HeaderName)
-		if err != nil {
-			return nil, err
-		}
-
-		if field == nil {
-			continue
-		}
-
-		fields[i].FieldType = field.FieldType
-		fields[i].DisplayName = field.DisplayName
-
-		fields[i].LinkedID, fields[i].SingleSelect, fields[i].ParentTableID, err = w.getFieldLink(ctx, tableID, f.HeaderName)
-		if err != nil {
-			return nil, err
-		}
+	if len(fields) == 0 {
+		return fields, nil
 	}
 
-	return fields, nil
-}
-
-func (w *workspaceRepository) getField(ctx context.Context, tableID, fieldName string) (*model.WorkspaceFieldData, error) {
-	if system := model.SystemFieldData(tableID, fieldName); system != nil {
-		return system, nil
-	}
-
-	field := model.WorkspaceFieldData{TableID: tableID, Name: fieldName}
-	err := w.Db.QueryRowContext(ctx, `
-		SELECT field_type, COALESCE(field_display_name, '')
-		FROM workspace_fields
-		WHERE table_id = ? AND field_name = ? AND deleted_at = 0
-		LIMIT 1`, tableID, fieldName,
-	).Scan(&field.FieldType, &field.DisplayName)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
-
+	meta, err := w.GetTableHeaderMeta(tableID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &field, nil
-}
+	for i, f := range fields {
+		field := model.SystemFieldData(tableID, f.HeaderName)
+		if field == nil {
+			stored, ok := meta.Fields[f.HeaderName]
+			if !ok {
+				continue
+			}
 
-// getFieldLink returns the table a link field points to, or "" for a field
-// that is not a link.
-func (w *workspaceRepository) getFieldLink(ctx context.Context, tableID, fieldName string) (linkedID string, singleSelect bool, parentTableID string, err error) {
-	err = w.Db.QueryRowContext(ctx, `
-		SELECT r.linked_table_id, COALESCE(t.single_select, 0), COALESCE(t.parent_table_id, '')
-		FROM workspace_relationships r
-		LEFT JOIN workspace_tables t ON t.id = r.linked_table_id
-		WHERE r.table_id = ? AND r.table_name = ?
-		LIMIT 1`, tableID, fieldName,
-	).Scan(&linkedID, &singleSelect, &parentTableID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", false, "", nil
+			field = &stored
+		}
+
+		linkedID := meta.Links[f.HeaderName]
+		linked := meta.LinkedTables[linkedID]
+
+		fields[i].FieldType = field.FieldType
+		fields[i].DisplayName = field.DisplayName
+		fields[i].LinkedID = linkedID
+		fields[i].SingleSelect = linked.SingleSelect
+		fields[i].ParentTableID = linked.ParentTableID
 	}
 
-	return linkedID, singleSelect, parentTableID, err
+	return fields, nil
 }

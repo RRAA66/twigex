@@ -61,11 +61,16 @@ SPDX-License-Identifier: AGPL-3.0-only
                 >
                     {{ t("projects.form_view.action.share") }}
                 </BaseButton>
-                <BaseButton size="small" :is-loading="saving" @click="updateForm">
+                <BaseButton
+                    v-if="canUpdateForm"
+                    size="small"
+                    :is-loading="saving"
+                    @click="updateForm"
+                >
                     {{ t("projects.form_view.action.update") }}
                 </BaseButton>
                 <BaseButton
-                    v-if="rolesStore.hasPermissionToCreateWorkspaceView"
+                    v-if="canCreateForm"
                     size="small"
                     variant="secondary"
                     :is-disabled="saving"
@@ -74,7 +79,12 @@ SPDX-License-Identifier: AGPL-3.0-only
                     {{ t("projects.form_view.action.save_as_new") }}
                 </BaseButton>
             </template>
-            <BaseButton v-else size="small" :is-disabled="saving" @click="dialogMode = 'create'">
+            <BaseButton
+                v-else-if="canCreateForm"
+                size="small"
+                :is-disabled="saving"
+                @click="dialogMode = 'create'"
+            >
                 {{ t("projects.form_view.action.save") }}
             </BaseButton>
         </div>
@@ -84,6 +94,9 @@ SPDX-License-Identifier: AGPL-3.0-only
             :form="formData"
             :fields="formFields"
             :headers="headers"
+            @change-settings="updateSettings"
+            @change-field="updateField"
+            @reorder="reorderFields"
         />
         <div
             v-else-if="activeTab === 'preview'"
@@ -118,7 +131,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { LockClosedIcon } from "@heroicons/vue/24/outline";
 import { LinkIcon } from "@heroicons/vue/20/solid";
 import { t } from "@/i18n/index.js";
@@ -135,9 +149,36 @@ import FormViewSubmissions from "@/components/Projects/Form/FormViewSubmissions.
 
 const TABS = ["build", "preview", "submissions"];
 
+const route = useRoute();
 const rolesStore = useWorkspaceRolesStore();
-const { formData, formFields, headers, status, saving, load, updateForm, createForm } =
-    useFormBuilder();
+const {
+    formData,
+    formFields,
+    headers,
+    status,
+    saving,
+    load,
+    updateSettings,
+    updateField,
+    reorderFields,
+    updateForm,
+    createForm,
+} = useFormBuilder();
+
+// The server also lets a role that manages this table's views build its
+// forms, which only a per-table role can grant.
+const managesTableViews = computed(
+    () =>
+        rolesStore.perTableMode && rolesStore.hasTablePermission(route.params.tid, "manage_views"),
+);
+
+const canCreateForm = computed(
+    () => rolesStore.hasPermissionToCreateWorkspaceView || managesTableViews.value,
+);
+
+const canUpdateForm = computed(
+    () => rolesStore.hasPermissionToUpdateWorkspaceView || managesTableViews.value,
+);
 
 const dialogMode = ref(null);
 const activeTab = ref("build");

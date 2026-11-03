@@ -2418,8 +2418,6 @@
     "projects.form_view.required": "Wymagane",
     "projects.form_view.settings.title": "Ustawienia",
     "projects.form_view.settings.active": "Aktywny",
-    "projects.form_view.settings.requires_login": "Wymaga zalogowania",
-    "projects.form_view.settings.requires_login_disabled_note": "Anonimowe wypełnianie nie jest jeszcze dostępne — obecnie wymagane jest zalogowanie niezależnie od tego ustawienia.",
     "projects.form_view.settings.accent_color": "Kolor akcentu",
     "projects.form_view.success.saved": "Formularz zapisany pomyślnie",
     "projects.form_view.view_type": "Formularz",

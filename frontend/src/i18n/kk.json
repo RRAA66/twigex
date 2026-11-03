@@ -2418,8 +2418,6 @@
     "projects.form_view.required": "Міндетті",
     "projects.form_view.settings.title": "Параметрлер",
     "projects.form_view.settings.active": "Белсенді",
-    "projects.form_view.settings.requires_login": "Кіруді талап етеді",
-    "projects.form_view.settings.requires_login_disabled_note": "Анонимді толтыру әзірге қолжетімді емес — бұл параметрге қарамастан қазір кіру қажет.",
     "projects.form_view.settings.accent_color": "Акцент түсі",
     "projects.form_view.success.saved": "Пішін сәтті сақталды",
     "projects.form_view.view_type": "Форма",
