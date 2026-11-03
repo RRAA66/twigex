@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,6 +28,24 @@ func (f *fakeFormStore) GetTableWorkspaceID(_ context.Context, tableID string) (
 	}
 
 	return "", nil
+}
+
+func (f *fakeFormStore) GetTableName(tableID string) (string, error) {
+	return "tbl_" + tableID, nil
+}
+
+func (f *fakeFormStore) GetColumnNames(_ context.Context, _ string) ([]string, error) {
+	return []string{"id", "name", "status", "budget", "created_at", "parent_task_id"}, nil
+}
+
+func (f *fakeFormStore) ViewExistsByName(tableID, name string) (bool, error) {
+	for _, form := range f.forms {
+		if form.TableID == tableID && form.Name == name {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (f *fakeFormStore) CreateForm(_ context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error {
@@ -279,5 +298,80 @@ func TestUpdateFormAnswersWithTheStoredForm(t *testing.T) {
 	}
 	if len(updated.Fields) != 1 || updated.Fields[0].ID == "form-2-field" || updated.Fields[0].FormID != "form-1" {
 		t.Errorf("answered fields %+v, want one new field of form-1", updated.Fields)
+	}
+}
+
+func TestFormsRefuseInvalidInput(t *testing.T) {
+	long := strings.Repeat("é", 256)
+	valid := func() (model.WorkspaceForm, []model.WorkspaceFormField) {
+		return model.WorkspaceForm{Name: "Signup", AccentColor: "#4f46e5", CoverPosition: 50},
+			[]model.WorkspaceFormField{{HeaderName: "name", Label: "Name", ColumnPosition: "left"}}
+	}
+
+	for _, tc := range []struct {
+		name   string
+		change func(form *model.WorkspaceForm, fields *[]model.WorkspaceFormField)
+	}{
+		{"empty name", func(f *model.WorkspaceForm, _ *[]model.WorkspaceFormField) { f.Name = " " }},
+		{"long name", func(f *model.WorkspaceForm, _ *[]model.WorkspaceFormField) { f.Name = long }},
+		{"long title", func(f *model.WorkspaceForm, _ *[]model.WorkspaceFormField) { f.Title = long }},
+		{"accent colour not a hex colour", func(f *model.WorkspaceForm, _ *[]model.WorkspaceFormField) { f.AccentColor = "red" }},
+		{"cover position below 0", func(f *model.WorkspaceForm, _ *[]model.WorkspaceFormField) { f.CoverPosition = -1 }},
+		{"cover position above 100", func(f *model.WorkspaceForm, _ *[]model.WorkspaceFormField) { f.CoverPosition = 101 }},
+		{"unknown column", func(_ *model.WorkspaceForm, fs *[]model.WorkspaceFormField) { (*fs)[0].HeaderName = "missing" }},
+		{"column spelled differently", func(_ *model.WorkspaceForm, fs *[]model.WorkspaceFormField) { (*fs)[0].HeaderName = "Name" }},
+		{"server-kept column", func(_ *model.WorkspaceForm, fs *[]model.WorkspaceFormField) { (*fs)[0].HeaderName = "created_at" }},
+		{"column twice", func(_ *model.WorkspaceForm, fs *[]model.WorkspaceFormField) { *fs = append(*fs, (*fs)[0]) }},
+		{"long label", func(_ *model.WorkspaceForm, fs *[]model.WorkspaceFormField) { (*fs)[0].Label = long }},
+		{"long placeholder", func(_ *model.WorkspaceForm, fs *[]model.WorkspaceFormField) { (*fs)[0].Placeholder = long }},
+		{"unknown column position", func(_ *model.WorkspaceForm, fs *[]model.WorkspaceFormField) { (*fs)[0].ColumnPosition = "middle" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, ws := formApp(workspaceAdminAccess(), true)
+			ctx := context.Background()
+
+			form, fields := valid()
+			tc.change(&form, &fields)
+			_, createErr := a.CreateForm(ctx, wsID, tbl1, form, fields, workspaceAdmin)
+
+			form, fields = valid()
+			tc.change(&form, &fields)
+			_, updateErr := a.UpdateForm(ctx, wsID, tbl1, "form-1", form, fields, workspaceAdmin)
+
+			for name, appErr := range map[string]*model.AppError{"create": createErr, "update": updateErr} {
+				if appErr == nil || appErr.Status != http.StatusBadRequest {
+					t.Errorf("%s: want 400, got %v", name, appErr)
+				}
+			}
+			if ws.writes != 0 {
+				t.Errorf("wrote %d times, want none", ws.writes)
+			}
+		})
+	}
+}
+
+func TestCreateFormStoresAFieldWithoutPositionAsFullWidth(t *testing.T) {
+	a, ws := formApp(workspaceAdminAccess(), true)
+
+	fields := []model.WorkspaceFormField{{HeaderName: "budget", Label: "Budget"}}
+	created, appErr := a.CreateForm(context.Background(), wsID, tbl1, model.WorkspaceForm{Name: "Signup"}, fields, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("CreateForm: %v", appErr)
+	}
+
+	if got := ws.forms[created.ID].Fields[0].ColumnPosition; got != "full" {
+		t.Errorf("column position %q, want full", got)
+	}
+}
+
+func TestCreateFormRefusesANameAnotherViewHas(t *testing.T) {
+	a, ws := formApp(workspaceAdminAccess(), true)
+
+	_, appErr := a.CreateForm(context.Background(), wsID, tbl1, model.WorkspaceForm{Name: "Intake"}, nil, workspaceAdmin)
+	if appErr == nil || appErr.Status != http.StatusConflict || appErr.ID != "workspace.view_already_exists" {
+		t.Fatalf("want 409 workspace.view_already_exists, got %v", appErr)
+	}
+	if ws.writes != 0 {
+		t.Errorf("wrote %d times, want none", ws.writes)
 	}
 }
