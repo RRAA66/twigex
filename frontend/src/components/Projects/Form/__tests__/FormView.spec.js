@@ -220,6 +220,7 @@ describe("FormView", () => {
                 data: {
                     ...saved,
                     title: "Tell us",
+                    can_submit: true,
                     fields: [{ ...saved.fields[0], field_type: "text" }],
                 },
             });

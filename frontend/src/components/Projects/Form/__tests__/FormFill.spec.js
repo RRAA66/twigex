@@ -22,6 +22,7 @@ const form = {
     title: "Intake",
     description: "Tell us",
     accent_color: "#ff0000",
+    can_submit: true,
     members: [{ id: "u1", name: "Ann", lastname: "Lee", photo: "" }],
     link_tables: [],
     fields: [
@@ -122,6 +123,18 @@ describe("FormFill", () => {
         await flushPromises();
 
         expect(w.find("[role='alert']").text()).toBe("The due date is before the start date.");
+        w.unmount();
+    });
+
+    it("shows the form without a way to send it to someone who may not add rows", async () => {
+        formService.getPublicForm.mockResolvedValue({ data: { ...form, can_submit: false } });
+        const w = await mountFill();
+
+        expect(w.text()).toContain(
+            "You can view this form but you're not allowed to add records to this table.",
+        );
+        expect(w.find("fieldset").attributes("disabled")).toBeDefined();
+        expect(w.find("button[type='submit']").exists()).toBe(false);
         w.unmount();
     });
 

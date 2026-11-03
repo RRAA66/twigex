@@ -2457,5 +2457,6 @@
     "projects.form_view.share.desc": "Šīs darbvietas dalībnieki var aizpildīt veidlapu, izmantojot šo saiti.",
     "projects.form_view.error.copy_failed": "Neizdevās nokopēt saiti.",
     "projects.form_view.public.no_access": "Jums nav piekļuves šai veidlapai. Lūdziet tās darbvietas dalībniekam jūs pievienot.",
-    "projects.form_view.public.not_found": "Šī veidlapa neeksistē vai vairs nav atvērta."
+    "projects.form_view.public.not_found": "Šī veidlapa neeksistē vai vairs nav atvērta.",
+    "projects.form_view.public.read_only": "Jūs varat skatīt šo veidlapu, taču jums nav atļauts pievienot ierakstus šai tabulai."
 }
