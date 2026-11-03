@@ -123,8 +123,8 @@ func (w *workspaceRepository) CreateTask(workspaceID, tableID, name, userID, par
 
 // SyncTaskKanban updates kanban views and sections for a newly created
 // top-level task; selects gives the option chosen for each single-select field.
-func (w *workspaceRepository) SyncTaskKanban(workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error {
-	tx, err := w.Db.Begin()
+func (w *workspaceRepository) SyncTaskKanban(ctx context.Context, workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error {
+	tx, err := w.Db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (w *workspaceRepository) SyncTaskKanban(workspaceID, tableID, taskID string
 		}
 	}()
 
-	if err = w.syncTaskKanbanTx(tx, workspaceID, tableID, taskID, selects, task); err != nil {
+	if err = w.syncTaskKanbanTx(ctx, tx, workspaceID, tableID, taskID, selects, task); err != nil {
 		return err
 	}
 
@@ -143,8 +143,8 @@ func (w *workspaceRepository) SyncTaskKanban(workspaceID, tableID, taskID string
 	return err
 }
 
-func (w *workspaceRepository) syncTaskKanbanTx(tx *sql.Tx, workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error {
-	if err := w.UpdateKanbanViewsTx(tx, workspaceID, tableID, task); err != nil {
+func (w *workspaceRepository) syncTaskKanbanTx(ctx context.Context, tx *sql.Tx, workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error {
+	if err := w.UpdateKanbanViewsTx(ctx, tx, workspaceID, tableID, task); err != nil {
 		return err
 	}
 
@@ -2423,18 +2423,18 @@ func addTaskToUnassignedSection(itemOrderJSON string, task map[string]interface{
 	return itemOrderJSON, false, nil
 }
 
-func (w *workspaceRepository) UpdateKanbanViewsTx(tx *sql.Tx, workspaceID string, tableID string, task map[string]interface{}) error {
+func (w *workspaceRepository) UpdateKanbanViewsTx(ctx context.Context, tx *sql.Tx, workspaceID string, tableID string, task map[string]interface{}) error {
 	if tx == nil {
 		return sql.ErrConnDone
 	}
 
 	var ping string
-	err := tx.QueryRow(`SELECT 'ping'`).Scan(&ping)
+	err := tx.QueryRowContext(ctx, `SELECT 'ping'`).Scan(&ping)
 	if err != nil {
 		return err
 	}
 
-	rows, err := tx.Query(`
+	rows, err := tx.QueryContext(ctx, `
         SELECT id, item_order
         FROM workspace_view
         WHERE workspace_id = ? AND table_id = ? AND view_type = 'kanban'
@@ -2479,7 +2479,7 @@ func (w *workspaceRepository) UpdateKanbanViewsTx(tx *sql.Tx, workspaceID string
 			continue
 		}
 
-		_, err = tx.Exec(`
+		_, err = tx.ExecContext(ctx, `
             UPDATE workspace_view
             SET item_order = ?
             WHERE id = ?

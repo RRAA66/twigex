@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/twigex/twigex/model"
 )
 
@@ -45,76 +46,11 @@ func (w *workspaceRepository) GetLinkableTables(ctx context.Context, workspaceID
 	return tables, rows.Err()
 }
 
-// GetLinkedItems returns a page of a table's rows by name, with the number
-// of rows that match. It returns sql.ErrNoRows when the table is not in the
-// workspace.
-func (w *workspaceRepository) GetLinkedItems(ctx context.Context, workspaceID, tableID, search string, offset, limit int) ([]model.FormLinkedItem, int, error) {
-	var tableName string
-	var singleSelect bool
-	err := w.Db.QueryRowContext(ctx, `
-		SELECT name, single_select
-		FROM workspace_tables
-		WHERE id = ? AND workspace_id = ? AND (deleted_at IS NULL OR deleted_at = 0)`,
-		tableID, workspaceID,
-	).Scan(&tableName, &singleSelect)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	table, err := quoteIdent(tableName)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var conditions []string
-	var args []any
-
-	// Options of a single-select field are never soft-deleted, so their
-	// table has no deleted_at.
-	if !singleSelect {
-		conditions = append(conditions, "(deleted_at IS NULL OR deleted_at = 0)")
-	}
-
-	if search != "" {
-		conditions = append(conditions, "name LIKE ?")
-		args = append(args, "%"+escapeLike(search)+"%")
-	}
-
-	where := ""
-	if len(conditions) > 0 {
-		where = " WHERE " + strings.Join(conditions, " AND ")
-	}
-
-	var total int
-	if err := w.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+table+where, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
-	rows, err := w.Db.QueryContext(ctx, "SELECT id, COALESCE(name, '') FROM "+table+where+" ORDER BY name LIMIT ? OFFSET ?",
-		append(args, limit, offset)...)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	defer rows.Close()
-
-	items := make([]model.FormLinkedItem, 0)
-	for rows.Next() {
-		var item model.FormLinkedItem
-		if err := rows.Scan(&item.ID, &item.Name); err != nil {
-			return nil, 0, err
-		}
-
-		items = append(items, item)
-	}
-
-	return items, total, rows.Err()
-}
-
 // CreateFormTask writes a submitted form's row, its links, its place on the
 // table's Kanban boards and the submission record in one transaction, so a
 // failure leaves no row without the rest. It returns nil when the table is
-// gone, and model.ErrLinkTargetMissing when a row to link is not there.
+// gone, model.ErrLinkTargetMissing when a row to link is not there, and
+// model.ErrValueRejected when a value does not fit its column.
 func (w *workspaceRepository) CreateFormTask(ctx context.Context, workspaceID, tableID string, task model.FormTask, submission model.WorkspaceFormSubmission) (map[string]any, error) {
 	// Read committed, as changeTaskLinksTx needs.
 	tx, err := w.Db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
@@ -157,7 +93,7 @@ func (w *workspaceRepository) CreateFormTask(ctx context.Context, workspaceID, t
 		return nil, sql.ErrNoRows
 	}
 
-	if err := w.syncTaskKanbanTx(tx, workspaceID, tableID, task.ID, task.Selects, *row); err != nil {
+	if err := w.syncTaskKanbanTx(ctx, tx, workspaceID, tableID, task.ID, task.Selects, *row); err != nil {
 		return nil, err
 	}
 
@@ -197,8 +133,18 @@ func insertFormTaskTx(ctx context.Context, tx *sql.Tx, tableName string, task mo
 	}
 
 	_, err = tx.ExecContext(ctx, "INSERT INTO "+table+" ("+strings.Join(columns, ", ")+") VALUES ("+sqlPlaceholders(len(args))+")", args...)
+
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) && slices.Contains(rejectedValueErrors, mysqlErr.Number) {
+		return model.ErrValueRejected
+	}
+
 	return err
 }
+
+// rejectedValueErrors are the MySQL errors for a value its column cannot
+// hold: out of range, an incorrect date, an incorrect value, too long.
+var rejectedValueErrors = []uint16{1264, 1292, 1366, 1406}
 
 func (w *workspaceRepository) GetFormSubmissions(ctx context.Context, formID string) ([]model.WorkspaceFormSubmission, error) {
 	rows, err := w.Db.QueryContext(ctx, `

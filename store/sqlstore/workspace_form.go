@@ -61,8 +61,12 @@ func (w *workspaceRepository) GetForm(ctx context.Context, formID string) (*mode
 	return w.getFormWhere(ctx, `id = ?`, formID)
 }
 
+// GetFormByToken finds an active form by its link, unless its table is
+// deleted.
 func (w *workspaceRepository) GetFormByToken(ctx context.Context, token string) (*model.WorkspaceFormWithFields, error) {
-	return w.getFormWhere(ctx, `public_token = ? AND active = 1`, token)
+	return w.getFormWhere(ctx, `public_token = ? AND active = 1 AND EXISTS (
+		SELECT 1 FROM workspace_tables t
+		WHERE t.id = workspace_forms.table_id AND (t.deleted_at IS NULL OR t.deleted_at = 0))`, token)
 }
 
 func (w *workspaceRepository) getFormWhere(ctx context.Context, where, arg string) (*model.WorkspaceFormWithFields, error) {
