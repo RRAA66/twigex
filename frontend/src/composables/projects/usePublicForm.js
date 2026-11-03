@@ -35,6 +35,7 @@ export function usePublicForm(token, { live = false } = {}) {
     const submitting = ref(false);
     const submitted = ref(false);
     const configChanged = ref(false);
+    let reloadRequest = 0;
 
     const fields = computed(() => fillableFormFields(form.value?.fields));
 
@@ -56,12 +57,19 @@ export function usePublicForm(token, { live = false } = {}) {
     }
 
     async function reloadChanged() {
+        const current = ++reloadRequest;
+
         try {
             const { data } = await formService.getPublicForm(toValue(token));
 
+            if (current !== reloadRequest) return;
+
             form.value = data;
             configChanged.value = true;
+            clearFilledErrors();
         } catch (error) {
+            if (current !== reloadRequest) return;
+
             if (STATUS_BY_HTTP[error?.response?.status]) failLoad(error);
             else alertStore.showError(extractErrorMessage(error));
         }
