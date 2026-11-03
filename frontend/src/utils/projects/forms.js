@@ -3,7 +3,7 @@
 
 import { fieldLabel } from "@/utils/projects/rows";
 
-const DEFAULT_ACCENT_COLOR = "#4f46e5";
+export const DEFAULT_ACCENT_COLOR = "#4f46e5";
 
 const DEFAULT_FIELD_NAMES = {
     name: "projects.grid_view.name",
