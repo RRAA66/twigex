@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick, reactive } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
@@ -49,6 +49,59 @@ describe("FormCoverImage", () => {
         await pointer(frame, "pointermove", 200);
 
         expect(w.emitted("update:position")).toEqual([[30]]);
+    });
+});
+
+describe("FormCoverImage with the keyboard", () => {
+    let w;
+
+    afterEach(() => {
+        w?.unmount();
+    });
+
+    it("moves the cover with the arrows while repositioning and finishes on Enter or Escape", async () => {
+        w = mount(FormCoverImage, {
+            props: {
+                src: "/c.png",
+                position: 50,
+                repositionable: true,
+                "onUpdate:position": (position) => w.setProps({ position }),
+            },
+            attachTo: document.body,
+        });
+        const frame = w.find("div");
+
+        await frame.trigger("keydown", { key: "ArrowUp" });
+        expect(w.emitted("update:position")).toBeUndefined();
+        expect(frame.attributes("tabindex")).toBeUndefined();
+
+        await w.find("button").trigger("click");
+        await nextTick();
+
+        expect(document.activeElement).toBe(frame.element);
+        expect(frame.attributes("role")).toBe("slider");
+        expect(frame.attributes("aria-label")).toBe("Cover image position");
+        expect(document.getElementById(frame.attributes("aria-describedby")).textContent).toContain(
+            "arrow keys",
+        );
+
+        await frame.trigger("keydown", { key: "ArrowUp" });
+        await frame.trigger("keydown", { key: "ArrowDown" });
+        await frame.trigger("keydown", { key: "ArrowDown" });
+
+        expect(w.emitted("update:position")).toEqual([[55], [50], [45]]);
+        expect(frame.attributes("aria-valuenow")).toBe("45");
+
+        for (const key of ["Enter", "Escape"]) {
+            await frame.trigger("keydown", { key });
+            await nextTick();
+
+            expect(frame.attributes("role")).toBeUndefined();
+            expect(document.activeElement).toBe(w.find("button").element);
+
+            await w.find("button").trigger("click");
+            await nextTick();
+        }
     });
 });
 
