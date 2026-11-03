@@ -121,6 +121,31 @@ func TestUpdateFormReplacesFieldsAndRenamesItsView(t *testing.T) {
 	}
 }
 
+func TestFormTakesTheNameOfItsRenamedTab(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	if err := w.CreateForm(ctx, form, nil); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	if err := w.UpdateViewName("form-1", "w1", "t1", "From the tab menu"); err != nil {
+		t.Fatalf("UpdateViewName: %v", err)
+	}
+
+	got, err := w.GetForm(ctx, "form-1")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+	if got.Name != "From the tab menu" {
+		t.Errorf("name %q, want the tab's name", got.Name)
+	}
+}
+
 func TestDeleteFormRemovesItsFieldsAndView(t *testing.T) {
 	requireDB(t)
 	resetFormTables(t)

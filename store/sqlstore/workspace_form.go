@@ -11,7 +11,10 @@ import (
 	"github.com/twigex/twigex/model"
 )
 
-const formColumns = `id, workspace_id, table_id, name, title, COALESCE(description, ''), COALESCE(cover_image, ''),
+// A form's tab can be renamed from the tab menu, so its name is read from
+// the tab.
+const formColumns = `id, workspace_id, table_id,
+	COALESCE((SELECT v.name FROM workspace_view v WHERE v.id = workspace_forms.id), workspace_forms.name), title, COALESCE(description, ''), COALESCE(cover_image, ''),
 	cover_position, COALESCE(logo, ''), COALESCE(accent_color, ''), public_token, requires_login, active,
 	created_by, created_at, updated_at`
 
