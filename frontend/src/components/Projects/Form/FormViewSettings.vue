@@ -13,17 +13,6 @@ SPDX-License-Identifier: AGPL-3.0-only
         <ToggleSwitch v-model="form.active" :label="t('projects.form_view.settings.active')" />
 
         <div>
-            <ToggleSwitch
-                :model-value="true"
-                :label="t('projects.form_view.settings.requires_login')"
-                disabled
-            />
-            <p class="mt-1 text-xs text-gray-400">
-                {{ t("projects.form_view.settings.requires_login_disabled_note") }}
-            </p>
-        </div>
-
-        <div>
             <label :for="`${id}-accent`" class="block text-sm font-medium text-gray-900">
                 {{ t("projects.form_view.settings.accent_color") }}
             </label>

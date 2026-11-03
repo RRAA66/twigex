@@ -2418,8 +2418,6 @@
     "projects.form_view.required": "Required",
     "projects.form_view.settings.title": "Settings",
     "projects.form_view.settings.active": "Active",
-    "projects.form_view.settings.requires_login": "Requires login",
-    "projects.form_view.settings.requires_login_disabled_note": "Anonymous filling isn't available yet — a login is required for now regardless of this setting.",
     "projects.form_view.settings.accent_color": "Accent color",
     "projects.form_view.success.saved": "Form saved successfully",
     "projects.form_view.view_type": "Form",

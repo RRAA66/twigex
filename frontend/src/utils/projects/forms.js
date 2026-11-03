@@ -42,7 +42,6 @@ export function normalizeFormData(data, workspaceId, tableId) {
         logo: data.logo || "",
         accent_color: data.accent_color || DEFAULT_ACCENT_COLOR,
         public_token: data.public_token || "",
-        requires_login: data.requires_login || false,
         active: data.active ?? true,
         created_by: data.created_by || "",
     };
