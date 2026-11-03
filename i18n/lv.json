@@ -1974,5 +1974,17 @@
   {
     "id": "workspace.form_submissions_failed",
     "translation": "Neizdevās ielādēt veidlapas iesniegumus. Lūdzu, mēģiniet vēlreiz."
+  },
+  {
+    "id": "workspace.form_file_too_large",
+    "translation": "Šis fails ir pārāk liels."
+  },
+  {
+    "id": "workspace.form_file_type_not_allowed",
+    "translation": "Šāda veida failus nevar augšupielādēt veidlapā."
+  },
+  {
+    "id": "workspace.form_file_missing",
+    "translation": "Augšupielādētais fails netika atrasts. Augšupielādējiet to vēlreiz."
   }
 ]

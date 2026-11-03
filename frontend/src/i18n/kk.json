@@ -2459,5 +2459,7 @@
     "projects.form_view.share.desc": "Осы жұмыс кеңістігінің мүшелері форманы осы сілтеме арқылы толтыра алады.",
     "projects.form_view.error.copy_failed": "Сілтемені көшіру сәтсіз аяқталды.",
     "projects.form_view.public.no_access": "Бұл формаға қолжетімділігіңіз жоқ. Оның жұмыс кеңістігінің мүшесінен сізді қосуын сұраңыз.",
-    "projects.form_view.public.not_found": "Бұл форма жоқ немесе енді ашық емес."
+    "projects.form_view.public.not_found": "Бұл форма жоқ немесе енді ашық емес.",
+    "projects.form_view.action.add_files": "Файлдарды қосу",
+    "projects.form_view.action.remove_file": "{name} жою"
 }

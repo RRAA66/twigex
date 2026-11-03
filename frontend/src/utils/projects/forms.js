@@ -113,9 +113,8 @@ export function linkedTableId(field) {
     return field.parent_table_id || field.linked_id || "";
 }
 
-// File fields come with uploads, which the form cannot send yet.
 export function fillableFormFields(fields) {
-    return (fields || []).filter((f) => f.visible && formFieldType(f) !== "file");
+    return (fields || []).filter((f) => f.visible);
 }
 
 function isEmptyFormValue(value) {

@@ -2459,5 +2459,7 @@
     "projects.form_view.share.desc": "Members of this workspace can fill out the form with this link.",
     "projects.form_view.error.copy_failed": "Failed to copy link.",
     "projects.form_view.public.no_access": "You don't have access to this form. Ask a member of its workspace to add you.",
-    "projects.form_view.public.not_found": "This form doesn't exist or is no longer open."
+    "projects.form_view.public.not_found": "This form doesn't exist or is no longer open.",
+    "projects.form_view.action.add_files": "Add files",
+    "projects.form_view.action.remove_file": "Remove {name}"
 }

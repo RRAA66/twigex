@@ -678,12 +678,13 @@ type FormSubmitRequest struct {
 // FormTask is the row a form submission creates: Values by column, the row
 // ids for each link field, and the option chosen in each single-select field.
 type FormTask struct {
-	ID        string
-	CreatedBy string
-	CreatedAt int64
-	Values    map[string]any
-	Links     map[string][]string
-	Selects   map[string]string
+	ID          string
+	CreatedBy   string
+	CreatedAt   int64
+	Values      map[string]any
+	Links       map[string][]string
+	Selects     map[string]string
+	Attachments []WorkspaceAttachment
 }
 
 type WorkspaceFormSubmission struct {

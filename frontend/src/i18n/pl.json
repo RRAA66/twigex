@@ -2459,5 +2459,7 @@
     "projects.form_view.share.desc": "Członkowie tego obszaru roboczego mogą wypełnić formularz za pomocą tego linku.",
     "projects.form_view.error.copy_failed": "Nie udało się skopiować linku.",
     "projects.form_view.public.no_access": "Nie masz dostępu do tego formularza. Poproś członka jego obszaru roboczego o dodanie Cię.",
-    "projects.form_view.public.not_found": "Ten formularz nie istnieje lub nie jest już otwarty."
+    "projects.form_view.public.not_found": "Ten formularz nie istnieje lub nie jest już otwarty.",
+    "projects.form_view.action.add_files": "Dodaj pliki",
+    "projects.form_view.action.remove_file": "Usuń {name}"
 }

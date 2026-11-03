@@ -112,8 +112,8 @@ func (w *workspaceRepository) GetLinkedItems(ctx context.Context, workspaceID, t
 }
 
 // CreateFormTask writes a submitted form's row, its links, its place on the
-// table's Kanban boards and the submission record in one transaction, so a
-// failure leaves no row without the rest. It returns nil when the table is
+// table's Kanban boards, its files and the submission record in one
+// transaction, so a failure leaves no row without the rest. It returns nil when the table is
 // gone, and model.ErrLinkTargetMissing when a row to link is not there.
 func (w *workspaceRepository) CreateFormTask(ctx context.Context, workspaceID, tableID string, task model.FormTask, submission model.WorkspaceFormSubmission) (map[string]any, error) {
 	// Read committed, as changeTaskLinksTx needs.
@@ -161,6 +161,12 @@ func (w *workspaceRepository) CreateFormTask(ctx context.Context, workspaceID, t
 		return nil, err
 	}
 
+	for _, a := range task.Attachments {
+		if err := insertAttachmentTx(ctx, tx, a); err != nil {
+			return nil, err
+		}
+	}
+
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO workspace_form_submissions (id, form_id, task_id, submitted_by, submitted_at)
 		VALUES (?, ?, ?, ?, ?)`,
@@ -197,6 +203,17 @@ func insertFormTaskTx(ctx context.Context, tx *sql.Tx, tableName string, task mo
 	}
 
 	_, err = tx.ExecContext(ctx, "INSERT INTO "+table+" ("+strings.Join(columns, ", ")+") VALUES ("+sqlPlaceholders(len(args))+")", args...)
+	return err
+}
+
+func insertAttachmentTx(ctx context.Context, tx *sql.Tx, a model.WorkspaceAttachment) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO workspace_attachments
+		(id, workspace_id, table_id, field_id, task_id, user_id, name, size, mime_type, width, height, storage_id, created_at, updated_at, deleted_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+		a.ID, a.WorkspaceID, a.TableID, a.FieldID, a.TaskID, a.UserID, a.Name,
+		a.Size, a.MimeType, a.Width, a.Height, nullableString(a.StorageID), a.CreatedAt, a.UpdatedAt,
+	)
 	return err
 }
 
