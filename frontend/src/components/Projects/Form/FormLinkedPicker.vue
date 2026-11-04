@@ -40,13 +40,15 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <XMarkIcon class="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
             </span>
-            <span
-                v-if="picked?.color"
-                class="ml-1 h-2 w-2 flex-none rounded-full"
-                :class="getStatusStyle(picked).class"
-                :style="getStatusStyle(picked).style"
-                aria-hidden="true"
-            />
+            <slot v-if="picked" name="leading" :item="picked">
+                <span
+                    v-if="picked.color"
+                    class="ml-1 h-2 w-2 flex-none rounded-full"
+                    :class="getStatusStyle(picked).class"
+                    :style="getStatusStyle(picked).style"
+                    aria-hidden="true"
+                />
+            </slot>
             <ComboboxInput
                 :id="id"
                 v-bind="$attrs"
@@ -107,13 +109,15 @@ SPDX-License-Identifier: AGPL-3.0-only
                         ]"
                     >
                         <span class="flex items-center gap-x-2">
-                            <span
-                                v-if="item.color"
-                                class="h-2 w-2 flex-none rounded-full"
-                                :class="getStatusStyle(item).class"
-                                :style="getStatusStyle(item).style"
-                                aria-hidden="true"
-                            />
+                            <slot name="leading" :item="item">
+                                <span
+                                    v-if="item.color"
+                                    class="h-2 w-2 flex-none rounded-full"
+                                    :class="getStatusStyle(item).class"
+                                    :style="getStatusStyle(item).style"
+                                    aria-hidden="true"
+                                />
+                            </slot>
                             <span :class="[selected ? 'font-semibold' : '', 'truncate']">
                                 {{ item.name }}
                             </span>
