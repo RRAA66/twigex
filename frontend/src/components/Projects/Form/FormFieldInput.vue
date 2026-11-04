@@ -6,6 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-only
     <div :class="halfWidth ? 'col-span-2 sm:col-span-1' : 'col-span-2'">
         <label
             v-if="!labelledBySelect"
+            :id="labelId"
             :for="id"
             class="mb-1 block text-xs font-medium text-gray-600"
         >
@@ -68,6 +69,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 )
             "
             :error="Boolean(error)"
+            :aria-labelledby="labelId"
             v-bind="aria"
             @update:model-value="update"
         />
@@ -152,6 +154,7 @@ const emit = defineEmits(["update:modelValue"]);
 const id = useId();
 const descriptionId = `${id}-description`;
 const errorId = `${id}-error`;
+const labelId = `${id}-label`;
 
 const type = computed(() => formFieldType(props.field));
 

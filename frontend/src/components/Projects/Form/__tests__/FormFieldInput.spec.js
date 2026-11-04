@@ -47,10 +47,15 @@ describe("FormFieldInput", () => {
         expect(labelFor(w.find("input[type='color']").element)).toContain("Agree");
     });
 
-    it("labels a link field's search box", () => {
-        mountField({ linked_id: "t-x" });
+    it.each([
+        ["link", { linked_id: "t-x" }],
+        ["single-select", { linked_id: "t-x", single_select: true }],
+    ])("names a %s field's search box by its label", (_, field) => {
+        mountField(field);
 
-        expect(labelFor(w.find("input[role='combobox']").element)).toContain("Agree");
+        const labelledBy = w.find("input[role='combobox']").attributes("aria-labelledby");
+
+        expect(document.getElementById(labelledBy)?.textContent).toContain("Agree");
     });
 
     it("labels a date field's button", () => {
