@@ -651,7 +651,6 @@ type WorkspaceFormRequest struct {
 // unless the form shows such a field.
 type PublicForm struct {
 	WorkspaceFormWithFields
-	Members    []FormMember    `json:"members"`
 	LinkTables []FormLinkTable `json:"link_tables"`
 	CanSubmit  bool            `json:"can_submit"`
 }

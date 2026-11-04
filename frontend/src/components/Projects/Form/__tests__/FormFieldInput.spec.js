@@ -4,6 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
+import { createPinia, setActivePinia } from "pinia";
 import FormFieldInput from "@/components/Projects/Form/FormFieldInput.vue";
 
 vi.mock("@/services/formService", () => ({
@@ -13,6 +14,7 @@ vi.mock("@/services/formService", () => ({
 let w;
 
 function mountField(field, props = {}) {
+    setActivePinia(createPinia());
     w = mount(FormFieldInput, {
         props: { field: { header_name: "f", label: "Agree", ...field }, token: "tok", ...props },
         attachTo: document.body,
@@ -49,6 +51,7 @@ describe("FormFieldInput", () => {
     it.each([
         ["link", { linked_id: "t-x" }],
         ["single-select", { linked_id: "t-x", single_select: true }],
+        ["person", { field_type: "assignee" }],
     ])("names a %s field's search box by its label", (_, field) => {
         mountField(field);
 
@@ -63,11 +66,8 @@ describe("FormFieldInput", () => {
         expect(labelFor(w.find("button").element)).toContain("Agree");
     });
 
-    it.each([
-        ["assignee", { field_type: "assignee" }],
-        ["master link", { field_type: "master link" }],
-    ])("labels a %s field's list button and marks it invalid", async (_, field) => {
-        mountField({ ...field, required: true }, { error: "Required" });
+    it("labels a master link field's list button and marks it invalid", async () => {
+        mountField({ field_type: "master link", required: true }, { error: "Required" });
         await nextTick();
 
         const button = w.find("button");
