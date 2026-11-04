@@ -554,6 +554,7 @@ type WorkspaceStore interface {
 	GetTasksByDateRange(ctx context.Context, tableName string, from, to string, filter model.SQLFilter, limit int) ([]map[string]interface{}, int, error)
 	GetTasksByCalendarRange(ctx context.Context, tableName string, from, to string, filter model.SQLFilter) ([]map[string]interface{}, error)
 	GetLinkedRecordsLite(ctx context.Context, tableName, search string, ids []string, limit, offset int, access model.SQLFilter) ([]map[string]interface{}, error)
+	GetTasksByIDs(ctx context.Context, tableName string, ids []string, access model.SQLFilter) ([]map[string]interface{}, error)
 	GetTaskAssignees(ctx context.Context, tableName string, taskIDs []string) (map[string]string, error)
 	GetTableRows(tableName string) ([]map[string]interface{}, error)
 	GetTableRowsFiltered(ctx context.Context, tableName string, filter model.SQLFilter) ([]map[string]interface{}, error)
@@ -708,7 +709,8 @@ type WorkspaceStore interface {
 	GetFormByToken(ctx context.Context, token string) (*model.WorkspaceFormWithFields, error)
 	GetLinkableTables(ctx context.Context, workspaceID, excludeTableID string) ([]model.FormLinkTable, error)
 	CreateFormTask(ctx context.Context, workspaceID, tableID string, task model.FormTask, submission model.WorkspaceFormSubmission) (map[string]any, error)
-	GetFormSubmissions(ctx context.Context, formID string) ([]model.WorkspaceFormSubmission, error)
+	GetFormSubmissions(ctx context.Context, formID string, limit, offset int) ([]model.WorkspaceFormSubmission, error)
+	CountFormSubmissions(ctx context.Context, formID string) (int, error)
 }
 
 type UploadSessionStore interface {

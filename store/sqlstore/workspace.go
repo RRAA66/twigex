@@ -2901,6 +2901,35 @@ func (w *workspaceRepository) GetLinkedRecordsLite(ctx context.Context, tableNam
 	return items, err
 }
 
+// GetTasksByIDs returns the tasks among ids that are not deleted and that
+// access lets the user see, in no particular order.
+func (w *workspaceRepository) GetTasksByIDs(ctx context.Context, tableName string, ids []string, access model.SQLFilter) ([]map[string]interface{}, error) {
+	if len(ids) == 0 {
+		return []map[string]interface{}{}, nil
+	}
+
+	table, err := quoteIdent(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	where := "main.id IN (" + sqlPlaceholders(len(ids)) + ") AND (main.deleted_at IS NULL OR main.deleted_at = 0)"
+	args := toInterfaceSlice(ids)
+	if access.SQL != "" {
+		where += " AND " + access.SQL
+		args = append(args, access.Args...)
+	}
+
+	rows, err := w.Db.QueryContext(ctx, "SELECT main.* FROM "+table+" AS main WHERE "+where, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	return scanRowsToMaps(rows)
+}
+
 // GetTasksByCalendarRange returns tasks whose date range overlaps [from, to]:
 // starts in window, ends in window, or spans the entire window.
 func (w *workspaceRepository) GetTasksByCalendarRange(ctx context.Context, tableName string, from, to string, filter model.SQLFilter) ([]map[string]interface{}, error) {

@@ -117,7 +117,9 @@ func (a *API) getFormSubmissions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	submissions, appErr := a.app.GetFormSubmissions(r.Context(), params["id"], params["tid"], params["fid"], *user)
+	page := parse.Int(r.URL.Query().Get("page"), 1)
+
+	submissions, appErr := a.app.GetFormSubmissions(r.Context(), params["id"], params["tid"], params["fid"], page, *user)
 	if appErr != nil {
 		respondAppError(w, r, appErr)
 		return
