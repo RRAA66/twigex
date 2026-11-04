@@ -2681,6 +2681,7 @@ func (a *App) GetItemForTableByID(ctx context.Context, workspaceID, tableID, ite
 	}
 
 	a.restrictLinkedItems(ctx, []map[string]interface{}{item}, headers, user, workspaceID)
+	a.hydrateFileAttachments(ctx, []map[string]interface{}{item}, headers, tableID)
 
 	return item, headers, nil
 }

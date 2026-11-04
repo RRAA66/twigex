@@ -7,12 +7,16 @@ import { createPinia, setActivePinia } from "pinia";
 import "moment-timezone";
 import FormViewSubmissions from "@/components/Projects/Form/FormViewSubmissions.vue";
 import formService from "@/services/formService";
+import workspaceService from "@/services/workspaceService";
 import { onProjectChange } from "@/js/websocket";
 
 const openTask = vi.fn();
 
 vi.mock("@/services/formService", () => ({
     default: { getSubmissions: vi.fn() },
+}));
+vi.mock("@/services/workspaceService", () => ({
+    default: { getWorkspaceTables: vi.fn() },
 }));
 vi.mock("@/composables/projects/useOpenTask", () => ({
     useOpenTask: () => ({ openTask }),
@@ -42,9 +46,9 @@ function respond(items, total = items.length) {
     formService.getSubmissions.mockResolvedValue({ data: { items, total } });
 }
 
-async function mountList() {
+async function mountList(shown = fields) {
     const w = mount(FormViewSubmissions, {
-        props: { workspaceId: "w1", tableId: "t1", formId: "f1", fields },
+        props: { workspaceId: "w1", tableId: "t1", formId: "f1", fields: shown },
         attachTo: document.body,
     });
 
@@ -83,6 +87,26 @@ describe("FormViewSubmissions", () => {
         expect(w.text()).toContain("Repair the roof");
         expect(w.text()).toContain("Open");
         expect(w.text()).not.toContain("secret");
+    });
+
+    it("names the table a master link points to", async () => {
+        workspaceService.getWorkspaceTables.mockResolvedValue({
+            data: [{ id: "t9", name: "clients", display_name: { Valid: true, String: "Clients" } }],
+        });
+        respond([submission("1", { which: "t9" })]);
+        w = await mountList([
+            { header_name: "which", label: "Which", field_type: "master link", visible: true },
+        ]);
+
+        expect(workspaceService.getWorkspaceTables).toHaveBeenCalledWith("w1", "nav");
+        expect(w.text()).toContain("Clients");
+    });
+
+    it("loads no table names without a master link", async () => {
+        respond([]);
+        w = await mountList();
+
+        expect(workspaceService.getWorkspaceTables).not.toHaveBeenCalled();
     });
 
     it("opens the row a submission made", async () => {
