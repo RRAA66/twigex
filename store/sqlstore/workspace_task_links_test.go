@@ -318,3 +318,30 @@ func TestLinkedRecordsLitePagesAndSearchesOnTheServer(t *testing.T) {
 		t.Errorf("tasks = %v, want no colour from a table without one", tasks)
 	}
 }
+
+func TestGetTasksByIDsLeavesOutDeletedAndHiddenTasks(t *testing.T) {
+	requireDB(t)
+	createDynamicTable(t, "zz_by_id_tasks", createTaskTable)
+	mustExec(t, `INSERT INTO zz_by_id_tasks (id, name, assignee, created_at, deleted_at) VALUES
+		('t1', 'Mine', 'u1', 1, 0), ('t2', 'Theirs', 'u2', 2, 0), ('t3', 'Deleted', 'u1', 3, 9), ('t4', 'Not asked', 'u1', 4, 0)`)
+
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+	ids := []string{"t1", "t2", "t3", "missing"}
+
+	all, err := w.GetTasksByIDs(ctx, "zz_by_id_tasks", ids, model.SQLFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := orderedIDs(all); !slices.Equal(slices.Sorted(slices.Values(got)), []string{"t1", "t2"}) {
+		t.Errorf("rows = %v, want t1 and t2", got)
+	}
+
+	mine, err := w.GetTasksByIDs(ctx, "zz_by_id_tasks", ids, model.SQLFilter{SQL: "`assignee` = ?", Args: []any{"u1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := orderedIDs(mine); !slices.Equal(got, []string{"t1"}) {
+		t.Errorf("rows = %v, want only t1", got)
+	}
+}

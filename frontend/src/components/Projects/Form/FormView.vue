@@ -111,6 +111,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             :workspace-id="formData.workspace_id"
             :table-id="formData.table_id"
             :form-id="formData.id"
+            :fields="formFields"
         />
 
         <FormViewShareDialog

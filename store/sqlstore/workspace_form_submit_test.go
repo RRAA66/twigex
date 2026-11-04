@@ -141,11 +141,23 @@ func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 	mustExec(t, `INSERT INTO workspace_form_submissions (id, form_id, task_id, submitted_by, submitted_at)
 		VALUES ('s1', 'form-1', 'a1', 'u1', 1), ('s2', 'form-1', 'a2', NULL, 2), ('s3', 'form-2', 'a2', 'u1', 3)`)
 
-	got, err := w.GetFormSubmissions(context.Background(), "form-1")
+	got, err := w.GetFormSubmissions(context.Background(), "form-1", 10, 0)
 	if err != nil {
 		t.Fatalf("GetFormSubmissions: %v", err)
 	}
 	if len(got) != 2 || got[0].ID != "s2" || got[0].SubmittedBy != "" || got[1].ID != "s1" {
 		t.Errorf("got %+v, want s2 then s1", got)
+	}
+
+	next, err := w.GetFormSubmissions(context.Background(), "form-1", 1, 1)
+	if err != nil {
+		t.Fatalf("GetFormSubmissions from 1: %v", err)
+	}
+	if len(next) != 1 || next[0].ID != "s1" {
+		t.Errorf("page from 1 = %+v, want s1 alone", next)
+	}
+
+	if count, err := w.CountFormSubmissions(context.Background(), "form-1"); err != nil || count != 2 {
+		t.Errorf("count = %d, %v; want 2", count, err)
 	}
 }

@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -28,6 +29,7 @@ type fakeFormSubmitStore struct {
 	created        []model.FormTask
 	recorded       []model.WorkspaceFormSubmission
 	submissions    []model.WorkspaceFormSubmission
+	rows           []map[string]any
 	linkedRows     int
 	linkedLimit    int
 	linkedOffset   int
@@ -125,8 +127,29 @@ func (f *fakeFormSubmitStore) CreateFormTask(_ context.Context, _, _ string, tas
 	return map[string]any{"id": task.ID}, nil
 }
 
-func (f *fakeFormSubmitStore) GetFormSubmissions(context.Context, string) ([]model.WorkspaceFormSubmission, error) {
-	return f.submissions, nil
+func (f *fakeFormSubmitStore) GetFormSubmissions(_ context.Context, _ string, limit, offset int) ([]model.WorkspaceFormSubmission, error) {
+	page := f.submissions[min(offset, len(f.submissions)):]
+
+	return slices.Clone(page[:min(limit, len(page))]), nil
+}
+
+func (f *fakeFormSubmitStore) CountFormSubmissions(context.Context, string) (int, error) {
+	return len(f.submissions), nil
+}
+
+func (f *fakeFormSubmitStore) GetTableColumnTypes(string) ([]*sql.ColumnType, error) {
+	return nil, nil
+}
+
+func (f *fakeFormSubmitStore) GetTasksByIDs(_ context.Context, _ string, ids []string, _ model.SQLFilter) ([]map[string]any, error) {
+	var found []map[string]any
+	for _, row := range f.rows {
+		if slices.Contains(ids, row["id"].(string)) {
+			found = append(found, row)
+		}
+	}
+
+	return found, nil
 }
 
 func (f *fakeFormSubmitStore) GetTableWorkspaceID(_ context.Context, tableID string) (string, error) {
@@ -572,11 +595,12 @@ func TestFormSubmissionsNamesTheSubmitters(t *testing.T) {
 		{ID: "s3", FormID: "form-1", TaskID: "task-3", SubmittedBy: "submitter"},
 	}
 
-	submissions, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", workspaceAdmin)
+	page, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, workspaceAdmin)
 	if appErr != nil {
 		t.Fatalf("GetFormSubmissions: %v", appErr)
 	}
 
+	submissions := page.Items
 	if users.reads != 1 {
 		t.Errorf("read users %d times, want once", users.reads)
 	}
@@ -586,11 +610,55 @@ func TestFormSubmissionsNamesTheSubmitters(t *testing.T) {
 	}
 }
 
+func TestFormSubmissionsCarryTheRowsTheUserMaySee(t *testing.T) {
+	a, ws, _ := submitApp()
+	ws.submissions = []model.WorkspaceFormSubmission{
+		{ID: "s1", FormID: "form-1", TaskID: "task-1"},
+		{ID: "s2", FormID: "form-1", TaskID: "task-gone"},
+	}
+	ws.rows = []map[string]any{{"id": "task-1", "name": "Order"}}
+
+	page, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("GetFormSubmissions: %v", appErr)
+	}
+
+	if got := page.Items[0].Row; got["name"] != "Order" {
+		t.Errorf("first row %v, want the row it made", got)
+	}
+	if got := page.Items[1].Row; got != nil {
+		t.Errorf("second row %v, want none for a row the user cannot see", got)
+	}
+}
+
+func TestFormSubmissionsArePaged(t *testing.T) {
+	a, ws, _ := submitApp()
+	for i := range submissionsPageSize + 5 {
+		ws.submissions = append(ws.submissions, model.WorkspaceFormSubmission{ID: fmt.Sprintf("s%d", i), FormID: "form-1"})
+	}
+
+	first, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("first page: %v", appErr)
+	}
+	if len(first.Items) != submissionsPageSize || first.Total != submissionsPageSize+5 {
+		t.Errorf("first page has %d of %d; want a full page of all %d", len(first.Items), first.Total, submissionsPageSize+5)
+	}
+
+	second, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 2, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("second page: %v", appErr)
+	}
+	if len(second.Items) != 5 || second.Items[0].ID != fmt.Sprintf("s%d", submissionsPageSize) {
+		t.Errorf("second page %+v, want the last 5", second)
+	}
+}
+
 func TestFormSubmissionsRefusesAMemberWhoCannotChangeViews(t *testing.T) {
 	a, ws, _ := submitApp()
 	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
 
-	_, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", accessUser())
+	_, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, accessUser())
 	if appErr == nil || appErr.Status != http.StatusForbidden {
 		t.Fatalf("want 403, got %v", appErr)
 	}
@@ -607,7 +675,7 @@ func TestFormSubmissionsOfAnotherTableIsNotFound(t *testing.T) {
 			a, ws, _ := submitApp()
 			ws.onlyMember = ""
 
-			_, appErr := a.GetFormSubmissions(context.Background(), place[0], place[1], "form-1", workspaceAdmin)
+			_, appErr := a.GetFormSubmissions(context.Background(), place[0], place[1], "form-1", 1, workspaceAdmin)
 			if appErr == nil || appErr.Status != http.StatusNotFound {
 				t.Fatalf("want 404, got %v", appErr)
 			}

@@ -696,4 +696,12 @@ type WorkspaceFormSubmission struct {
 	SubmittedBy   string      `json:"submitted_by"`
 	SubmittedAt   int64       `json:"submitted_at"`
 	SubmitterInfo *FormMember `json:"submitter_info,omitempty"`
+	// Row is the row the submission made as it is now, left out when it was
+	// deleted or the user may not see it.
+	Row map[string]any `json:"row,omitempty"`
+}
+
+type FormSubmissionsPage struct {
+	Items []WorkspaceFormSubmission `json:"items"`
+	Total int                       `json:"total"`
 }
