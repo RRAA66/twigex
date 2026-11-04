@@ -55,9 +55,12 @@ import useDateOperations from "@/composables/useDateOperations.js";
 import { useOpenTask } from "@/composables/projects/useOpenTask";
 import { onProjectChange } from "@/js/websocket";
 import formService from "@/services/formService";
+import workspaceService from "@/services/workspaceService";
 import { useAlertStore } from "@/store/alerts";
+import { useWorkspaceStore } from "@/store/workspaces";
 import { extractErrorMessage } from "@/utils/errors";
-import { fillableFormFields } from "@/utils/projects/forms";
+import { fillableFormFields, formFieldType } from "@/utils/projects/forms";
+import { tableDisplayNames } from "@/utils/projects/gridView";
 import DataTable from "@/components/DataTable.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import FormSubmissionValue from "@/components/Projects/Form/FormSubmissionValue.vue";
@@ -126,6 +129,20 @@ async function load(next = page.value) {
     }
 }
 
+// A master link names a table, and only the grid and board load the names
+// the task panel and this list show it by.
+async function loadTableNames() {
+    if (!shownFields.value.some((f) => formFieldType(f) === "master-link")) return;
+
+    try {
+        const { data } = await workspaceService.getWorkspaceTables(props.workspaceId, "nav");
+
+        useWorkspaceStore().setTableNameLookup(tableDisplayNames(data || []));
+    } catch (error) {
+        alertStore.showError(extractErrorMessage(error));
+    }
+}
+
 function open(submission) {
     if (!submission.row) return;
 
@@ -144,7 +161,10 @@ const stopChanges = onProjectChange((change) => {
     reloadTimer = setTimeout(() => load(), RELOAD_DELAY_MS);
 });
 
-onMounted(() => load(1));
+onMounted(() => {
+    load(1);
+    loadTableNames();
+});
 
 onBeforeUnmount(() => {
     stopChanges();
