@@ -315,9 +315,8 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceView) ||
-		!a.canReadTable(ctx, user, workspaceID, tableID) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionUpdateWorkspaceView); appErr != nil {
+		return nil, appErr
 	}
 
 	if _, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user); appErr != nil {

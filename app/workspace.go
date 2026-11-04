@@ -4238,7 +4238,10 @@ func (a *App) DeleteWorkspaceTableView(ctx context.Context, workspaceID string, 
 		deleted.onlyUsers = audience
 	}
 
-	ok, err := a.Store.Workspace.DeleteTableView(workspaceID, tableID, viewID)
+	dbCtx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	ok, err := a.Store.Workspace.DeleteTableView(dbCtx, workspaceID, tableID, viewID)
 	if err != nil {
 		tlog.Errorw("Failed to delete table view",
 			"workspace_id", workspaceID,

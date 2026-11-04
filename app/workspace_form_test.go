@@ -110,19 +110,22 @@ func formApp(access fakeAccessWorkspaceStore, licensed bool) (*App, *fakeFormSto
 
 // formRoles stands in for enterprise roles that grant no table permissions,
 // so only workspace permissions let a member manage views, and that hide one
-// table from everyone they resolve.
-type formRoles struct{ hiddenTable string }
+// table from everyone they resolve. viewsTable is a table whose views they
+// let a member manage after all.
+type formRoles struct{ hiddenTable, viewsTable string }
 
 func (r formRoles) Resolve(interfaces.AccessInput) interfaces.WorkspaceAccess {
 	return formAccess(r)
 }
 
-type formAccess struct{ hiddenTable string }
+type formAccess struct{ hiddenTable, viewsTable string }
 
 func (formAccess) AssignedOnlyAll() bool                   { return false }
 func (formAccess) AssignedOnly(string) bool                { return false }
 func (formAccess) CanPerformRowAction(_, _, _ string) bool { return true }
-func (formAccess) TableHasPermission(_, _ string) bool     { return false }
+func (f formAccess) TableHasPermission(tableID, action string) bool {
+	return tableID == f.viewsTable && action == "manage_views"
+}
 func (f formAccess) VisibleTables(tables []model.WorkspaceTable) []model.WorkspaceTable {
 	var visible []model.WorkspaceTable
 	for _, t := range tables {
