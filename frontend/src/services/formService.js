@@ -23,12 +23,10 @@ const formService = {
         return axios.delete(`/workspaces/${workspaceId}/table/${tableId}/forms/${formId}`);
     },
 
-    getSubmissions(workspaceId, tableId, formId, page) {
+    getSubmissions(workspaceId, tableId, formId, params) {
         return axios.get(
             `/workspaces/${workspaceId}/table/${tableId}/forms/${formId}/submissions`,
-            {
-                params: { page },
-            },
+            { params },
         );
     },
 

@@ -141,7 +141,7 @@ func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 	mustExec(t, `INSERT INTO workspace_form_submissions (id, form_id, task_id, submitted_by, submitted_at)
 		VALUES ('s1', 'form-1', 'a1', 'u1', 1), ('s2', 'form-1', 'a2', NULL, 2), ('s3', 'form-2', 'a2', 'u1', 3)`)
 
-	got, err := w.GetFormSubmissions(context.Background(), "form-1", 10, 0)
+	got, err := w.GetFormSubmissions(context.Background(), "form-1", model.FormSubmissionsFilter{}, 10, 0)
 	if err != nil {
 		t.Fatalf("GetFormSubmissions: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 		t.Errorf("got %+v, want s2 then s1", got)
 	}
 
-	next, err := w.GetFormSubmissions(context.Background(), "form-1", 1, 1)
+	next, err := w.GetFormSubmissions(context.Background(), "form-1", model.FormSubmissionsFilter{}, 1, 1)
 	if err != nil {
 		t.Fatalf("GetFormSubmissions from 1: %v", err)
 	}
@@ -157,7 +157,45 @@ func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 		t.Errorf("page from 1 = %+v, want s1 alone", next)
 	}
 
-	if count, err := w.CountFormSubmissions(context.Background(), "form-1"); err != nil || count != 2 {
+	if count, err := w.CountFormSubmissions(context.Background(), "form-1", model.FormSubmissionsFilter{}); err != nil || count != 2 {
 		t.Errorf("count = %d, %v; want 2", count, err)
+	}
+}
+
+func TestGetFormSubmissionsWithinDates(t *testing.T) {
+	w := setupFormSubmit(t)
+	ctx := context.Background()
+
+	mustExec(t, `INSERT INTO workspace_form_submissions (id, form_id, task_id, submitted_by, submitted_at)
+		VALUES ('s1', 'form-1', 'a1', 'u1', 100), ('s2', 'form-1', 'a2', 'u1', 200), ('s3', 'form-1', 'a3', 'u1', 300)`)
+
+	for _, tc := range []struct {
+		name   string
+		filter model.FormSubmissionsFilter
+		want   []string
+	}{
+		{"from a time on", model.FormSubmissionsFilter{From: 200}, []string{"s3", "s2"}},
+		{"before a time", model.FormSubmissionsFilter{To: 300}, []string{"s2", "s1"}},
+		{"between", model.FormSubmissionsFilter{From: 150, To: 250}, []string{"s2"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := w.GetFormSubmissions(ctx, "form-1", tc.filter, 10, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var ids []string
+			for _, s := range got {
+				ids = append(ids, s.ID)
+			}
+
+			if !slices.Equal(ids, tc.want) {
+				t.Errorf("submissions %v, want %v", ids, tc.want)
+			}
+
+			if count, err := w.CountFormSubmissions(ctx, "form-1", tc.filter); err != nil || count != len(tc.want) {
+				t.Errorf("count = %d, %v; want %d", count, err, len(tc.want))
+			}
+		})
 	}
 }

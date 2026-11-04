@@ -106,6 +106,7 @@ func (a *API) initWorkspaces() {
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}", a.updateForm).Methods("PUT")
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}", a.deleteForm).Methods("DELETE")
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}/submissions", a.getFormSubmissions).Methods("GET")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}/submissions/export", a.exportFormSubmissions).Methods("GET")
 	a.BaseRoutes.Workspaces.Use(a.RequireSession)
 	a.BaseRoutes.Workspaces.Use(a.RequireCSRF)
 	a.BaseRoutes.Workspaces.Use(a.RequireTableInWorkspace)

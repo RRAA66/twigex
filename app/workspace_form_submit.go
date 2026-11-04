@@ -282,14 +282,9 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 	return task.ID, nil
 }
 
-// GetFormSubmissions lists a page of who submitted a form, newest first,
-// with the row each made as the grid would show it now. Rows are table data,
-// so it asks for reading the table as well as what reading the form asks for.
-func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, formID string, page int, user model.User) (*model.FormSubmissionsPage, *model.AppError) {
-	if !a.Server.License.HasForms() {
-		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
-	}
-
+// GetFormSubmissions lists a page of who submitted a form within filter,
+// newest first, with the row each made as the grid would show it now.
+func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, formID string, filter model.FormSubmissionsFilter, page int, user model.User) (*model.FormSubmissionsPage, *model.AppError) {
 	if page < 1 {
 		page = 1
 	}
@@ -297,18 +292,13 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceView) ||
-		!a.canReadTable(ctx, user, workspaceID, tableID) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
-	}
-
-	if _, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
+	if _, appErr := a.submissionsForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
 		return nil, appErr
 	}
 
 	failed := model.NewAppError("workspace.form_submissions_failed", http.StatusInternalServerError)
 
-	submissions, err := a.Store.Workspace.GetFormSubmissions(ctx, formID, submissionsPageSize, (page-1)*submissionsPageSize)
+	submissions, err := a.Store.Workspace.GetFormSubmissions(ctx, formID, filter, submissionsPageSize, (page-1)*submissionsPageSize)
 	if err != nil {
 		tlog.Errorw("Failed to retrieve form submissions",
 			"form_id", formID,
@@ -317,7 +307,7 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 		return nil, failed
 	}
 
-	total, err := a.Store.Workspace.CountFormSubmissions(ctx, formID)
+	total, err := a.Store.Workspace.CountFormSubmissions(ctx, formID, filter)
 	if err != nil {
 		tlog.Errorw("Failed to count form submissions",
 			"form_id", formID,
@@ -345,6 +335,21 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	}
 
 	return result, nil
+}
+
+// submissionsForm opens a form's submissions to who may change its view and
+// read its table, since the submissions are rows of the table.
+func (a *App) submissionsForm(ctx context.Context, workspaceID, tableID, formID string, user model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
+	if !a.Server.License.HasForms() {
+		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
+	}
+
+	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceView) ||
+		!a.canReadTable(ctx, user, workspaceID, tableID) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	return a.getTableForm(ctx, workspaceID, tableID, formID, user)
 }
 
 func (a *App) nameSubmitters(submissions []model.WorkspaceFormSubmission) error {

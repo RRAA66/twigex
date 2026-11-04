@@ -701,6 +701,13 @@ type WorkspaceFormSubmission struct {
 	Row map[string]any `json:"row,omitempty"`
 }
 
+// FormSubmissionsFilter keeps the submissions sent from From until before To,
+// in unix seconds; zero leaves that end open.
+type FormSubmissionsFilter struct {
+	From int64
+	To   int64
+}
+
 type FormSubmissionsPage struct {
 	Items []WorkspaceFormSubmission `json:"items"`
 	Total int                       `json:"total"`

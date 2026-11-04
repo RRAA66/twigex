@@ -708,8 +708,8 @@ type WorkspaceStore interface {
 	GetFormByToken(ctx context.Context, token string) (*model.WorkspaceFormWithFields, error)
 	GetLinkableTables(ctx context.Context, workspaceID, excludeTableID string) ([]model.FormLinkTable, error)
 	CreateFormTask(ctx context.Context, workspaceID, tableID string, task model.FormTask, submission model.WorkspaceFormSubmission) (map[string]any, error)
-	GetFormSubmissions(ctx context.Context, formID string, limit, offset int) ([]model.WorkspaceFormSubmission, error)
-	CountFormSubmissions(ctx context.Context, formID string) (int, error)
+	GetFormSubmissions(ctx context.Context, formID string, filter model.FormSubmissionsFilter, limit, offset int) ([]model.WorkspaceFormSubmission, error)
+	CountFormSubmissions(ctx context.Context, formID string, filter model.FormSubmissionsFilter) (int, error)
 }
 
 type UploadSessionStore interface {
