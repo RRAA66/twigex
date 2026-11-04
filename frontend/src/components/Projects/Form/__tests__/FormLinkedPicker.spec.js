@@ -141,6 +141,48 @@ describe("FormLinkedPicker", () => {
         expect(document.body.textContent).toContain("Failed to load options.");
     });
 
+    it("picks a row in a multiple pick that has no value yet", async () => {
+        formService.getPublicLinkedItems.mockResolvedValue(page([one, two]));
+        w = mountPicker({ multiple: true });
+        await open(w);
+
+        document
+            .querySelector("[role=option]")
+            .dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+        await flushPromises();
+
+        expect(w.emitted("update:modelValue")[0]).toEqual([[one]]);
+    });
+
+    it("clears a single pick", async () => {
+        w = mountPicker({ modelValue: one });
+
+        await w.find("button:not([id^='headlessui'])").trigger("click");
+
+        expect(w.emitted("update:modelValue")[0]).toEqual([null]);
+    });
+
+    it("offers no clearing before anything is picked", () => {
+        w = mountPicker();
+
+        expect(w.text()).not.toContain("Clear");
+    });
+
+    it("shows each option's colour and the picked one's", async () => {
+        const high = { id: "o1", name: "High", color: "#dc2626" };
+
+        formService.getPublicLinkedItems.mockResolvedValue(page([high, one]));
+        w = mountPicker({ modelValue: high });
+        await open(w);
+
+        const dots = [...document.querySelectorAll("span.rounded-full")];
+
+        expect(dots.map((d) => d.style.backgroundColor)).toEqual([
+            "rgb(220, 38, 38)",
+            "rgb(220, 38, 38)",
+        ]);
+    });
+
     it("removes a chosen row from a multiple pick", async () => {
         w = mountPicker({ multiple: true, modelValue: [one, two] });
 

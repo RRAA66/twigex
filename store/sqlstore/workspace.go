@@ -2879,7 +2879,13 @@ func (w *workspaceRepository) GetLinkedRecordsLite(ctx context.Context, tableNam
 
 	args = append(args, limit, offset)
 
-	rows, err := w.Db.QueryContext(ctx, "SELECT id, name FROM "+table+" WHERE "+strings.Join(where, " AND ")+
+	// A single-select's options carry the colour they are shown with.
+	selected := "id, name"
+	if slices.Contains(columns, "color") {
+		selected += ", color"
+	}
+
+	rows, err := w.Db.QueryContext(ctx, "SELECT "+selected+" FROM "+table+" WHERE "+strings.Join(where, " AND ")+
 		" ORDER BY "+order+" LIMIT ? OFFSET ?", args...)
 	if err != nil {
 		return nil, err
