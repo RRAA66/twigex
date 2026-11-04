@@ -54,7 +54,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 </Popover>
 
                 <BaseButton
-                    v-if="currentView?.is_public === false && route.name !== 'gantt-view'"
+                    v-if="currentView && viewIsPrivate && route.name !== 'gantt-view'"
                     type="button"
                     size="small"
                     variant="secondary"
@@ -1176,6 +1176,11 @@ const currentView = computed(() => {
 
     return null;
 });
+
+// The view tabs hold its visibility as it is toggled.
+const viewIsPrivate = computed(
+    () => (typesCreated.value || []).find((v) => v.id === route.params.fid)?.is_public === false,
+);
 
 async function addToView(workspace, tableID, viewID) {
     try {
