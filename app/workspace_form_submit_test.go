@@ -654,9 +654,20 @@ func TestFormSubmissionsArePaged(t *testing.T) {
 	}
 }
 
+func TestFormSubmissionsAreOpenToWhoManagesTheTablesViews(t *testing.T) {
+	a, ws, _ := submitApp()
+	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
+	a.WorkspaceRoles = formRoles{viewsTable: tbl1}
+
+	if _, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, accessUser()); appErr != nil {
+		t.Fatalf("GetFormSubmissions: %v", appErr)
+	}
+}
+
 func TestFormSubmissionsRefusesAMemberWhoCannotChangeViews(t *testing.T) {
 	a, ws, _ := submitApp()
 	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
+	a.WorkspaceRoles = formRoles{}
 
 	_, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, accessUser())
 	if appErr == nil || appErr.Status != http.StatusForbidden {
