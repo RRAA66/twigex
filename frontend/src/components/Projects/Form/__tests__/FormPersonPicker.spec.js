@@ -48,6 +48,18 @@ describe("FormPersonPicker", () => {
         expect(document.body.textContent).toContain("Ben");
     });
 
+    it("shows each member and the picked one with their avatar", async () => {
+        useUserStore().addUsers([ann]);
+        workspaceService.searchWorkspaceMembers.mockResolvedValue({ data: [ann, ben] });
+        w = mountPicker("u1");
+
+        await open(w);
+
+        const avatars = w.findAllComponents({ name: "UserAvatar" }).map((a) => a.props("userId"));
+
+        expect(avatars).toEqual(["u1", "u1", "u2"]);
+    });
+
     it("answers the picked member's id", async () => {
         workspaceService.searchWorkspaceMembers.mockResolvedValue({ data: [ann] });
         w = mountPicker();
