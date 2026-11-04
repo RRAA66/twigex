@@ -73,13 +73,15 @@ SPDX-License-Identifier: AGPL-3.0-only
             v-bind="aria"
             @update:model-value="update"
         />
-        <FormMemberPicker
+        <FormPersonPicker
             v-else-if="type === 'assignee'"
+            :id="id"
             :model-value="modelValue || ''"
-            :members="members"
-            :label="selectLabel"
-            :error="Boolean(error)"
+            :workspace-id="workspaceId"
             :placeholder="field.placeholder || t('projects.form_view.placeholder.select_person')"
+            :error="Boolean(error)"
+            :aria-labelledby="labelId"
+            v-bind="aria"
             @update:model-value="update"
         />
         <BaseSelect
@@ -132,7 +134,7 @@ import BaseSelect from "@/components/BaseSelect.vue";
 import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
 import FormFileInput from "@/components/Projects/Form/FormFileInput.vue";
 import FormLinkedPicker from "@/components/Projects/Form/FormLinkedPicker.vue";
-import FormMemberPicker from "@/components/Projects/Form/FormMemberPicker.vue";
+import FormPersonPicker from "@/components/Projects/Form/FormPersonPicker.vue";
 
 const PLACEHOLDER_KEYS = {
     number: "projects.form_view.placeholder.number",
@@ -144,7 +146,7 @@ const props = defineProps({
     field: { type: Object, required: true },
     modelValue: { type: [String, Number, Boolean, Object, Array], default: null },
     token: { type: String, required: true },
-    members: { type: Array, default: () => [] },
+    workspaceId: { type: String, default: "" },
     linkTables: { type: Array, default: () => [] },
     error: { type: String, default: "" },
 });
@@ -163,7 +165,7 @@ const label = computed(
 );
 
 // BaseSelect labels its own button, so its label carries the required mark.
-const labelledBySelect = computed(() => ["assignee", "master-link"].includes(type.value));
+const labelledBySelect = computed(() => type.value === "master-link");
 
 const selectLabel = computed(() => (props.field.required ? `${label.value} *` : label.value));
 

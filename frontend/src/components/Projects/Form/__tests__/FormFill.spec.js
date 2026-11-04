@@ -23,7 +23,7 @@ const form = {
     description: "Tell us",
     accent_color: "#ff0000",
     can_submit: true,
-    members: [{ id: "u1", name: "Ann", lastname: "Lee", photo: "" }],
+    workspace_id: "w1",
     link_tables: [],
     fields: [
         {
@@ -72,12 +72,11 @@ describe("FormFill", () => {
 
         const labels = w.findAll("label.mb-1").map((l) => l.text().replace(/\s+/g, " "));
 
-        expect(labels).toEqual(["Title *", "Budget", "Done", "Due", "Files"]);
-        expect(w.find("[id^='headlessui-listbox-label']").text()).toBe("Owner");
+        expect(labels).toEqual(["Title *", "Budget", "Done", "Due", "Owner", "Files"]);
         expect(w.find("input[type='number']").exists()).toBe(true);
         expect(w.find("input[type='checkbox']").exists()).toBe(true);
         expect(w.text()).toContain("Pick a date");
-        expect(w.text()).toContain("Select person");
+        expect(w.find("input[placeholder='Select person']").exists()).toBe(true);
 
         const honeypot = w.find("input[tabindex='-1']");
 

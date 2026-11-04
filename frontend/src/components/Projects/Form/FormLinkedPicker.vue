@@ -170,8 +170,11 @@ const SEARCH_DELAY_MS = 250;
 
 const props = defineProps({
     modelValue: { type: [Object, Array], default: null },
-    token: { type: String, required: true },
-    tableId: { type: String, required: true },
+    token: { type: String, default: "" },
+    tableId: { type: String, default: "" },
+    // Lists the options in place of the form link, given { page, limit,
+    // search } and answering { items, has_more }.
+    loader: { type: Function, default: null },
     multiple: { type: Boolean, default: false },
     placeholder: { type: String, default: "" },
     id: { type: String, default: undefined },
@@ -197,6 +200,16 @@ let searchTimer = null;
 const chips = computed(() => (props.multiple ? props.modelValue || [] : []));
 const picked = computed(() => (props.multiple ? null : props.modelValue));
 
+async function requestPage(next) {
+    const params = { page: next, limit: PAGE_SIZE, search: search.value || undefined };
+
+    if (props.loader) return props.loader(params);
+
+    const { data } = await formService.getPublicLinkedItems(props.token, props.tableId, params);
+
+    return data;
+}
+
 async function fetchPage(next) {
     const current = ++request;
 
@@ -205,11 +218,7 @@ async function fetchPage(next) {
     else loadingMore.value = true;
 
     try {
-        const { data } = await formService.getPublicLinkedItems(props.token, props.tableId, {
-            page: next,
-            limit: PAGE_SIZE,
-            search: search.value || undefined,
-        });
+        const data = await requestPage(next);
 
         // A slower answer to an older search must not replace a newer one.
         if (current !== request) return;
