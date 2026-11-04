@@ -54,7 +54,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 </Popover>
 
                 <BaseButton
-                    v-if="currentView && route.name !== 'gantt-view'"
+                    v-if="currentView?.is_public === false && route.name !== 'gantt-view'"
                     type="button"
                     size="small"
                     variant="secondary"
