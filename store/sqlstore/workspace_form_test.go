@@ -190,7 +190,7 @@ func TestDeleteTableViewDeletesTheFormItShows(t *testing.T) {
 		t.Fatalf("SetFormImage: %v", err)
 	}
 
-	if _, err := w.DeleteTableView("w1", "t1", "form-1"); err != nil {
+	if _, err := w.DeleteTableView(ctx, "w1", "t1", "form-1"); err != nil {
 		t.Fatalf("DeleteTableView: %v", err)
 	}
 
@@ -219,7 +219,7 @@ func TestDeleteTableViewKeepsAFormOfAnotherTable(t *testing.T) {
 		t.Fatalf("CreateForm: %v", err)
 	}
 
-	if _, err := w.DeleteTableView("w1", "t2", "form-1"); err != nil {
+	if _, err := w.DeleteTableView(ctx, "w1", "t2", "form-1"); err != nil {
 		t.Fatalf("DeleteTableView: %v", err)
 	}
 

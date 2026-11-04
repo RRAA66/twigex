@@ -4238,12 +4238,15 @@ func (a *App) DeleteWorkspaceTableView(ctx context.Context, workspaceID string, 
 		deleted.onlyUsers = audience
 	}
 
-	formImages, appErr := a.viewFormImages(ctx, workspaceID, tableID, viewID)
+	dbCtx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	formImages, appErr := a.viewFormImages(dbCtx, workspaceID, tableID, viewID)
 	if appErr != nil {
 		return false, appErr
 	}
 
-	ok, err := a.Store.Workspace.DeleteTableView(workspaceID, tableID, viewID)
+	ok, err := a.Store.Workspace.DeleteTableView(dbCtx, workspaceID, tableID, viewID)
 	if err != nil {
 		tlog.Errorw("Failed to delete table view",
 			"workspace_id", workspaceID,

@@ -48,7 +48,7 @@ func (f *fakeFormImageStore) SetFormImage(_ context.Context, formID, kind string
 	return nil
 }
 
-func (f *fakeFormImageStore) DeleteTableView(workspaceID, tableID, viewID string) (bool, error) {
+func (f *fakeFormImageStore) DeleteTableView(_ context.Context, workspaceID, tableID, viewID string) (bool, error) {
 	form, ok := f.forms[viewID]
 	if ok && form.WorkspaceID == workspaceID && form.TableID == tableID {
 		delete(f.forms, viewID)
