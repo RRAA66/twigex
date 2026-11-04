@@ -101,7 +101,7 @@ func (f *fakeFormSubmitStore) GetLinkedRecordsLite(_ context.Context, _, _ strin
 
 	rows := []map[string]any{}
 	for i := range min(f.linkedRows, limit) {
-		rows = append(rows, map[string]any{"id": fmt.Sprintf("row-%d", i+1), "name": "Acme"})
+		rows = append(rows, map[string]any{"id": fmt.Sprintf("row-%d", i+1), "name": "Acme", "color": "#dc2626"})
 	}
 
 	return rows, nil
@@ -509,6 +509,9 @@ func TestPublicLinkedItemsOnlyForTheFormsFields(t *testing.T) {
 	if appErr != nil {
 		t.Fatalf("GetPublicLinkedItems: %v", appErr)
 	}
+	if want := (model.FormLinkedItem{ID: "row-1", Name: "Acme", Color: "#dc2626"}); len(items.Items) == 1 && items.Items[0] != want {
+		t.Errorf("item %+v, want %+v", items.Items[0], want)
+	}
 	if ws.linkedLimit != 51 || len(items.Items) != 1 || items.HasMore {
 		t.Errorf("asked the store for %d, answered %+v, want a page of at most 50 and one more to tell if there are more", ws.linkedLimit, items)
 	}
@@ -522,7 +525,7 @@ func TestPublicLinkedItemsSaysWhetherMoreFollow(t *testing.T) {
 	if appErr != nil {
 		t.Fatalf("GetPublicLinkedItems: %v", appErr)
 	}
-	if ws.linkedOffset != 10 || len(items.Items) != 10 || !items.HasMore || items.Items[0] != (model.FormLinkedItem{ID: "row-1", Name: "Acme"}) {
+	if ws.linkedOffset != 10 || len(items.Items) != 10 || !items.HasMore || items.Items[0] != (model.FormLinkedItem{ID: "row-1", Name: "Acme", Color: "#dc2626"}) {
 		t.Errorf("read from %d, answered %+v; want the second page of 10 with more to follow", ws.linkedOffset, items)
 	}
 }

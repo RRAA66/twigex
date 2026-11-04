@@ -85,7 +85,7 @@ func (a *App) formLinkTables(ctx context.Context, user model.User, form *model.W
 }
 
 // GetPublicLinkedItems pages through the rows a link or single-select field
-// of the form can pick, by id and name only.
+// of the form can pick: their id and name, and an option's colour.
 func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search string, page, limit int, user *model.User) (*model.LinkedItemsResponse, *model.AppError) {
 	if limit <= 0 || limit > maxLinkedItemsPage {
 		limit = maxLinkedItemsPage
@@ -146,7 +146,8 @@ func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search s
 	for _, row := range rows[:min(len(rows), limit)] {
 		id, _ := row["id"].(string)
 		name, _ := row["name"].(string)
-		response.Items = append(response.Items, model.FormLinkedItem{ID: id, Name: name})
+		color, _ := row["color"].(string)
+		response.Items = append(response.Items, model.FormLinkedItem{ID: id, Name: name, Color: color})
 	}
 
 	return &response, nil
