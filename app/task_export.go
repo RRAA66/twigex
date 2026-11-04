@@ -168,8 +168,6 @@ func (a *App) PrepareTaskExport(ctx context.Context, workspaceIDs []string, user
 	return export, nil
 }
 
-// FileName names the export after its workspace when it covers only one, with
-// the day it was made.
 // newTaskExport sets an export's dates in timezone, or the user's own, laid
 // out the way clock ("12h" or "24h") asks for.
 func (a *App) newTaskExport(user model.User, timezone, clock string) *TaskExport {
@@ -190,6 +188,8 @@ func (a *App) newTaskExport(user model.User, timezone, clock string) *TaskExport
 	return export
 }
 
+// FileName names the export after its workspace when it covers only one, with
+// the day it was made.
 func (e *TaskExport) FileName() string {
 	name := "Task report"
 	if len(e.tables) > 0 {
