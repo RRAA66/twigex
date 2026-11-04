@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         v-slot="{ open }"
         as="div"
         by="id"
-        :model-value="modelValue"
+        :model-value="multiple ? modelValue || [] : modelValue"
         :multiple="multiple"
         :nullable="!multiple"
         @update:model-value="emit('update:modelValue', $event)"

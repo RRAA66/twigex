@@ -141,6 +141,19 @@ describe("FormLinkedPicker", () => {
         expect(document.body.textContent).toContain("Failed to load options.");
     });
 
+    it("picks a row in a multiple pick that has no value yet", async () => {
+        formService.getPublicLinkedItems.mockResolvedValue(page([one, two]));
+        w = mountPicker({ multiple: true });
+        await open(w);
+
+        document
+            .querySelector("[role=option]")
+            .dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+        await flushPromises();
+
+        expect(w.emitted("update:modelValue")[0]).toEqual([[one]]);
+    });
+
     it("removes a chosen row from a multiple pick", async () => {
         w = mountPicker({ multiple: true, modelValue: [one, two] });
 
