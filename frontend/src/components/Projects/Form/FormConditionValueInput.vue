@@ -25,12 +25,20 @@ SPDX-License-Identifier: AGPL-3.0-only
         </label>
         <div class="mt-2">
             <FormLinkedPicker
-                v-if="widget === 'linked' || widget === 'assignee'"
+                v-if="widget === 'linked'"
                 :id="id"
                 :model-value="picked"
-                :loader="widget === 'linked' ? loadRows : loadMembers"
+                :loader="loadRows"
                 :placeholder="placeholder"
                 @update:model-value="pick"
+            />
+            <FormPersonPicker
+                v-else-if="widget === 'assignee'"
+                :id="id"
+                :model-value="modelValue"
+                :workspace-id="workspaceId"
+                :placeholder="placeholder"
+                @update:model-value="update"
             />
             <DatePickerField
                 v-else-if="widget === 'date'"
@@ -58,12 +66,12 @@ import { computed, ref, useId, watch } from "vue";
 import { t } from "@/i18n/index.js";
 import workspaceService from "@/services/workspaceService";
 import { useAlertStore } from "@/store/alerts";
-import { useUserStore } from "@/store/user";
 import { extractErrorMessage } from "@/utils/errors";
 import { conditionValueWidget, linkedTableId } from "@/utils/projects/forms";
 import BaseSelect from "@/components/BaseSelect.vue";
 import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
 import FormLinkedPicker from "@/components/Projects/Form/FormLinkedPicker.vue";
+import FormPersonPicker from "@/components/Projects/Form/FormPersonPicker.vue";
 
 const props = defineProps({
     field: { type: Object, required: true },
@@ -78,7 +86,6 @@ const emit = defineEmits(["update:modelValue"]);
 
 const id = useId();
 const alertStore = useAlertStore();
-const userStore = useUserStore();
 
 const statusOptions = ref([]);
 const picked = ref(null);
@@ -101,10 +108,6 @@ function pick(item) {
     update(item ? item.id : "");
 }
 
-function memberName(user) {
-    return [user.name, user.lastname].filter(Boolean).join(" ") || user.username || user.id;
-}
-
 // Neither list is counted, so one row past the page tells there are more.
 function pageOf(rows, limit) {
     return { items: rows.slice(0, limit), has_more: rows.length > limit };
@@ -121,45 +124,21 @@ async function loadRows({ page, limit, search }) {
     return pageOf(rows, limit);
 }
 
-async function loadMembers({ page, limit, search }) {
-    const { data } = await workspaceService.searchWorkspaceMembers(
-        props.workspaceId,
-        search || "",
-        limit + 1,
-        (page - 1) * limit,
-    );
-    const users = data || [];
-
-    userStore.addUsers(users);
-
-    return pageOf(
-        users.map((u) => ({ id: u.id, name: memberName(u) })),
-        limit,
-    );
-}
-
 async function loadStatusOptions() {
     const { data } = await workspaceService.getTableStatusTypes(props.workspaceId, props.tableId);
 
     statusOptions.value = (data.options || []).map((o) => ({ value: o.id, label: o.name }));
 }
 
-// A saved value is a row or user id; the picker shows its name.
-async function namePicked(kind, value) {
-    if (kind === "linked") {
-        const { data } = await workspaceService.getLinkedRecordsLite(
-            props.workspaceId,
-            linkedTableId(props.field),
-            { ids: value },
-        );
+// A saved value is a row id; the picker shows its name.
+async function rowName(value) {
+    const { data } = await workspaceService.getLinkedRecordsLite(
+        props.workspaceId,
+        linkedTableId(props.field),
+        { ids: value },
+    );
 
-        return data?.[0]?.name;
-    }
-
-    await userStore.ensureUsers([value]);
-    const user = userStore.getUserById(value);
-
-    return user && memberName(user);
+    return data?.[0]?.name;
 }
 
 async function showError(load) {
@@ -183,7 +162,7 @@ watch(
 watch(
     [widget, () => props.modelValue],
     ([kind, value]) => {
-        if (kind !== "linked" && kind !== "assignee") return;
+        if (kind !== "linked") return;
 
         if (!value) {
             picked.value = null;
@@ -195,7 +174,7 @@ watch(
 
         picked.value = { id: value, name: value };
         showError(async () => {
-            const name = await namePicked(kind, value);
+            const name = await rowName(value);
 
             if (name && picked.value?.id === value) picked.value = { id: value, name };
         });
