@@ -7,7 +7,11 @@ SPDX-License-Identifier: AGPL-3.0-only
         :model-value="picked"
         :loader="loadMembers"
         @update:model-value="emit('update:modelValue', $event?.id || '')"
-    />
+    >
+        <template #leading="{ item }">
+            <span class="ml-0.5 size-5 shrink-0"><UserAvatar :user-id="item.id" /></span>
+        </template>
+    </FormLinkedPicker>
 </template>
 
 <script setup>
@@ -16,6 +20,7 @@ import { useUserState } from "@/composables/useUser";
 import workspaceService from "@/services/workspaceService";
 import { useUserStore } from "@/store/user";
 import FormLinkedPicker from "@/components/Projects/Form/FormLinkedPicker.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
 
 const props = defineProps({
     modelValue: { type: String, default: "" },
