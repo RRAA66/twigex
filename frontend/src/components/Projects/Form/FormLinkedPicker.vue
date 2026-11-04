@@ -15,14 +15,21 @@ SPDX-License-Identifier: AGPL-3.0-only
         <div
             ref="anchor"
             @focusin="loadFirstPage"
-            class="relative flex w-full flex-wrap items-center gap-1 rounded-md bg-white py-1 pl-2 pr-10 shadow-sm ring-1 ring-inset focus-within:ring-2 focus-within:ring-indigo-600"
-            :class="error ? 'ring-red-600' : 'ring-gray-300'"
+            class="relative flex w-full flex-wrap items-center gap-1 rounded-md bg-white py-1 pl-2 shadow-sm ring-1 ring-inset focus-within:ring-2 focus-within:ring-indigo-600"
+            :class="[error ? 'ring-red-600' : 'ring-gray-300', picked ? 'pr-16' : 'pr-10']"
         >
             <span
                 v-for="item in chips"
                 :key="item.id"
                 class="inline-flex items-center gap-x-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"
             >
+                <span
+                    v-if="item.color"
+                    class="h-2 w-2 flex-none rounded-full"
+                    :class="getStatusStyle(item).class"
+                    :style="getStatusStyle(item).style"
+                    aria-hidden="true"
+                />
                 {{ item.name }}
                 <button
                     type="button"
@@ -33,6 +40,13 @@ SPDX-License-Identifier: AGPL-3.0-only
                     <XMarkIcon class="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
             </span>
+            <span
+                v-if="picked?.color"
+                class="ml-1 h-2 w-2 flex-none rounded-full"
+                :class="getStatusStyle(picked).class"
+                :style="getStatusStyle(picked).style"
+                aria-hidden="true"
+            />
             <ComboboxInput
                 :id="id"
                 v-bind="$attrs"
@@ -42,6 +56,15 @@ SPDX-License-Identifier: AGPL-3.0-only
                 @change="search = $event.target.value"
                 @click="open || openList()"
             />
+            <button
+                v-if="picked"
+                type="button"
+                class="absolute inset-y-0 right-8 flex items-center px-1 text-gray-400 hover:text-gray-600"
+                @click="emit('update:modelValue', null)"
+            >
+                <span class="sr-only">{{ t("common.button.clear") }}</span>
+                <XMarkIcon class="h-4 w-4" aria-hidden="true" />
+            </button>
             <ComboboxButton
                 ref="button"
                 class="absolute inset-y-0 right-0 flex items-center px-2"
@@ -83,8 +106,17 @@ SPDX-License-Identifier: AGPL-3.0-only
                             'relative cursor-default select-none py-2 pl-3 pr-9',
                         ]"
                     >
-                        <span :class="[selected ? 'font-semibold' : '', 'block truncate']">
-                            {{ item.name }}
+                        <span class="flex items-center gap-x-2">
+                            <span
+                                v-if="item.color"
+                                class="h-2 w-2 flex-none rounded-full"
+                                :class="getStatusStyle(item).class"
+                                :style="getStatusStyle(item).style"
+                                aria-hidden="true"
+                            />
+                            <span :class="[selected ? 'font-semibold' : '', 'truncate']">
+                                {{ item.name }}
+                            </span>
                         </span>
                         <CheckIcon
                             v-if="selected"
@@ -127,6 +159,7 @@ import { CheckIcon, ChevronUpDownIcon, XMarkIcon } from "@heroicons/vue/20/solid
 import { t } from "@/i18n/index.js";
 import { useAnchoredPopup } from "@/composables/useAnchoredPopup";
 import formService from "@/services/formService";
+import { getStatusStyle } from "@/utils/projects/cells";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseSpinner from "@/components/BaseSpinner.vue";
 
@@ -162,6 +195,7 @@ let request = 0;
 let searchTimer = null;
 
 const chips = computed(() => (props.multiple ? props.modelValue || [] : []));
+const picked = computed(() => (props.multiple ? null : props.modelValue));
 
 async function fetchPage(next) {
     const current = ++request;

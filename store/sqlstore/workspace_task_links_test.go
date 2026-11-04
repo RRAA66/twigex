@@ -271,7 +271,7 @@ func TestLinkedRecordsLitePagesAndSearchesOnTheServer(t *testing.T) {
 	mustExec(t, "DROP TABLE IF EXISTS zz_lite_options")
 	t.Cleanup(func() { _, _ = testDB.Exec("DROP TABLE IF EXISTS zz_lite_options") })
 	mustExec(t, "CREATE TABLE zz_lite_options (id VARCHAR(36) PRIMARY KEY, name VARCHAR(255), color VARCHAR(255))")
-	mustExec(t, "INSERT INTO zz_lite_options VALUES ('o1', 'Low', ''), ('o2', 'High', ''), ('o3', 'Medium', '')")
+	mustExec(t, "INSERT INTO zz_lite_options VALUES ('o1', 'Low', '#16a34a'), ('o2', 'High', '#dc2626'), ('o3', 'Medium', '')")
 
 	w := &workspaceRepository{Db: testDB}
 	ctx := context.Background()
@@ -300,5 +300,21 @@ func TestLinkedRecordsLitePagesAndSearchesOnTheServer(t *testing.T) {
 				t.Errorf("rows = %v, want %v", got, tc.want)
 			}
 		})
+	}
+
+	options, err := w.GetLinkedRecordsLite(ctx, "zz_lite_options", "", []string{"o2"}, 10, 0, model.SQLFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(options) != 1 || options[0]["color"] != "#dc2626" {
+		t.Errorf("options = %v, want High with its colour", options)
+	}
+
+	tasks, err := w.GetLinkedRecordsLite(ctx, "zz_lite_tasks", "", []string{"t1"}, 10, 0, model.SQLFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := tasks[0]["color"]; ok {
+		t.Errorf("tasks = %v, want no colour from a table without one", tasks)
 	}
 }

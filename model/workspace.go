@@ -658,8 +658,9 @@ type FormLinkTable struct {
 }
 
 type FormLinkedItem struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color,omitempty"`
 }
 
 type LinkedItemsResponse struct {
