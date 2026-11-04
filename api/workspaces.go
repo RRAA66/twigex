@@ -309,7 +309,7 @@ func (a *API) getWorkspaceFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	attachment, appErr := a.app.GetWorkspaceAttachment(fileID, workspaceID, *user)
+	attachment, appErr := a.app.GetWorkspaceAttachment(r.Context(), fileID, workspaceID, *user)
 	if appErr != nil {
 		respondAppError(w, r, appErr)
 		return

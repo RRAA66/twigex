@@ -136,9 +136,12 @@ func TestSetFormImageRefusesAnUnknownKind(t *testing.T) {
 }
 
 func TestSetFormImageOnlyOnTheFormsWorkspaceAndTable(t *testing.T) {
-	cases := []struct{ name, workspace, table string }{
-		{"other table", wsID, tbl2},
-		{"other workspace", "workspace-2", tbl1},
+	cases := []struct {
+		name, workspace, table string
+		want                   int
+	}{
+		{"other table", wsID, tbl2, http.StatusNotFound},
+		{"other workspace", "workspace-2", tbl1, http.StatusForbidden},
 	}
 
 	for _, tc := range cases {
@@ -148,8 +151,8 @@ func TestSetFormImageOnlyOnTheFormsWorkspaceAndTable(t *testing.T) {
 
 			image := uploadedFiles(t, "file", map[string]string{"a.png": pngHeader})[0]
 			_, appErr := a.SetFormImage(context.Background(), tc.workspace, tc.table, "form-1", model.FormImageCover, image, workspaceAdmin)
-			if appErr == nil || appErr.Status != http.StatusNotFound {
-				t.Fatalf("want 404, got %v", appErr)
+			if appErr == nil || appErr.Status != tc.want {
+				t.Fatalf("want %d, got %v", tc.want, appErr)
 			}
 			if ws.writes != 0 {
 				t.Errorf("wrote %d times, want none", ws.writes)
@@ -158,9 +161,25 @@ func TestSetFormImageOnlyOnTheFormsWorkspaceAndTable(t *testing.T) {
 	}
 }
 
+func TestSetFormImageIsOpenToWhoManagesTheTablesViews(t *testing.T) {
+	a, ws, _ := imageApp(t)
+	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
+	a.WorkspaceRoles = formRoles{viewsTable: tbl1}
+
+	image := uploadedFiles(t, "file", map[string]string{"a.png": pngHeader})[0]
+	if _, appErr := a.SetFormImage(context.Background(), wsID, tbl1, "form-1", model.FormImageCover, image, accessUser()); appErr != nil {
+		t.Fatalf("SetFormImage: %v", appErr)
+	}
+
+	if _, appErr := a.RemoveFormImage(context.Background(), wsID, tbl1, "form-1", model.FormImageCover, accessUser()); appErr != nil {
+		t.Fatalf("RemoveFormImage: %v", appErr)
+	}
+}
+
 func TestSetFormImageNeedsThePermissionToChangeViews(t *testing.T) {
 	a, ws, _ := imageApp(t)
 	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
+	a.WorkspaceRoles = formRoles{}
 
 	image := uploadedFiles(t, "file", map[string]string{"a.png": pngHeader})[0]
 	_, appErr := a.SetFormImage(context.Background(), wsID, tbl1, "form-1", model.FormImageCover, image, accessUser())
@@ -326,23 +345,23 @@ func TestFormImagesAreShownToWhoeverMayOpenTheForm(t *testing.T) {
 	a.WorkspaceRoles = assignedOnlyRoles{tables: map[string]bool{tbl1: true}}
 
 	for _, user := range []model.User{{ID: "grouped"}, {ID: "assigned"}} {
-		if _, appErr := a.GetWorkspaceAttachment(cover.CoverImage, wsID, user); appErr != nil {
+		if _, appErr := a.GetWorkspaceAttachment(context.Background(), cover.CoverImage, wsID, user); appErr != nil {
 			t.Errorf("%s: cover refused with %v", user.ID, appErr)
 		}
 
 		for _, other := range []string{"row-file", "forged"} {
-			if _, appErr := a.GetWorkspaceAttachment(other, wsID, user); appErr == nil || appErr.Status != http.StatusForbidden {
+			if _, appErr := a.GetWorkspaceAttachment(context.Background(), other, wsID, user); appErr == nil || appErr.Status != http.StatusForbidden {
 				t.Errorf("%s: %s answered %v, want 403", user.ID, other, appErr)
 			}
 		}
 	}
 
-	if _, appErr := a.GetWorkspaceAttachment(cover.CoverImage, wsID, *outsider); appErr == nil || appErr.Status != http.StatusForbidden {
+	if _, appErr := a.GetWorkspaceAttachment(context.Background(), cover.CoverImage, wsID, *outsider); appErr == nil || appErr.Status != http.StatusForbidden {
 		t.Errorf("outsider: cover answered %v, want 403", appErr)
 	}
 
 	readers.privateView = true
-	if _, appErr := a.GetWorkspaceAttachment(cover.CoverImage, wsID, model.User{ID: "grouped"}); appErr == nil {
+	if _, appErr := a.GetWorkspaceAttachment(context.Background(), cover.CoverImage, wsID, model.User{ID: "grouped"}); appErr == nil {
 		t.Error("cover of a form in a private view was shown to a member it is not shared with")
 	}
 }

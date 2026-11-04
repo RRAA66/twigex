@@ -28,7 +28,10 @@ var formImageTypes = map[string]string{
 // SetFormImage stores a form's cover or logo as a workspace attachment of
 // the form, served like a row's files, and removes the one it replaces.
 func (a *App) SetFormImage(ctx context.Context, workspaceID, tableID, formID, kind string, image *multipart.FileHeader, user model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
-	if appErr := a.checkFormImageChange(workspaceID, kind, user); appErr != nil {
+	ctx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	if appErr := a.checkFormImageChange(ctx, workspaceID, tableID, kind, user); appErr != nil {
 		return nil, appErr
 	}
 
@@ -40,9 +43,6 @@ func (a *App) SetFormImage(ctx context.Context, workspaceID, tableID, formID, ki
 	if formImageTypes[ext] == "" {
 		return nil, model.NewAppError("workspace.form_image_type_not_allowed", http.StatusBadRequest)
 	}
-
-	ctx, cancel := a.dbCtx(ctx)
-	defer cancel()
 
 	form, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user)
 	if appErr != nil {
@@ -119,12 +119,12 @@ func (a *App) SetFormImage(ctx context.Context, workspaceID, tableID, formID, ki
 }
 
 func (a *App) RemoveFormImage(ctx context.Context, workspaceID, tableID, formID, kind string, user model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
-	if appErr := a.checkFormImageChange(workspaceID, kind, user); appErr != nil {
-		return nil, appErr
-	}
-
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
+
+	if appErr := a.checkFormImageChange(ctx, workspaceID, tableID, kind, user); appErr != nil {
+		return nil, appErr
+	}
 
 	form, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user)
 	if appErr != nil {
@@ -150,13 +150,13 @@ func (a *App) RemoveFormImage(ctx context.Context, workspaceID, tableID, formID,
 	return a.formImageChanged(ctx, workspaceID, tableID, formID, user)
 }
 
-func (a *App) checkFormImageChange(workspaceID, kind string, user model.User) *model.AppError {
+func (a *App) checkFormImageChange(ctx context.Context, workspaceID, tableID, kind string, user model.User) *model.AppError {
 	if !a.Server.License.HasForms() {
 		return model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
 	}
 
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceView) {
-		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionUpdateWorkspaceView); appErr != nil {
+		return appErr
 	}
 
 	if kind != model.FormImageCover && kind != model.FormImageLogo {
@@ -287,7 +287,6 @@ func (a *App) formOfImage(ctx context.Context, attachment *model.WorkspaceAttach
 	return form
 }
 
-// requireFormOpen asks what opening the form by its link asks.
 func (a *App) requireFormOpen(ctx context.Context, user model.User, form *model.WorkspaceFormWithFields) *model.AppError {
 	if !a.IsWorkspaceMemberOrGroupMember(form.WorkspaceID, user.ID) {
 		return model.NewAppError("workspace.forbidden", http.StatusForbidden)

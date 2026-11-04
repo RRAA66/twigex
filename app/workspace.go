@@ -4669,10 +4669,7 @@ func (a *App) DeleteWorkspaceAttachment(ctx context.Context, fileID, workspaceID
 	return nil
 }
 
-// GetWorkspaceAttachment answers an attachment the user may open. A form's
-// cover and logo are shown to whoever may open the form, which includes
-// members through a group and members who see only their own tasks.
-func (a *App) GetWorkspaceAttachment(fileID, workspaceID string, user model.User) (*model.WorkspaceAttachment, *model.AppError) {
+func (a *App) GetWorkspaceAttachment(ctx context.Context, fileID, workspaceID string, user model.User) (*model.WorkspaceAttachment, *model.AppError) {
 	isMember, appErr := a.IsWorkspaceMember(workspaceID, user.ID)
 	if appErr != nil {
 		return nil, appErr
@@ -4687,9 +4684,12 @@ func (a *App) GetWorkspaceAttachment(fileID, workspaceID string, user model.User
 		return nil, appErr
 	}
 
-	ctx, cancel := a.dbCtx(context.Background())
+	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
+	// A form's cover and logo are shown to whoever may open the form, which
+	// includes members through a group and members who see only their own
+	// tasks.
 	if form := a.formOfImage(ctx, attachment); form != nil {
 		if appErr := a.requireFormOpen(ctx, user, form); appErr != nil {
 			return nil, appErr

@@ -247,8 +247,6 @@ func (a *API) removeFormImage(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, form)
 }
 
-// parseUploadedFiles reads the files sent under key in a multipart body of
-// at most maxBytes.
 func parseUploadedFiles(w http.ResponseWriter, r *http.Request, maxBytes int64, key string) ([]*multipart.FileHeader, bool) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
 
