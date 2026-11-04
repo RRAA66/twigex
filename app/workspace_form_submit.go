@@ -344,9 +344,8 @@ func (a *App) submissionsForm(ctx context.Context, workspaceID, tableID, formID 
 		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
 	}
 
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceView) ||
-		!a.canReadTable(ctx, user, workspaceID, tableID) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionUpdateWorkspaceView); appErr != nil {
+		return nil, appErr
 	}
 
 	return a.getTableForm(ctx, workspaceID, tableID, formID, user)

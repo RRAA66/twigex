@@ -66,6 +66,7 @@ func TestExportFormSubmissionsEndsWhenItStarts(t *testing.T) {
 func TestExportFormSubmissionsRefusesAMemberWhoCannotChangeViews(t *testing.T) {
 	a, ws, _ := submitApp()
 	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
+	a.WorkspaceRoles = formRoles{}
 
 	_, appErr := a.PrepareFormSubmissionsExport(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{}, "", "", nil, accessUser())
 	if appErr == nil || appErr.Status != http.StatusForbidden {

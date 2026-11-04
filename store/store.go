@@ -615,7 +615,7 @@ type WorkspaceStore interface {
 	GetJunctionTablesForLinkedTable(tableID string) ([]string, error)
 	GetJunctionTablesForMainTable(tableID string) ([]string, error)
 	DeleteTaskTx(tableName string, isSingleSelect bool, taskIDs []string, cascades []model.DeleteCascade) (bool, error)
-	DeleteTableView(workspaceID string, tableID string, viewID string) (bool, error)
+	DeleteTableView(ctx context.Context, workspaceID string, tableID string, viewID string) (bool, error)
 	DeleteTableField(workspaceID string, tableID string, fieldID string, parentFieldID string) error
 	GetFieldParentInfo(fieldID string) (parentFieldID string, parentTableID string, err error)
 	DeleteTableSingleField(workspaceID string, tableID string, fieldID string, linkedTableID string, linkedTableName string) (bool, error)
