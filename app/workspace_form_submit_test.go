@@ -84,15 +84,6 @@ func (f *fakeFormSubmitStore) GetMemberUserIDs(_ context.Context, _ string, user
 	return found, nil
 }
 
-func (f *fakeFormSubmitStore) GetMembers(string) ([]model.WorkspaceMember, error) {
-	members := make([]model.WorkspaceMember, 0, len(f.members))
-	for _, id := range f.members {
-		members = append(members, model.WorkspaceMember{UserID: id})
-	}
-
-	return members, nil
-}
-
 func (f *fakeFormSubmitStore) GetLinkableTables(context.Context, string, string) ([]model.FormLinkTable, error) {
 	return []model.FormLinkTable{{ID: tbl2, Name: "t2"}, {ID: "table-4", Name: "t4"}}, nil
 }
@@ -485,7 +476,7 @@ func TestPublicFormUnknownOrInactiveIsNotFound(t *testing.T) {
 	}
 }
 
-func TestPublicFormReadsMembersInOneBatch(t *testing.T) {
+func TestPublicFormSendsNoMemberList(t *testing.T) {
 	a, _, users := submitApp(model.WorkspaceFormField{HeaderName: "assignee", FieldType: "default_assignee", Visible: true})
 
 	form, appErr := a.GetPublicForm(context.Background(), "token-1", submitter)
@@ -493,32 +484,11 @@ func TestPublicFormReadsMembersInOneBatch(t *testing.T) {
 		t.Fatalf("GetPublicForm: %v", appErr)
 	}
 
-	if users.reads != 1 {
-		t.Errorf("read users %d times, want once", users.reads)
-	}
-
-	want := []model.FormMember{
-		{ID: "member-1", Name: "Anna", Lastname: "Ozola", Photo: "p1"},
-		{ID: "member-2", Name: "Jānis", Lastname: "Bērziņš"},
-	}
-	if !slices.Equal(form.Members, want) {
-		t.Errorf("members %+v, want %+v", form.Members, want)
+	if users.reads != 0 {
+		t.Errorf("read users %d times, want none: the person picker searches members itself", users.reads)
 	}
 	if len(form.LinkTables) != 0 {
 		t.Errorf("link tables %+v, want none without a master link field", form.LinkTables)
-	}
-}
-
-func TestPublicFormWithoutAPickerSharesNoMembers(t *testing.T) {
-	a, _, users := submitApp(textField("name", false))
-
-	form, appErr := a.GetPublicForm(context.Background(), "token-1", submitter)
-	if appErr != nil {
-		t.Fatalf("GetPublicForm: %v", appErr)
-	}
-
-	if users.reads != 0 || len(form.Members) != 0 {
-		t.Errorf("read users %d times for %+v, want no members", users.reads, form.Members)
 	}
 }
 
