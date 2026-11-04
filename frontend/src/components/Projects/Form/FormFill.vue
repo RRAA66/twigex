@@ -76,7 +76,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     v-model="values[field.header_name]"
                     :field="field"
                     :token="token"
-                    :members="form.members"
+                    :workspace-id="form.workspace_id"
                     :link-tables="form.link_tables"
                     :error="fieldErrors[field.header_name]"
                 />
