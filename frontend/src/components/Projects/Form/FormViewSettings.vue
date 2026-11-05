@@ -28,6 +28,44 @@ SPDX-License-Identifier: AGPL-3.0-only
                 @input="emit('update', { accent_color: $event.target.value })"
             />
         </div>
+
+        <h3
+            class="border-b border-gray-100 pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500"
+        >
+            {{ t("projects.form_view.settings.after_submit") }}
+        </h3>
+
+        <div>
+            <label :for="`${id}-thanks`" class="block text-sm font-medium text-gray-900">
+                {{ t("projects.form_view.settings.success_message") }}
+            </label>
+            <textarea
+                :id="`${id}-thanks`"
+                :value="form.success_message"
+                rows="3"
+                :placeholder="t('projects.form_view.success.body')"
+                class="mt-1 block w-full rounded-md border-0 py-1.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                @input="emit('update', { success_message: $event.target.value })"
+            />
+        </div>
+
+        <div>
+            <label :for="`${id}-redirect`" class="block text-sm font-medium text-gray-900">
+                {{ t("projects.form_view.settings.redirect_url") }}
+            </label>
+            <input
+                :id="`${id}-redirect`"
+                :value="form.redirect_url"
+                type="url"
+                placeholder="https://"
+                :aria-describedby="`${id}-redirect-hint`"
+                class="mt-1 block w-full rounded-md border-0 py-1.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                @input="emit('update', { redirect_url: $event.target.value.trim() })"
+            />
+            <p :id="`${id}-redirect-hint`" class="mt-1 text-xs text-gray-500">
+                {{ t("projects.form_view.settings.redirect_hint") }}
+            </p>
+        </div>
     </aside>
 </template>
 

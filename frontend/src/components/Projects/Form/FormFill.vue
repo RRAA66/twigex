@@ -21,8 +21,15 @@ SPDX-License-Identifier: AGPL-3.0-only
     <div v-else-if="submitted" class="flex flex-col items-center gap-y-2 py-20 text-center">
         <CheckCircleIcon class="h-12 w-12 text-green-500" aria-hidden="true" />
         <h2 class="text-xl font-bold text-gray-900">{{ t("projects.form_view.success.title") }}</h2>
-        <p class="text-sm text-gray-500">{{ t("projects.form_view.success.body") }}</p>
-        <BaseButton class="mt-2" size="small" variant="secondary" @click="startOver">
+        <p class="max-w-md whitespace-pre-line text-sm text-gray-500">
+            {{ form.success_message || t("projects.form_view.success.body") }}
+        </p>
+        <p v-if="redirecting" role="status" class="text-sm text-gray-500">
+            <a :href="form.redirect_url" class="text-indigo-600 hover:text-indigo-500">
+                {{ t("projects.form_view.success.redirecting") }}
+            </a>
+        </p>
+        <BaseButton v-else class="mt-2" size="small" variant="secondary" @click="startOver">
             {{ t("projects.form_view.action.submit_another") }}
         </BaseButton>
     </div>
@@ -101,7 +108,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { computed, useId } from "vue";
+import { computed, useId, watch } from "vue";
 import {
     CheckCircleIcon,
     DocumentMagnifyingGlassIcon,
@@ -118,6 +125,9 @@ import FormFieldInput from "@/components/Projects/Form/FormFieldInput.vue";
 const props = defineProps({
     token: { type: String, required: true },
     live: { type: Boolean, default: false },
+    // Opens the form's next page once it is sent; the builder's preview
+    // stays where it is.
+    followRedirect: { type: Boolean, default: false },
 });
 
 const {
@@ -150,5 +160,11 @@ const statusMessage = computed(() => {
     if (status.value === "not_found") return t.value("projects.form_view.public.not_found");
 
     return loadError.value;
+});
+
+const redirecting = computed(() => props.followRedirect && Boolean(form.value?.redirect_url));
+
+watch(submitted, (sent) => {
+    if (sent && redirecting.value) window.location.assign(form.value.redirect_url);
 });
 </script>

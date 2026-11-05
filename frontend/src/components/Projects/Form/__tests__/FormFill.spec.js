@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import FormFill from "@/components/Projects/Form/FormFill.vue";
@@ -42,12 +42,12 @@ const form = {
     ],
 };
 
-async function mountFill() {
+async function mountFill(props = {}) {
     const pinia = createPinia();
 
     setActivePinia(pinia);
     const w = mount(FormFill, {
-        props: { token: "tok" },
+        props: { token: "tok", ...props },
         global: { plugins: [pinia] },
         attachTo: document.body,
     });
@@ -110,6 +110,55 @@ describe("FormFill", () => {
 
         expect(w.find("form").exists()).toBe(true);
         w.unmount();
+    });
+
+    describe("after it is sent", () => {
+        async function send(extra, props) {
+            formService.getPublicForm.mockResolvedValue({ data: { ...form, ...extra } });
+            formService.submitPublicForm.mockResolvedValue({ data: {} });
+            const w = await mountFill(props);
+
+            await w.find("input[type='text']:not([tabindex])").setValue("Task");
+            await w.find("form").trigger("submit");
+            await flushPromises();
+
+            return w;
+        }
+
+        afterEach(() => vi.unstubAllGlobals());
+
+        it("thanks the user in the form's own words", async () => {
+            const w = await send({ success_message: "We will call you." });
+
+            expect(w.text()).toContain("We will call you.");
+            expect(w.text()).not.toContain("Your response has been recorded.");
+            w.unmount();
+        });
+
+        it("opens the form's next page from its link", async () => {
+            const assign = vi.fn();
+
+            vi.stubGlobal("location", { ...window.location, assign });
+            const w = await send(
+                { redirect_url: "https://example.com/next" },
+                { followRedirect: true },
+            );
+
+            expect(assign).toHaveBeenCalledWith("https://example.com/next");
+            expect(w.find("a[href='https://example.com/next']").exists()).toBe(true);
+            w.unmount();
+        });
+
+        it("stays on the page in the builder's preview", async () => {
+            const assign = vi.fn();
+
+            vi.stubGlobal("location", { ...window.location, assign });
+            const w = await send({ redirect_url: "https://example.com/next" });
+
+            expect(assign).not.toHaveBeenCalled();
+            expect(w.text()).toContain("Submit another response");
+            w.unmount();
+        });
     });
 
     it("shows and requires a field only while its condition holds", async () => {
