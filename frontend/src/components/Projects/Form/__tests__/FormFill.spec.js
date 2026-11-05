@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
+import { createMemoryHistory, createRouter } from "vue-router";
 import FormFill from "@/components/Projects/Form/FormFill.vue";
 import formService from "@/services/formService";
 
@@ -140,7 +141,7 @@ describe("FormFill", () => {
 
             vi.stubGlobal("location", { ...window.location, assign });
             const w = await send(
-                { redirect_url: "https://example.com/next" },
+                { after_submit: "link", redirect_url: "https://example.com/next" },
                 { followRedirect: true },
             );
 
@@ -149,11 +150,48 @@ describe("FormFill", () => {
             w.unmount();
         });
 
+        it("opens the form's table from its link", async () => {
+            const router = createRouter({
+                history: createMemoryHistory(),
+                routes: [
+                    { path: "/", component: { template: "<div/>" } },
+                    {
+                        path: "/projects/:id/grid/:tid/view/:fid?",
+                        name: "grid-view",
+                        component: { template: "<div/>" },
+                    },
+                ],
+            });
+            const push = vi.spyOn(router, "push");
+
+            formService.getPublicForm.mockResolvedValue({
+                data: { ...form, workspace_id: "w1", table_id: "t1", after_submit: "grid" },
+            });
+            formService.submitPublicForm.mockResolvedValue({ data: {} });
+            setActivePinia(createPinia());
+            const w = mount(FormFill, {
+                props: { token: "tok", followRedirect: true },
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+            await w.find("input[type='text']:not([tabindex])").setValue("Task");
+            await w.find("form").trigger("submit");
+            await flushPromises();
+
+            expect(push).toHaveBeenCalledWith("/projects/w1/grid/t1/view");
+            w.unmount();
+        });
+
         it("stays on the page in the builder's preview", async () => {
             const assign = vi.fn();
 
             vi.stubGlobal("location", { ...window.location, assign });
-            const w = await send({ redirect_url: "https://example.com/next" });
+            const w = await send({
+                after_submit: "link",
+                redirect_url: "https://example.com/next",
+            });
 
             expect(assign).not.toHaveBeenCalled();
             expect(w.text()).toContain("Submit another response");

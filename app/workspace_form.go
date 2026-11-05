@@ -286,7 +286,16 @@ func validFormSettings(form model.WorkspaceForm) bool {
 		return false
 	}
 
-	if form.RedirectURL != "" && !webAddress(form.RedirectURL) {
+	switch form.AfterSubmit {
+	case model.FormAfterSubmitLink:
+		if !webAddress(form.RedirectURL) {
+			return false
+		}
+	case "", model.FormAfterSubmitGrid:
+		if form.RedirectURL != "" {
+			return false
+		}
+	default:
 		return false
 	}
 

@@ -41,6 +41,7 @@ export function normalizeFormData(data, workspaceId, tableId) {
         logo: data.logo || "",
         accent_color: data.accent_color || DEFAULT_ACCENT_COLOR,
         success_message: data.success_message || "",
+        after_submit: data.after_submit || "",
         redirect_url: data.redirect_url || "",
         public_token: data.public_token || "",
         active: data.active ?? true,

@@ -49,7 +49,14 @@ SPDX-License-Identifier: AGPL-3.0-only
             />
         </div>
 
-        <div>
+        <BaseSelect
+            :model-value="form.after_submit"
+            :label="t('projects.form_view.settings.after_submit_then')"
+            :options="afterSubmitOptions"
+            @update:model-value="chooseAfterSubmit"
+        />
+
+        <div v-if="form.after_submit === 'link'">
             <label :for="`${id}-redirect`" class="block text-sm font-medium text-gray-900">
                 {{ t("projects.form_view.settings.redirect_url") }}
             </label>
@@ -70,11 +77,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { useId } from "vue";
+import { computed, useId } from "vue";
 import { t } from "@/i18n/index.js";
+import BaseSelect from "@/components/BaseSelect.vue";
 import ToggleSwitch from "@/components/ToggleSwitch.vue";
 
-defineProps({
+const props = defineProps({
     form: {
         type: Object,
         required: true,
@@ -84,4 +92,18 @@ defineProps({
 const emit = defineEmits(["update"]);
 
 const id = useId();
+
+const afterSubmitOptions = computed(() => [
+    { value: "", label: t.value("projects.form_view.settings.after_submit_stay") },
+    { value: "grid", label: t.value("projects.form_view.settings.after_submit_grid") },
+    { value: "link", label: t.value("projects.form_view.settings.after_submit_link") },
+]);
+
+// A link is kept only while it is where the form goes.
+function chooseAfterSubmit(afterSubmit) {
+    emit("update", {
+        after_submit: afterSubmit,
+        redirect_url: afterSubmit === "link" ? props.form.redirect_url : "",
+    });
+}
 </script>

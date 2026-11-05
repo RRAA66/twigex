@@ -612,6 +612,11 @@ type KanbanStatusOption struct {
 	StatusType string
 }
 
+const (
+	FormAfterSubmitGrid = "grid"
+	FormAfterSubmitLink = "link"
+)
+
 type WorkspaceForm struct {
 	ID            string `json:"id"`
 	WorkspaceID   string `json:"workspace_id"`
@@ -624,8 +629,10 @@ type WorkspaceForm struct {
 	Logo          string `json:"logo"`
 	AccentColor   string `json:"accent_color"`
 	// SuccessMessage thanks whoever sent the form in place of the usual
-	// words, and RedirectURL then takes them on to another page.
+	// words. AfterSubmit then takes them on: to the form's table
+	// (FormAfterSubmitGrid), to RedirectURL (FormAfterSubmitLink), or nowhere.
 	SuccessMessage string `json:"success_message"`
+	AfterSubmit    string `json:"after_submit"`
 	RedirectURL    string `json:"redirect_url"`
 	PublicToken    string `json:"public_token"`
 	Active         bool   `json:"active"`

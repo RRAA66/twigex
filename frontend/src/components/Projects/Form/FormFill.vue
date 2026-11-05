@@ -25,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             {{ form.success_message || t("projects.form_view.success.body") }}
         </p>
         <p v-if="redirecting" role="status" class="text-sm text-gray-500">
-            <a :href="form.redirect_url" class="text-indigo-600 hover:text-indigo-500">
+            <a :href="nextPage" class="text-indigo-600 hover:text-indigo-500">
                 {{ t("projects.form_view.success.redirecting") }}
             </a>
         </p>
@@ -109,6 +109,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script setup>
 import { computed, useId, watch } from "vue";
+import { useRouter } from "vue-router";
 import {
     CheckCircleIcon,
     DocumentMagnifyingGlassIcon,
@@ -162,9 +163,29 @@ const statusMessage = computed(() => {
     return loadError.value;
 });
 
-const redirecting = computed(() => props.followRedirect && Boolean(form.value?.redirect_url));
+const router = useRouter();
+
+// The page the form goes on to once sent: its table's grid inside the app,
+// or a link.
+const nextPage = computed(() => {
+    const after = form.value?.after_submit;
+
+    if (after === "grid") {
+        return router.resolve({
+            name: "grid-view",
+            params: { id: form.value.workspace_id, tid: form.value.table_id },
+        }).href;
+    }
+
+    return after === "link" ? form.value.redirect_url : "";
+});
+
+const redirecting = computed(() => props.followRedirect && Boolean(nextPage.value));
 
 watch(submitted, (sent) => {
-    if (sent && redirecting.value) window.location.assign(form.value.redirect_url);
+    if (!sent || !redirecting.value) return;
+
+    if (form.value.after_submit === "grid") router.push(nextPage.value);
+    else window.location.assign(nextPage.value);
 });
 </script>

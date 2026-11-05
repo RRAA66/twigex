@@ -501,7 +501,8 @@ func TestFormSendsItsUserOnOnlyToAWebPage(t *testing.T) {
 		t.Run(tc.link[:min(len(tc.link), 30)], func(t *testing.T) {
 			a, ws := formApp(workspaceAdminAccess(), true)
 
-			_, appErr := a.CreateForm(context.Background(), wsID, tbl1, model.WorkspaceForm{Name: "Signup", RedirectURL: tc.link}, nil, workspaceAdmin)
+			form := model.WorkspaceForm{Name: "Signup", AfterSubmit: model.FormAfterSubmitLink, RedirectURL: tc.link}
+			_, appErr := a.CreateForm(context.Background(), wsID, tbl1, form, nil, workspaceAdmin)
 			if tc.ok && appErr != nil {
 				t.Fatalf("want it kept, got %v", appErr)
 			}
@@ -510,6 +511,37 @@ func TestFormSendsItsUserOnOnlyToAWebPage(t *testing.T) {
 			}
 			if !tc.ok && ws.writes != 0 {
 				t.Errorf("wrote %d times, want none", ws.writes)
+			}
+		})
+	}
+}
+
+func TestFormSendsItsUserOnOnlyWhereItSays(t *testing.T) {
+	cases := []struct {
+		name        string
+		afterSubmit string
+		link        string
+		ok          bool
+	}{
+		{"nowhere", "", "", true},
+		{"to its table", model.FormAfterSubmitGrid, "", true},
+		{"nowhere, with a link left over", "", "https://example.com", false},
+		{"to its table, with a link left over", model.FormAfterSubmitGrid, "https://example.com", false},
+		{"to a link it does not have", model.FormAfterSubmitLink, "", false},
+		{"somewhere it does not know", "home", "", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			a, _ := formApp(workspaceAdminAccess(), true)
+
+			form := model.WorkspaceForm{Name: "Signup", AfterSubmit: tc.afterSubmit, RedirectURL: tc.link}
+			_, appErr := a.CreateForm(context.Background(), wsID, tbl1, form, nil, workspaceAdmin)
+			if tc.ok && appErr != nil {
+				t.Fatalf("want it kept, got %v", appErr)
+			}
+			if !tc.ok && (appErr == nil || appErr.Status != http.StatusBadRequest) {
+				t.Fatalf("want 400, got %v", appErr)
 			}
 		})
 	}
