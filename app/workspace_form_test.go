@@ -482,3 +482,47 @@ func TestUpdateFormTellsItsPagesWhichFormChanged(t *testing.T) {
 		t.Errorf("published %v, want FORM_CONFIG_CHANGED for form-1", data)
 	}
 }
+
+func TestFormSendsItsUserOnOnlyToAWebPage(t *testing.T) {
+	cases := []struct {
+		link string
+		ok   bool
+	}{
+		{"https://example.com/thanks", true},
+		{"http://example.com", true},
+		{"javascript:alert(1)", false},
+		{"/projects", false},
+		{"mailto:sales@example.com", false},
+		{"https://", false},
+		{"https://example.com/" + strings.Repeat("a", maxRedirectURLBytes), false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.link[:min(len(tc.link), 30)], func(t *testing.T) {
+			a, ws := formApp(workspaceAdminAccess(), true)
+
+			_, appErr := a.CreateForm(context.Background(), wsID, tbl1, model.WorkspaceForm{Name: "Signup", RedirectURL: tc.link}, nil, workspaceAdmin)
+			if tc.ok && appErr != nil {
+				t.Fatalf("want it kept, got %v", appErr)
+			}
+			if !tc.ok && (appErr == nil || appErr.Status != http.StatusBadRequest) {
+				t.Fatalf("want 400, got %v", appErr)
+			}
+			if !tc.ok && ws.writes != 0 {
+				t.Errorf("wrote %d times, want none", ws.writes)
+			}
+		})
+	}
+}
+
+func TestFormRefusesAThankYouTooLongToKeep(t *testing.T) {
+	a, ws := formApp(workspaceAdminAccess(), true)
+
+	_, appErr := a.CreateForm(context.Background(), wsID, tbl1, model.WorkspaceForm{Name: "Signup", SuccessMessage: strings.Repeat("a", maxFormTextBytes+1)}, nil, workspaceAdmin)
+	if appErr == nil || appErr.Status != http.StatusBadRequest {
+		t.Fatalf("want 400, got %v", appErr)
+	}
+	if ws.writes != 0 {
+		t.Errorf("wrote %d times, want none", ws.writes)
+	}
+}

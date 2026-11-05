@@ -623,11 +623,15 @@ type WorkspaceForm struct {
 	CoverPosition int    `json:"cover_position"`
 	Logo          string `json:"logo"`
 	AccentColor   string `json:"accent_color"`
-	PublicToken   string `json:"public_token"`
-	Active        bool   `json:"active"`
-	CreatedBy     string `json:"created_by"`
-	CreatedAt     int64  `json:"created_at"`
-	UpdatedAt     int64  `json:"updated_at"`
+	// SuccessMessage thanks whoever sent the form in place of the usual
+	// words, and RedirectURL then takes them on to another page.
+	SuccessMessage string `json:"success_message"`
+	RedirectURL    string `json:"redirect_url"`
+	PublicToken    string `json:"public_token"`
+	Active         bool   `json:"active"`
+	CreatedBy      string `json:"created_by"`
+	CreatedAt      int64  `json:"created_at"`
+	UpdatedAt      int64  `json:"updated_at"`
 }
 
 // VisibilityRule shows a form field only while the field named by

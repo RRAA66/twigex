@@ -77,6 +77,36 @@ func TestCreateFormWritesItsViewAndReadsFieldsFromTheTable(t *testing.T) {
 	}
 }
 
+func TestFormKeepsWhatHappensAfterItIsSent(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100,
+		SuccessMessage: "Thanks, we will call you.", RedirectURL: "https://example.com/next"}
+	if err := w.CreateForm(ctx, form, nil); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	got, err := w.GetForm(ctx, "form-1")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+	if got.SuccessMessage != form.SuccessMessage || got.RedirectURL != form.RedirectURL {
+		t.Errorf("form %+v, want its thank-you and redirect", got.WorkspaceForm)
+	}
+
+	form.SuccessMessage, form.RedirectURL = "", ""
+	if err := w.UpdateForm(ctx, form, nil); err != nil {
+		t.Fatalf("UpdateForm: %v", err)
+	}
+	if got, _ := w.GetForm(ctx, "form-1"); got.SuccessMessage != "" || got.RedirectURL != "" {
+		t.Errorf("form %+v, want both cleared", got.WorkspaceForm)
+	}
+}
+
 func TestGetFormUnknownIsNil(t *testing.T) {
 	requireDB(t)
 	resetFormTables(t)

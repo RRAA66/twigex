@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -16,7 +17,10 @@ import (
 	"github.com/twigex/twigex/tlog"
 )
 
-const maxFormTextBytes = 65535
+const (
+	maxFormTextBytes    = 65535
+	maxRedirectURLBytes = 2048
+)
 
 var formAccentColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
@@ -278,7 +282,11 @@ func validFormSettings(form model.WorkspaceForm) bool {
 		return false
 	}
 
-	if len(form.Description) > maxFormTextBytes {
+	if len(form.Description) > maxFormTextBytes || len(form.SuccessMessage) > maxFormTextBytes {
+		return false
+	}
+
+	if form.RedirectURL != "" && !webAddress(form.RedirectURL) {
 		return false
 	}
 
@@ -297,6 +305,18 @@ func validFormField(f model.WorkspaceFormField) bool {
 	}
 
 	return len(f.HeaderID) <= 36 && fitsVarchar(f.Label, f.Placeholder) && len(f.Description) <= maxFormTextBytes
+}
+
+// webAddress is a whole http or https address of another page, the only
+// kind a form may send its user on to.
+func webAddress(link string) bool {
+	if len(link) > maxRedirectURLBytes {
+		return false
+	}
+
+	u, err := url.Parse(link)
+
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
 }
 
 func fitsVarchar(values ...string) bool {
