@@ -53,7 +53,7 @@ func (a *App) checkFormDefaults(ctx context.Context, workspaceID, tableID string
 
 	scratch := model.FormTask{Values: map[string]any{}, Links: map[string][]string{}, Selects: map[string]string{}}
 	for _, f := range withDefault {
-		if f.FieldType == "file" || len(f.DefaultValue) > maxFormTextBytes {
+		if f.FieldType == "file" || isCalculationField(f) || len(f.DefaultValue) > maxFormTextBytes {
 			return invalid
 		}
 
@@ -69,7 +69,7 @@ func (a *App) checkFormDefaults(ctx context.Context, workspaceID, tableID string
 // show, which no one can change.
 func (a *App) presetFormValues(ctx context.Context, form *model.WorkspaceFormWithFields, linkTables map[string]bool, task *model.FormTask) *model.AppError {
 	for _, f := range form.Fields {
-		if f.Visible || f.DefaultValue == "" || f.FieldType == "file" || model.IsServerKeptColumn(f.HeaderName) {
+		if f.Visible || f.DefaultValue == "" || f.FieldType == "file" || isCalculationField(f) || model.IsServerKeptColumn(f.HeaderName) {
 			continue
 		}
 

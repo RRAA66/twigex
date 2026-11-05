@@ -406,6 +406,7 @@ func (m *TableHeaderMeta) DescribeFormField(tableID string, f *WorkspaceFormFiel
 
 	f.FieldType = field.FieldType
 	f.DisplayName = field.DisplayName
+	f.Formula = field.Formula
 	f.LinkedID = linkedID
 	f.SingleSelect = linked.SingleSelect
 	f.ParentTableID = linked.ParentTableID
@@ -664,6 +665,9 @@ type WorkspaceFormField struct {
 	SingleSelect  bool   `json:"single_select,omitempty"`
 	ParentTableID string `json:"parent_table_id,omitempty"`
 	DisplayName   string `json:"display_name,omitempty"`
+	// Formula is a calculation's, which the form works out from the other
+	// answers as the grid does from a row; the form never sends it.
+	Formula *FormulaSpec `json:"formula,omitempty"`
 	// DefaultItems names the rows or option a linked field's default picks.
 	DefaultItems []FormLinkedItem `json:"default_items,omitempty"`
 }

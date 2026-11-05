@@ -189,7 +189,7 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 
 	fields := make(map[string]model.WorkspaceFormField, len(form.Fields))
 	for _, f := range form.Fields {
-		if f.Visible && f.FieldType != "file" && !model.IsServerKeptColumn(f.HeaderName) {
+		if f.Visible && f.FieldType != "file" && !isCalculationField(f) && !model.IsServerKeptColumn(f.HeaderName) {
 			fields[f.HeaderName] = f
 		}
 	}
@@ -645,6 +645,10 @@ func formShows(form *model.WorkspaceFormWithFields, match func(model.WorkspaceFo
 	return slices.ContainsFunc(form.Fields, func(f model.WorkspaceFormField) bool {
 		return f.Visible && match(f)
 	})
+}
+
+func isCalculationField(f model.WorkspaceFormField) bool {
+	return f.FieldType == "calculations"
 }
 
 func isAssigneeField(f model.WorkspaceFormField) bool {

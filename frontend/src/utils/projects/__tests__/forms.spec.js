@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { t } from "@/i18n/index.js";
 import {
+    calculatedAnswer,
     defaultAnswer,
     defaultAnswers,
     defaultFromAnswer,
@@ -79,12 +80,12 @@ describe("mergeFormFields", () => {
         { id: "h-created", name: "created_at" },
     ];
 
-    it("lists every editable field, hidden except the name", () => {
+    it("lists every field, calculations too, hidden except the name", () => {
         const fields = mergeFormFields(headers, [], t.value);
 
-        expect(fields.map((f) => f.header_name)).toEqual(["name", "status", "budget"]);
-        expect(fields.map((f) => f.visible)).toEqual([true, false, false]);
-        expect(fields[2]).toMatchObject({
+        expect(fields.map((f) => f.header_name)).toEqual(["name", "status", "total", "budget"]);
+        expect(fields.map((f) => f.visible)).toEqual([true, false, false, false]);
+        expect(fields[3]).toMatchObject({
             header_id: "h-budget",
             label: "Budget",
             required: false,
@@ -100,7 +101,7 @@ describe("mergeFormFields", () => {
 
         const fields = mergeFormFields(headers, saved, t.value);
 
-        expect(fields.map((f) => f.header_name)).toEqual(["budget", "name", "status"]);
+        expect(fields.map((f) => f.header_name)).toEqual(["budget", "name", "status", "total"]);
         expect(fields[0]).toMatchObject({ label: "Cost", column_position: "full" });
     });
 
@@ -441,5 +442,36 @@ describe("form field defaults", () => {
         ],
     ])("keeps a %s default as its answer would be sent", (_, field, answer, want) => {
         expect(defaultFromAnswer(field, answer)).toEqual(want);
+    });
+});
+
+describe("calculations on a form", () => {
+    const total = {
+        header_name: "total",
+        field_type: "calculations",
+        formula: {
+            name: "PRODUCT",
+            args: [
+                { type: "field", value: "qty" },
+                { type: "field", value: "price" },
+            ],
+        },
+    };
+
+    it("works a calculation out from the answers as they are typed", () => {
+        expect(calculatedAnswer(total, { qty: "3", price: "2.5" })).toBe("7.5");
+        expect(calculatedAnswer(total, { qty: "4", price: "2.5" })).toBe("10");
+    });
+
+    it("sends no calculation and asks none to be filled in", () => {
+        const fields = [
+            { header_name: "qty", field_type: "number" },
+            { ...total, required: true },
+        ];
+
+        expect(formSubmitFields(fields, { qty: "3", total: "9" })).toEqual([
+            { name: "qty", value: "3" },
+        ]);
+        expect(missingRequiredFields(fields, {})).toEqual([]);
     });
 });

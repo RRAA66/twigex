@@ -61,7 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     @input="emit('update', { label: $event.target.value })"
                 />
             </div>
-            <div class="col-span-2">
+            <div v-if="!isCalculation" class="col-span-2">
                 <label :for="`${id}-placeholder`" :class="labelClass">
                     {{ t("projects.form_view.field.placeholder_label") }}
                 </label>
@@ -80,7 +80,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 :options="columnOptions"
                 @update:model-value="emit('update', { column_position: $event })"
             />
-            <div v-if="!isNameField" class="flex items-end pb-1.5">
+            <div v-if="!isNameField && !isCalculation" class="flex items-end pb-1.5">
                 <BaseCheckbox
                     :model-value="field.required"
                     :label="t('projects.form_view.required')"
@@ -186,7 +186,11 @@ const isNameField = computed(() => props.field.header_name === "name");
 
 // A file has nothing to start from, and a master link's tables are listed
 // only by the form's own link.
-const takesDefault = computed(() => !["file", "master-link"].includes(formFieldType(props.field)));
+const takesDefault = computed(
+    () => !["file", "master-link", "calculated"].includes(formFieldType(props.field)),
+);
+
+const isCalculation = computed(() => formFieldType(props.field) === "calculated");
 
 const defaultField = computed(() => ({
     ...props.field,

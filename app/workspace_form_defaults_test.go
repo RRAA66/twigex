@@ -74,6 +74,7 @@ func TestCreateFormRefusesADefaultItsFieldWouldRefuse(t *testing.T) {
 		{"a number that is not one", "number", "budget", "lots"},
 		{"an option the field does not have", "number", "status", "missing"},
 		{"a file", "file", "budget", "report.pdf"},
+		{"a calculation", "calculations", "budget", "12"},
 	}
 
 	for _, tc := range cases {
@@ -126,5 +127,19 @@ func TestPublicFormLeavesOutAHiddenFieldsDefault(t *testing.T) {
 
 	if form.Fields[0].DefaultValue != "" || form.Fields[1].DefaultValue != "Hello" {
 		t.Errorf("fields %+v, want only the shown field's default", form.Fields)
+	}
+}
+
+func TestSubmitFormLeavesACalculationToItsFormula(t *testing.T) {
+	total := model.WorkspaceFormField{HeaderName: "budget", FieldType: "calculations", Visible: true}
+	a, ws, _ := submitApp(textField("name", true), total)
+
+	_, appErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"}, model.FormValue{Name: "budget", Value: "999"})
+	if appErr != nil {
+		t.Fatalf("SubmitForm: %v", appErr)
+	}
+
+	if got, ok := ws.created[0].Values["budget"]; ok {
+		t.Errorf("budget %v, want the calculation left to its formula", got)
 	}
 }

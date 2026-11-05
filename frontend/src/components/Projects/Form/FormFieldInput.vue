@@ -34,6 +34,17 @@ SPDX-License-Identifier: AGPL-3.0-only
             </span>
             <FormSubmissionValue v-else :field="field" :value="readOnlyValue" />
         </div>
+        <div
+            v-else-if="type === 'calculated'"
+            :id="id"
+            role="textbox"
+            aria-readonly="true"
+            :aria-labelledby="labelId"
+            aria-live="polite"
+            class="flex min-h-9 items-center rounded-md bg-gray-50 px-3 py-1.5 text-sm text-gray-900 ring-1 ring-inset ring-gray-200"
+        >
+            {{ calculatedAnswer(field, answers) || "–" }}
+        </div>
         <div v-else-if="type === 'checkbox'" class="flex items-center gap-x-2">
             <input
                 :id="id"
@@ -134,7 +145,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script setup>
 import { computed, useId } from "vue";
 import { t } from "@/i18n/index.js";
-import { formFieldType, linkedTableId } from "@/utils/projects/forms";
+import { calculatedAnswer, formFieldType, linkedTableId } from "@/utils/projects/forms";
 import BaseSelect from "@/components/BaseSelect.vue";
 import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
 import FormLinkedPicker from "@/components/Projects/Form/FormLinkedPicker.vue";
@@ -155,6 +166,8 @@ const props = defineProps({
     // Lists a linked field's options in place of the form link, as the
     // builder does for a default.
     rowsLoader: { type: Function, default: null },
+    // Every answer on the form, which a calculation is worked out from.
+    answers: { type: Object, default: () => ({}) },
     linkTables: { type: Array, default: () => [] },
     error: { type: String, default: "" },
 });

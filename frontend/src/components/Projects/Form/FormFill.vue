@@ -77,6 +77,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     :field="field"
                     :token="token"
                     :workspace-id="form.workspace_id"
+                    :answers="values"
                     :link-tables="form.link_tables"
                     :error="fieldErrors[field.header_name]"
                 />

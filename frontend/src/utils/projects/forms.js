@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { calculateRowValueForRow, formatCellValue } from "@/utils/projects/formulas";
 import { fieldLabel } from "@/utils/projects/rows";
 
 export const DEFAULT_ACCENT_COLOR = "#4f46e5";
@@ -53,11 +54,7 @@ export function mergeFormFields(headers, savedFields, translate) {
     const savedByName = new Map(savedFields.map((f) => [f.header_name, f]));
 
     const merged = headers
-        .filter(
-            (h) =>
-                !SKIPPED_FIELDS.has(h.name) &&
-                (h.header_usage || "").toLowerCase() !== "calculations",
-        )
+        .filter((h) => !SKIPPED_FIELDS.has(h.name))
         .map((h, i) => {
             const saved = savedByName.get(h.name);
 
@@ -79,6 +76,7 @@ export function mergeFormFields(headers, savedFields, translate) {
                 linked_id: h.linked_id || "",
                 single_select: Boolean(h.single_select),
                 parent_table_id: h.parent_table_id || "",
+                formula: h.formula || null,
             };
         });
 
@@ -110,6 +108,7 @@ export function formFieldType(field) {
     const type = (field.field_type || "").toLowerCase();
 
     if (field.header_name === "color") return "color";
+    if (type === "calculations") return "calculated";
     if (type === "master link") return "master-link";
     if (field.linked_id) return field.single_select ? "single-select" : "link";
     if (type === "bool" || type === "checkbox") return "checkbox";
@@ -142,7 +141,7 @@ function isEmptyFormValue(value) {
 }
 
 export function missingRequiredFields(fields, values) {
-    return fields
+    return answeredFields(fields)
         .filter((f) => f.required && isEmptyFormValue(values[f.header_name]))
         .map((f) => f.header_name);
 }
@@ -155,8 +154,35 @@ function submitValue(value) {
     return value ?? "";
 }
 
+// A calculation is worked out from the other answers and never sent.
+function answeredFields(fields) {
+    return fields.filter((f) => formFieldType(f) !== "calculated");
+}
+
 export function formSubmitFields(fields, values) {
-    return fields.map((f) => ({ name: f.header_name, value: submitValue(values[f.header_name]) }));
+    return answeredFields(fields).map((f) => ({
+        name: f.header_name,
+        value: submitValue(values[f.header_name]),
+    }));
+}
+
+// A calculation's result from the form's answers, worked out as the grid
+// does from a row: a picked row or option counts by its name.
+export function calculatedAnswer(field, values) {
+    const row = Object.fromEntries(
+        Object.entries(values || {}).map(([name, value]) => {
+            if (Array.isArray(value)) return [name, value.map((item) => item.name).join(", ")];
+            if (value && typeof value === "object") return [name, value.name];
+
+            return [name, value];
+        }),
+    );
+    const result = calculateRowValueForRow(
+        { header_usage: "calculations", formula: field.formula },
+        row,
+    );
+
+    return result === "" ? "" : formatCellValue(result).trim();
 }
 
 // The answer a field starts with: its default, as its input holds it. A

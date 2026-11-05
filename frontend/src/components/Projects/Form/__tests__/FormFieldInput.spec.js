@@ -66,6 +66,28 @@ describe("FormFieldInput", () => {
         expect(labelFor(w.find("button").element)).toContain("Agree");
     });
 
+    it("shows a calculation worked out from the answers, and follows them", async () => {
+        const field = {
+            field_type: "calculations",
+            formula: {
+                name: "SUM",
+                args: [
+                    { type: "field", value: "a" },
+                    { type: "field", value: "b" },
+                ],
+            },
+        };
+
+        mountField(field, { answers: { a: "2", b: "3" } });
+
+        expect(w.find("[aria-readonly='true']").text()).toBe("5");
+
+        await w.setProps({ answers: { a: "2", b: "10" } });
+
+        expect(w.find("[aria-readonly='true']").text()).toBe("12");
+        expect(w.find("input").exists()).toBe(false);
+    });
+
     it("shows a read-only field's default instead of an input", () => {
         mountField({
             linked_id: "t-s",
