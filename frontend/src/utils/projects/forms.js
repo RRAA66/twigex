@@ -159,6 +159,44 @@ export function formSubmitFields(fields, values) {
     return fields.map((f) => ({ name: f.header_name, value: submitValue(values[f.header_name]) }));
 }
 
+// The answer a field starts with: its default, as its input holds it. A
+// linked field's default comes with the rows it picks.
+export function defaultAnswer(field) {
+    if (!field.default_value) return undefined;
+
+    switch (formFieldType(field)) {
+        case "link":
+            return field.default_items || [];
+        case "single-select":
+            return field.default_items?.[0] ?? null;
+        case "checkbox":
+            return field.default_value !== "false" && field.default_value !== "0";
+        default:
+            return field.default_value;
+    }
+}
+
+export function defaultAnswers(fields) {
+    return Object.fromEntries(
+        (fields || []).filter((f) => f.default_value).map((f) => [f.header_name, defaultAnswer(f)]),
+    );
+}
+
+// What a default is kept as, from the answer the builder's input holds:
+// written as that answer would be sent.
+export function defaultFromAnswer(field, answer) {
+    const type = formFieldType(field);
+
+    if (type === "checkbox") return { default_value: answer ? "1" : "", default_items: [] };
+
+    let items = [];
+
+    if (type === "link") items = answer || [];
+    if (type === "single-select" && answer) items = [answer];
+
+    return { default_value: String(submitValue(answer)), default_items: items };
+}
+
 export const CONDITION_OPERATORS = ["equals", "not_equals", "contains", "is_empty", "is_not_empty"];
 
 export function conditionNeedsValue(operator) {

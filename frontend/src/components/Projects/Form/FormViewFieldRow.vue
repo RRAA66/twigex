@@ -87,6 +87,25 @@ SPDX-License-Identifier: AGPL-3.0-only
                     @update:model-value="emit('update', { required: $event })"
                 />
             </div>
+            <div v-if="takesDefault" class="col-span-2">
+                <FormFieldInput
+                    :field="defaultField"
+                    :model-value="defaultAnswer(field)"
+                    :workspace-id="workspaceId"
+                    :rows-loader="rowsLoader"
+                    @update:model-value="emit('update', defaultFromAnswer(field, $event))"
+                />
+                <p class="mt-1 text-xs text-gray-500">
+                    {{ t("projects.form_view.field.default_hint") }}
+                </p>
+            </div>
+            <div v-if="takesDefault && !isNameField" class="col-span-2">
+                <BaseCheckbox
+                    :model-value="field.read_only"
+                    :label="t('projects.form_view.field.read_only')"
+                    @update:model-value="emit('update', { read_only: $event })"
+                />
+            </div>
             <FormViewFieldCondition
                 v-if="!isNameField"
                 class="col-span-2"
@@ -108,6 +127,14 @@ import { t } from "@/i18n/index.js";
 import BaseCheckbox from "@/components/BaseCheckbox.vue";
 import BaseSelect from "@/components/BaseSelect.vue";
 import ToggleSwitch from "@/components/ToggleSwitch.vue";
+import { formRowsLoader } from "@/composables/projects/formRowsLoader";
+import {
+    defaultAnswer,
+    defaultFromAnswer,
+    formFieldType,
+    linkedTableId,
+} from "@/utils/projects/forms";
+import FormFieldInput from "@/components/Projects/Form/FormFieldInput.vue";
 import FormViewFieldCondition from "@/components/Projects/Form/FormViewFieldCondition.vue";
 
 const props = defineProps({
@@ -156,6 +183,24 @@ watch(
 );
 
 const isNameField = computed(() => props.field.header_name === "name");
+
+// A file has nothing to start from, and a master link's tables are listed
+// only by the form's own link.
+const takesDefault = computed(() => !["file", "master-link"].includes(formFieldType(props.field)));
+
+const defaultField = computed(() => ({
+    ...props.field,
+    label: t.value("projects.form_view.field.default_value"),
+    placeholder: "",
+    description: "",
+    required: false,
+    read_only: false,
+    column_position: "full",
+}));
+
+const rowsLoader = computed(() =>
+    props.field.linked_id ? formRowsLoader(props.workspaceId, linkedTableId(props.field)) : null,
+);
 
 const columnOptions = computed(() => [
     { value: "full", label: t.value("projects.form_view.field.col_full") },

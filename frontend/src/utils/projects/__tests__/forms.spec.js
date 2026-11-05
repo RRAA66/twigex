@@ -4,6 +4,9 @@
 import { describe, expect, it } from "vitest";
 import { t } from "@/i18n/index.js";
 import {
+    defaultAnswer,
+    defaultAnswers,
+    defaultFromAnswer,
     conditionTriggers,
     conditionValueWidget,
     emptyFormData,
@@ -386,5 +389,57 @@ describe("incompleteConditionFields", () => {
         ];
 
         expect(incompleteConditionFields(fields)).toEqual(["no_field", "no_value"]);
+    });
+});
+
+describe("form field defaults", () => {
+    const acme = { id: "r1", name: "Acme" };
+    const open = { id: "o1", name: "Open", color: "#16a34a" };
+
+    it.each([
+        ["text", { field_type: "text", default_value: "Hello" }, "Hello"],
+        ["number", { field_type: "number", default_value: "12.5" }, "12.5"],
+        ["date", { field_type: "date", default_value: "2026-11-05" }, "2026-11-05"],
+        ["ticked checkbox", { field_type: "bool", default_value: "1" }, true],
+        ["person", { field_type: "assignee", default_value: "u1" }, "u1"],
+        ["link", { linked_id: "t2", default_value: "r1", default_items: [acme] }, [acme]],
+        [
+            "option",
+            { linked_id: "t-s", single_select: true, default_value: "o1", default_items: [open] },
+            open,
+        ],
+    ])("starts a %s field with its default", (_, field, want) => {
+        expect(defaultAnswer(field)).toEqual(want);
+    });
+
+    it("starts a field without a default empty", () => {
+        expect(defaultAnswer({ field_type: "text", default_value: "" })).toBeUndefined();
+        expect(defaultAnswers([{ header_name: "a", field_type: "text" }])).toEqual({});
+    });
+
+    it.each([
+        ["text", { field_type: "text" }, "Hello", { default_value: "Hello", default_items: [] }],
+        ["checkbox", { field_type: "bool" }, true, { default_value: "1", default_items: [] }],
+        [
+            "cleared checkbox",
+            { field_type: "bool" },
+            false,
+            { default_value: "", default_items: [] },
+        ],
+        ["link", { linked_id: "t2" }, [acme], { default_value: "r1", default_items: [acme] }],
+        [
+            "option",
+            { linked_id: "t-s", single_select: true },
+            open,
+            { default_value: "o1", default_items: [open] },
+        ],
+        [
+            "cleared option",
+            { linked_id: "t-s", single_select: true },
+            null,
+            { default_value: "", default_items: [] },
+        ],
+    ])("keeps a %s default as its answer would be sent", (_, field, answer, want) => {
+        expect(defaultFromAnswer(field, answer)).toEqual(want);
     });
 });

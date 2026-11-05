@@ -21,7 +21,20 @@ SPDX-License-Identifier: AGPL-3.0-only
             {{ field.description }}
         </p>
 
-        <div v-if="type === 'checkbox'" class="flex items-center gap-x-2">
+        <div
+            v-if="field.read_only"
+            :id="id"
+            role="textbox"
+            aria-readonly="true"
+            :aria-labelledby="labelId"
+            class="flex min-h-9 items-center rounded-md bg-gray-50 px-3 py-1.5 text-sm ring-1 ring-inset ring-gray-200"
+        >
+            <span v-if="type === 'master-link'" class="truncate text-gray-900">
+                {{ tableName(field.default_value) }}
+            </span>
+            <FormSubmissionValue v-else :field="field" :value="readOnlyValue" />
+        </div>
+        <div v-else-if="type === 'checkbox'" class="flex items-center gap-x-2">
             <input
                 :id="id"
                 type="checkbox"
@@ -60,6 +73,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             :token="token"
             :table-id="linkedTableId(field)"
             :multiple="type === 'link'"
+            :loader="rowsLoader"
             :placeholder="
                 field.placeholder ||
                 t(
@@ -125,6 +139,7 @@ import BaseSelect from "@/components/BaseSelect.vue";
 import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
 import FormLinkedPicker from "@/components/Projects/Form/FormLinkedPicker.vue";
 import FormPersonPicker from "@/components/Projects/Form/FormPersonPicker.vue";
+import FormSubmissionValue from "@/components/Projects/Form/FormSubmissionValue.vue";
 
 const PLACEHOLDER_KEYS = {
     number: "projects.form_view.placeholder.number",
@@ -135,8 +150,11 @@ const PLACEHOLDER_KEYS = {
 const props = defineProps({
     field: { type: Object, required: true },
     modelValue: { type: [String, Number, Boolean, Object, Array], default: null },
-    token: { type: String, required: true },
+    token: { type: String, default: "" },
     workspaceId: { type: String, default: "" },
+    // Lists a linked field's options in place of the form link, as the
+    // builder does for a default.
+    rowsLoader: { type: Function, default: null },
     linkTables: { type: Array, default: () => [] },
     error: { type: String, default: "" },
 });
@@ -155,7 +173,7 @@ const label = computed(
 );
 
 // BaseSelect labels its own button, so its label carries the required mark.
-const labelledBySelect = computed(() => type.value === "master-link");
+const labelledBySelect = computed(() => type.value === "master-link" && !props.field.read_only);
 
 const selectLabel = computed(() => (props.field.required ? `${label.value} *` : label.value));
 
@@ -194,6 +212,21 @@ const tableOptions = computed(() => [
         label: table.display_name || table.name,
     })),
 ]);
+
+// A read-only field shows its default as the submissions list shows an
+// answer, with the rows or option a linked default picks.
+const readOnlyValue = computed(() => {
+    if (type.value === "link") return props.field.default_items || [];
+    if (type.value === "single-select") return props.field.default_items?.[0] ?? null;
+
+    return props.field.default_value;
+});
+
+function tableName(id) {
+    const table = props.linkTables.find((t) => t.id === id);
+
+    return table?.display_name || table?.name || "";
+}
 
 function update(value) {
     emit("update:modelValue", value);

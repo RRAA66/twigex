@@ -70,6 +70,7 @@ import { extractErrorMessage } from "@/utils/errors";
 import { conditionValueWidget, linkedTableId } from "@/utils/projects/forms";
 import BaseSelect from "@/components/BaseSelect.vue";
 import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
+import { formRowsLoader } from "@/composables/projects/formRowsLoader";
 import FormLinkedPicker from "@/components/Projects/Form/FormLinkedPicker.vue";
 import FormPersonPicker from "@/components/Projects/Form/FormPersonPicker.vue";
 
@@ -108,21 +109,7 @@ function pick(item) {
     update(item ? item.id : "");
 }
 
-// Neither list is counted, so one row past the page tells there are more.
-function pageOf(rows, limit) {
-    return { items: rows.slice(0, limit), has_more: rows.length > limit };
-}
-
-async function loadRows({ page, limit, search }) {
-    const { data } = await workspaceService.getLinkedRecordsLite(
-        props.workspaceId,
-        linkedTableId(props.field),
-        { q: search, limit: limit + 1, offset: (page - 1) * limit },
-    );
-    const rows = (data || []).map((row) => ({ id: String(row.id), name: row.name }));
-
-    return pageOf(rows, limit);
-}
+const loadRows = computed(() => formRowsLoader(props.workspaceId, linkedTableId(props.field)));
 
 async function loadStatusOptions() {
     const { data } = await workspaceService.getTableStatusTypes(props.workspaceId, props.tableId);

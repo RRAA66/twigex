@@ -94,6 +94,33 @@ describe("usePublicForm", () => {
         expect(state.loadError.value).toBe("Nope");
     });
 
+    it("starts each shown field with its default, and again after sending", async () => {
+        formService.getPublicForm.mockResolvedValue({
+            data: {
+                ...form,
+                fields: [
+                    { header_name: "name", field_type: "text", visible: true, default_value: "Hi" },
+                    {
+                        header_name: "secret",
+                        field_type: "text",
+                        visible: false,
+                        default_value: "",
+                    },
+                ],
+            },
+        });
+        formService.submitPublicForm.mockResolvedValue({});
+        const { state } = await setup();
+
+        expect(state.values.value).toEqual({ name: "Hi" });
+
+        state.values.value.name = "Changed";
+        await state.submit();
+        state.startOver();
+
+        expect(state.values.value).toEqual({ name: "Hi" });
+    });
+
     it("does not send a form with a required field left empty", async () => {
         const { state } = await setup();
 

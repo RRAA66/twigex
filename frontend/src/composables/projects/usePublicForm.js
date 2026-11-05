@@ -8,6 +8,7 @@ import formService from "@/services/formService";
 import { useAlertStore } from "@/store/alerts";
 import { extractErrorMessage } from "@/utils/errors";
 import {
+    defaultAnswers,
     fillableFormFields,
     formSubmitFields,
     missingRequiredFields,
@@ -52,6 +53,7 @@ export function usePublicForm(token, { live = false } = {}) {
             const { data } = await formService.getPublicForm(toValue(token));
 
             form.value = data;
+            values.value = defaultAnswers(fillableFormFields(data.fields));
             status.value = "ready";
         } catch (error) {
             failLoad(error);
@@ -113,7 +115,7 @@ export function usePublicForm(token, { live = false } = {}) {
     }
 
     function startOver() {
-        values.value = {};
+        values.value = defaultAnswers(fillable.value);
         fieldErrors.value = {};
         submitError.value = "";
         submitted.value = false;

@@ -66,6 +66,24 @@ describe("FormFieldInput", () => {
         expect(labelFor(w.find("button").element)).toContain("Agree");
     });
 
+    it("shows a read-only field's default instead of an input", () => {
+        mountField({
+            linked_id: "t-s",
+            single_select: true,
+            read_only: true,
+            default_value: "o1",
+            default_items: [{ id: "o1", name: "Open", color: "#16a34a" }],
+        });
+
+        const box = w.find("[aria-readonly='true']");
+
+        expect(box.text()).toBe("Open");
+        expect(document.getElementById(box.attributes("aria-labelledby")).textContent).toContain(
+            "Agree",
+        );
+        expect(w.find("input").exists()).toBe(false);
+    });
+
     it("labels a master link field's list button and marks it invalid", async () => {
         mountField({ field_type: "master link", required: true }, { error: "Required" });
         await nextTick();
