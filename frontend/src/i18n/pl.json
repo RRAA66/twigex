@@ -2430,7 +2430,6 @@
     "projects.form_view.settings.success_message": "Wiadomość z podziękowaniem",
     "projects.form_view.settings.redirect_url": "Link",
     "projects.form_view.settings.redirect_hint": "Opcjonalnie. Pełny adres zaczynający się od https://",
-    "projects.form_view.success.redirecting": "Przechodzimy do następnej strony…",
     "projects.form_view.success.saved": "Formularz zapisany pomyślnie",
     "projects.form_view.view_type": "Formularz",
     "projects.form_view.no_access": "Aby otworzyć ten formularz, potrzebujesz uprawnienia do edycji widoków.",

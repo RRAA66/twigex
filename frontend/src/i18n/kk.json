@@ -2430,7 +2430,6 @@
     "projects.form_view.settings.success_message": "Алғыс хабары",
     "projects.form_view.settings.redirect_url": "Сілтеме",
     "projects.form_view.settings.redirect_hint": "Міндетті емес. https:// деп басталатын толық мекенжай",
-    "projects.form_view.success.redirecting": "Келесі бетке өтудеміз…",
     "projects.form_view.success.saved": "Пішін сәтті сақталды",
     "projects.form_view.view_type": "Форма",
     "projects.form_view.no_access": "Бұл форманы ашу үшін көріністерді өңдеу рұқсаты қажет.",

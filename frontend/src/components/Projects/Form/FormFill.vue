@@ -24,14 +24,9 @@ SPDX-License-Identifier: AGPL-3.0-only
         <p class="max-w-md whitespace-pre-line text-sm text-gray-500">
             {{ form.success_message || t("projects.form_view.success.body") }}
         </p>
-        <template v-if="redirecting">
-            <p role="status" class="text-sm text-gray-500">
-                {{ t("projects.form_view.success.redirecting") }}
-            </p>
-            <BaseButton class="mt-2" size="small" @click="goNext">
-                {{ t("projects.form_view.action.continue") }}
-            </BaseButton>
-        </template>
+        <BaseButton v-if="canContinue" class="mt-2" size="small" @click="goNext">
+            {{ t("projects.form_view.action.continue") }}
+        </BaseButton>
         <BaseButton v-else class="mt-2" size="small" variant="secondary" @click="startOver">
             {{ t("projects.form_view.action.submit_another") }}
         </BaseButton>
@@ -111,7 +106,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, useId, watch } from "vue";
+import { computed, useId } from "vue";
 import { useRouter } from "vue-router";
 import {
     CheckCircleIcon,
@@ -187,21 +182,10 @@ const nextPage = computed(() => {
     return after === "link" ? form.value.redirect_url : "";
 });
 
-const redirecting = computed(() => props.followRedirect && Boolean(nextPage.value));
-
-// Long enough to read the thank-you message before the page changes.
-const REDIRECT_DELAY_MS = 3000;
-let redirectTimer;
+const canContinue = computed(() => props.followRedirect && Boolean(nextPage.value));
 
 function goNext() {
-    clearTimeout(redirectTimer);
     if (form.value.after_submit === "grid") router.push(nextPage.value);
     else window.location.assign(nextPage.value);
 }
-
-watch(submitted, (sent) => {
-    if (sent && redirecting.value) redirectTimer = setTimeout(goNext, REDIRECT_DELAY_MS);
-});
-
-onBeforeUnmount(() => clearTimeout(redirectTimer));
 </script>

@@ -2430,7 +2430,6 @@
     "projects.form_view.settings.success_message": "Thank-you message",
     "projects.form_view.settings.redirect_url": "Link",
     "projects.form_view.settings.redirect_hint": "Optional. A full address starting with https://",
-    "projects.form_view.success.redirecting": "Taking you to the next page…",
     "projects.form_view.success.saved": "Form saved successfully",
     "projects.form_view.view_type": "Form",
     "projects.form_view.no_access": "You need permission to edit views to open this form.",

@@ -126,12 +126,7 @@ describe("FormFill", () => {
             return w;
         }
 
-        // Only the redirect delay is faked; flushPromises still needs real ticks.
-        beforeEach(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] }));
-        afterEach(() => {
-            vi.useRealTimers();
-            vi.unstubAllGlobals();
-        });
+        afterEach(() => vi.unstubAllGlobals());
 
         it("thanks the user in the form's own words", async () => {
             const w = await send({ success_message: "We will call you." });
@@ -141,7 +136,14 @@ describe("FormFill", () => {
             w.unmount();
         });
 
-        it("opens the form's next page from its link", async () => {
+        function pressContinue(w) {
+            return w
+                .findAll("button")
+                .find((b) => b.text() === "Continue")
+                .trigger("click");
+        }
+
+        it("opens the form's link only when the user goes on", async () => {
             const assign = vi.fn();
 
             vi.stubGlobal("location", { ...window.location, assign });
@@ -154,29 +156,10 @@ describe("FormFill", () => {
                 { followRedirect: true },
             );
 
-            expect(assign).not.toHaveBeenCalled();
             expect(w.text()).toContain("We will call you.");
-            vi.advanceTimersByTime(3000);
+            expect(assign).not.toHaveBeenCalled();
+            await pressContinue(w);
             expect(assign).toHaveBeenCalledWith("https://example.com/next");
-            w.unmount();
-        });
-
-        it("goes on at once from the continue button", async () => {
-            const assign = vi.fn();
-
-            vi.stubGlobal("location", { ...window.location, assign });
-            const w = await send(
-                { after_submit: "link", redirect_url: "https://example.com/next" },
-                { followRedirect: true },
-            );
-
-            await w
-                .findAll("button")
-                .find((b) => b.text() === "Continue")
-                .trigger("click");
-            expect(assign).toHaveBeenCalledTimes(1);
-            vi.advanceTimersByTime(3000);
-            expect(assign).toHaveBeenCalledTimes(1);
             w.unmount();
         });
 
@@ -215,7 +198,8 @@ describe("FormFill", () => {
             await w.find("input[type='text']:not([tabindex])").setValue("Task");
             await w.find("form").trigger("submit");
             await flushPromises();
-            vi.advanceTimersByTime(3000);
+            expect(push).not.toHaveBeenCalled();
+            await pressContinue(w);
 
             expect(push).toHaveBeenCalledWith("/projects/w1/grid/t1/view/v1");
             w.unmount();
