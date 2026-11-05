@@ -2483,6 +2483,7 @@
     "projects.form_view.submissions.hidden_item": "Slēpts",
     "projects.form_view.submissions.row_unavailable": "Rinda dzēsta vai jums nav redzama",
     "projects.form_view.tabs": "Veidlapas sadaļas",
+    "projects.form_view.action.continue": "Turpināt",
     "projects.form_view.action.submit_another": "Iesniegt vēl vienu atbildi",
     "projects.form_view.share.desc": "Šīs darbvietas dalībnieki var aizpildīt veidlapu, izmantojot šo saiti.",
     "projects.form_view.error.copy_failed": "Neizdevās nokopēt saiti.",

@@ -24,11 +24,14 @@ SPDX-License-Identifier: AGPL-3.0-only
         <p class="max-w-md whitespace-pre-line text-sm text-gray-500">
             {{ form.success_message || t("projects.form_view.success.body") }}
         </p>
-        <p v-if="redirecting" role="status" class="text-sm text-gray-500">
-            <a :href="nextPage" class="text-indigo-600 hover:text-indigo-500">
+        <template v-if="redirecting">
+            <p role="status" class="text-sm text-gray-500">
                 {{ t("projects.form_view.success.redirecting") }}
-            </a>
-        </p>
+            </p>
+            <BaseButton class="mt-2" size="small" @click="goNext">
+                {{ t("projects.form_view.action.continue") }}
+            </BaseButton>
+        </template>
         <BaseButton v-else class="mt-2" size="small" variant="secondary" @click="startOver">
             {{ t("projects.form_view.action.submit_another") }}
         </BaseButton>
@@ -108,7 +111,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { computed, useId, watch } from "vue";
+import { computed, onBeforeUnmount, useId, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
     CheckCircleIcon,
@@ -186,10 +189,19 @@ const nextPage = computed(() => {
 
 const redirecting = computed(() => props.followRedirect && Boolean(nextPage.value));
 
-watch(submitted, (sent) => {
-    if (!sent || !redirecting.value) return;
+// Long enough to read the thank-you message before the page changes.
+const REDIRECT_DELAY_MS = 3000;
+let redirectTimer;
 
+function goNext() {
+    clearTimeout(redirectTimer);
     if (form.value.after_submit === "grid") router.push(nextPage.value);
     else window.location.assign(nextPage.value);
+}
+
+watch(submitted, (sent) => {
+    if (sent && redirecting.value) redirectTimer = setTimeout(goNext, REDIRECT_DELAY_MS);
 });
+
+onBeforeUnmount(() => clearTimeout(redirectTimer));
 </script>

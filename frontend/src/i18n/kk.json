@@ -2483,6 +2483,7 @@
     "projects.form_view.submissions.hidden_item": "Жасырын",
     "projects.form_view.submissions.row_unavailable": "Жол жойылған немесе сізге көрінбейді",
     "projects.form_view.tabs": "Форма бөлімдері",
+    "projects.form_view.action.continue": "Жалғастыру",
     "projects.form_view.action.submit_another": "Тағы бір жауап жіберу",
     "projects.form_view.share.desc": "Осы жұмыс кеңістігінің мүшелері форманы осы сілтеме арқылы толтыра алады.",
     "projects.form_view.error.copy_failed": "Сілтемені көшіру сәтсіз аяқталды.",
