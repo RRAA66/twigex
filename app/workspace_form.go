@@ -40,6 +40,10 @@ func (a *App) CreateForm(ctx context.Context, workspaceID, tableID string, form 
 		return nil, appErr
 	}
 
+	if appErr := a.checkFormDefaults(ctx, workspaceID, tableID, fields, user, "workspace.form_create_failed"); appErr != nil {
+		return nil, appErr
+	}
+
 	exists, err := a.Store.Workspace.ViewExistsByName(tableID, form.Name)
 	if err != nil {
 		tlog.Errorw("Failed to check view name",
@@ -117,7 +121,14 @@ func (a *App) GetForm(ctx context.Context, workspaceID, tableID, formID string, 
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
-	return a.getTableForm(ctx, workspaceID, tableID, formID, user)
+	form, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	a.nameFormDefaults(ctx, user, workspaceID, form.Fields)
+
+	return form, nil
 }
 
 func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID string, form model.WorkspaceForm, fields []model.WorkspaceFormField, user model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
@@ -141,6 +152,10 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 	}
 
 	if appErr := a.validateForm(ctx, tableID, form, fields, "workspace.form_update_failed"); appErr != nil {
+		return nil, appErr
+	}
+
+	if appErr := a.checkFormDefaults(ctx, workspaceID, tableID, fields, user, "workspace.form_update_failed"); appErr != nil {
 		return nil, appErr
 	}
 

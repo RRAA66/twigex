@@ -30,6 +30,7 @@ type fakeFormSubmitStore struct {
 	recorded       []model.WorkspaceFormSubmission
 	submissions    []model.WorkspaceFormSubmission
 	rows           []map[string]any
+	meta           *model.TableHeaderMeta
 	linkedRows     int
 	linkedLimit    int
 	linkedOffset   int

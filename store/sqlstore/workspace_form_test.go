@@ -117,6 +117,36 @@ func TestFormFieldKeepsItsVisibilityRule(t *testing.T) {
 	}
 }
 
+func TestFormFieldKeepsItsDefaultAndReadOnly(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	fields := []model.WorkspaceFormField{
+		{ID: "ff-1", HeaderName: "budget", Label: "Budget", SortOrder: 1, DefaultValue: "42", ReadOnly: true},
+		{ID: "ff-2", HeaderName: "client", Label: "Client", SortOrder: 2},
+	}
+	if err := w.CreateForm(ctx, form, fields); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	got, err := w.GetForm(ctx, "form-1")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+
+	budget, client := got.Fields[0], got.Fields[1]
+	if budget.DefaultValue != "42" || !budget.ReadOnly {
+		t.Errorf("budget %+v, want its default and read-only kept", budget)
+	}
+	if client.DefaultValue != "" || client.ReadOnly {
+		t.Errorf("client %+v, want no default and editable", client)
+	}
+}
+
 func TestUpdateFormReplacesFieldsAndRenamesItsView(t *testing.T) {
 	requireDB(t)
 	resetFormTables(t)

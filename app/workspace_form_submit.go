@@ -34,11 +34,22 @@ func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User)
 		return nil, appErr
 	}
 
+	// A hidden field's default is answered on the server, so it is not shown.
+	fields := slices.Clone(form.Fields)
+	for i := range fields {
+		if !fields[i].Visible {
+			fields[i].DefaultValue = ""
+		}
+	}
+
+	a.nameFormDefaults(ctx, *user, form.WorkspaceID, fields)
+
 	public := model.PublicForm{
 		WorkspaceFormWithFields: *form,
 		LinkTables:              []model.FormLinkTable{},
 		CanSubmit:               a.canSubmitForm(*user, form),
 	}
+	public.Fields = fields
 
 	if formShows(form, isMasterLinkField) {
 		tables, appErr := a.formLinkTables(ctx, *user, form)
@@ -195,8 +206,14 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 
 	submitted := make(map[string]any, len(request.Fields))
 	for _, v := range request.Fields {
-		if _, ok := fields[v.Name]; ok {
+		if f, ok := fields[v.Name]; ok && !f.ReadOnly {
 			submitted[v.Name] = v.Value
+		}
+	}
+
+	for name, f := range fields {
+		if f.ReadOnly {
+			submitted[name] = f.DefaultValue
 		}
 	}
 
@@ -212,7 +229,9 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 	}
 
 	linkTables := map[string]bool{}
-	if formShows(form, isMasterLinkField) {
+	if slices.ContainsFunc(form.Fields, func(f model.WorkspaceFormField) bool {
+		return isMasterLinkField(f) && (f.Visible || f.DefaultValue != "")
+	}) {
 		tables, appErr := a.formLinkTables(ctx, *user, form)
 		if appErr != nil {
 			return "", appErr
@@ -223,15 +242,19 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		}
 	}
 
-	for _, v := range request.Fields {
-		field, ok := fields[v.Name]
+	for name, value := range submitted {
+		field, ok := fields[name]
 		if !ok {
 			continue
 		}
 
-		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, v.Value, linkTables, &task); appErr != nil {
+		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, value, linkTables, &task); appErr != nil {
 			return "", appErr
 		}
+	}
+
+	if appErr := a.presetFormValues(ctx, form, linkTables, &task); appErr != nil {
+		return "", appErr
 	}
 
 	for _, f := range fields {

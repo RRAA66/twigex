@@ -162,10 +162,11 @@ func createFormFieldsTx(ctx context.Context, tx *sql.Tx, formID string, fields [
 
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO workspace_form_fields
-			(id, form_id, header_id, header_name, label, placeholder, description, required, visible, sort_order, column_position, visibility_rule)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			(id, form_id, header_id, header_name, label, placeholder, description, required, visible, sort_order, column_position, visibility_rule,
+			 default_value, read_only)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			f.ID, formID, f.HeaderID, f.HeaderName, f.Label, f.Placeholder, f.Description,
-			f.Required, f.Visible, f.SortOrder, f.ColumnPosition, rule,
+			f.Required, f.Visible, f.SortOrder, f.ColumnPosition, rule, f.DefaultValue, f.ReadOnly,
 		)
 		if err != nil {
 			return err
@@ -179,7 +180,7 @@ func (w *workspaceRepository) getFormFields(ctx context.Context, formID, tableID
 	rows, err := w.Db.QueryContext(ctx, `
 		SELECT f.id, f.form_id, f.header_id, COALESCE(NULLIF(f.header_name, ''), wf.field_name, ''), f.label,
 		       COALESCE(f.placeholder, ''), COALESCE(f.description, ''), f.required, f.visible, f.sort_order, f.column_position,
-		       f.visibility_rule
+		       f.visibility_rule, COALESCE(f.default_value, ''), f.read_only
 		FROM workspace_form_fields f
 		LEFT JOIN workspace_fields wf ON f.header_name = '' AND wf.id = f.header_id AND wf.deleted_at = 0
 		WHERE f.form_id = ?
@@ -195,7 +196,8 @@ func (w *workspaceRepository) getFormFields(ctx context.Context, formID, tableID
 		var f model.WorkspaceFormField
 		var rule sql.NullString
 		err := rows.Scan(&f.ID, &f.FormID, &f.HeaderID, &f.HeaderName, &f.Label,
-			&f.Placeholder, &f.Description, &f.Required, &f.Visible, &f.SortOrder, &f.ColumnPosition, &rule)
+			&f.Placeholder, &f.Description, &f.Required, &f.Visible, &f.SortOrder, &f.ColumnPosition, &rule,
+			&f.DefaultValue, &f.ReadOnly)
 		if err != nil {
 			return nil, err
 		}
@@ -222,25 +224,8 @@ func (w *workspaceRepository) getFormFields(ctx context.Context, formID, tableID
 		return nil, err
 	}
 
-	for i, f := range fields {
-		field := model.SystemFieldData(tableID, f.HeaderName)
-		if field == nil {
-			stored, ok := meta.Fields[f.HeaderName]
-			if !ok {
-				continue
-			}
-
-			field = &stored
-		}
-
-		linkedID := meta.Links[f.HeaderName]
-		linked := meta.LinkedTables[linkedID]
-
-		fields[i].FieldType = field.FieldType
-		fields[i].DisplayName = field.DisplayName
-		fields[i].LinkedID = linkedID
-		fields[i].SingleSelect = linked.SingleSelect
-		fields[i].ParentTableID = linked.ParentTableID
+	for i := range fields {
+		meta.DescribeFormField(tableID, &fields[i])
 	}
 
 	return fields, nil
