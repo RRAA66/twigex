@@ -165,7 +165,13 @@ describe("FormFill", () => {
             const push = vi.spyOn(router, "push");
 
             formService.getPublicForm.mockResolvedValue({
-                data: { ...form, workspace_id: "w1", table_id: "t1", after_submit: "grid" },
+                data: {
+                    ...form,
+                    workspace_id: "w1",
+                    table_id: "t1",
+                    after_submit: "grid",
+                    grid_view_id: "v1",
+                },
             });
             formService.submitPublicForm.mockResolvedValue({ data: {} });
             setActivePinia(createPinia());
@@ -180,7 +186,7 @@ describe("FormFill", () => {
             await w.find("form").trigger("submit");
             await flushPromises();
 
-            expect(push).toHaveBeenCalledWith("/projects/w1/grid/t1/view");
+            expect(push).toHaveBeenCalledWith("/projects/w1/grid/t1/view/v1");
             w.unmount();
         });
 

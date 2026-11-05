@@ -696,6 +696,9 @@ type PublicForm struct {
 	WorkspaceFormWithFields
 	LinkTables []FormLinkTable `json:"link_tables"`
 	CanSubmit  bool            `json:"can_submit"`
+	// GridViewID is the grid of the form's table a form that opens it goes
+	// to once sent.
+	GridViewID string `json:"grid_view_id,omitempty"`
 }
 
 type FormMember struct {

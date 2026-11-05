@@ -60,6 +60,16 @@ func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User)
 		public.LinkTables = tables
 	}
 
+	if form.AfterSubmit == model.FormAfterSubmitGrid {
+		viewID, err := a.Store.Workspace.GetMainViewByTableID(form.WorkspaceID, form.TableID)
+		if err != nil {
+			tlog.Errorw("Failed to retrieve the grid a form opens", "form_id", form.ID, "error", err)
+			return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
+		}
+
+		public.GridViewID = viewID
+	}
+
 	return &public, nil
 }
 

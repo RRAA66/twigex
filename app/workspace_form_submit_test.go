@@ -840,3 +840,21 @@ func TestSubmitFormRequiredCheckboxMustBeChecked(t *testing.T) {
 		}
 	}
 }
+
+func (f *fakeFormSubmitStore) GetMainViewByTableID(workspaceID, tableID string) (string, error) {
+	return "main-" + tableID, nil
+}
+
+func TestPublicFormNamesTheGridItOpens(t *testing.T) {
+	a, ws, _ := submitApp(textField("name", true))
+	ws.forms["form-1"].AfterSubmit = model.FormAfterSubmitGrid
+
+	form, appErr := a.GetPublicForm(context.Background(), "token-1", submitter)
+	if appErr != nil {
+		t.Fatalf("GetPublicForm: %v", appErr)
+	}
+
+	if form.GridViewID != "main-"+tbl1 {
+		t.Errorf("grid view %q, want the table's main grid", form.GridViewID)
+	}
+}

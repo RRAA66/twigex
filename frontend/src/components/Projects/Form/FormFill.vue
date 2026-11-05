@@ -173,7 +173,11 @@ const nextPage = computed(() => {
     if (after === "grid") {
         return router.resolve({
             name: "grid-view",
-            params: { id: form.value.workspace_id, tid: form.value.table_id },
+            params: {
+                id: form.value.workspace_id,
+                tid: form.value.table_id,
+                fid: form.value.grid_view_id,
+            },
         }).href;
     }
 
