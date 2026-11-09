@@ -16,8 +16,6 @@ import (
 // is not in the linked table.
 var ErrLinkTargetMissing = errors.New("a linked row does not exist")
 
-// ErrValueRejected is returned when the database refuses a value for its
-// column, as too long, out of range or not of the column's type.
 var ErrValueRejected = errors.New("a value does not fit its column")
 
 // NewTaskFields holds what a task may be created with besides its name. A
@@ -387,9 +385,7 @@ var systemFields = map[string][2]string{
 	"status":     {"status", "Status"},
 }
 
-// DescribeFormField fills in what a form field is from the table it is on:
-// its type, display name and the table it links to. It reports false for a
-// field the table no longer has.
+// Reports false for a field the table no longer has.
 func (m *TableHeaderMeta) DescribeFormField(tableID string, f *WorkspaceFormField) bool {
 	field := SystemFieldData(tableID, f.HeaderName)
 	if field == nil {
@@ -651,21 +647,20 @@ type WorkspaceFormField struct {
 	Visible        bool   `json:"visible"`
 	SortOrder      int    `json:"sort_order"`
 	ColumnPosition string `json:"column_position,omitempty"`
-	// DefaultValue starts the field's answer, written as a submitted answer
-	// is. A hidden or read-only field always answers it.
+	// A hidden or read-only field always answers its default, written as a
+	// submitted answer is.
 	DefaultValue string `json:"default_value"`
 	ReadOnly     bool   `json:"read_only"`
 
 	VisibilityRule *VisibilityRule `json:"visibility_rule"`
 
 	// Read from the table's field and its link, not stored with the form.
-	FieldType     string `json:"field_type,omitempty"`
-	LinkedID      string `json:"linked_id,omitempty"`
-	SingleSelect  bool   `json:"single_select,omitempty"`
-	ParentTableID string `json:"parent_table_id,omitempty"`
-	DisplayName   string `json:"display_name,omitempty"`
-	// DefaultItems names the rows or option a linked field's default picks.
-	DefaultItems []FormLinkedItem `json:"default_items,omitempty"`
+	FieldType     string           `json:"field_type,omitempty"`
+	LinkedID      string           `json:"linked_id,omitempty"`
+	SingleSelect  bool             `json:"single_select,omitempty"`
+	ParentTableID string           `json:"parent_table_id,omitempty"`
+	DisplayName   string           `json:"display_name,omitempty"`
+	DefaultItems  []FormLinkedItem `json:"default_items,omitempty"`
 }
 
 type WorkspaceFormWithFields struct {
@@ -681,9 +676,8 @@ type WorkspaceFormRequest struct {
 	Fields []WorkspaceFormField `json:"fields"`
 }
 
-// PublicForm is a form as its link serves it. Members fill an assignee
-// field's picker and LinkTables a master link field's; each is left empty
-// unless the form shows such a field.
+// LinkTables fills a master link field's picker; it is empty unless the form
+// shows such a field.
 type PublicForm struct {
 	WorkspaceFormWithFields
 	LinkTables []FormLinkTable `json:"link_tables"`
@@ -724,8 +718,6 @@ type FormSubmitRequest struct {
 	Honeypot string      `json:"honeypot"`
 }
 
-// FormTask is the row a form submission creates: Values by column, the row
-// ids for each link field, and the option chosen in each single-select field.
 type FormTask struct {
 	ID          string
 	CreatedBy   string

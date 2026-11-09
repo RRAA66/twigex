@@ -223,8 +223,6 @@ const tableOptions = computed(() => [
     })),
 ]);
 
-// A read-only field shows its default as the submissions list shows an
-// answer, with the rows or option a linked default picks.
 const readOnlyValue = computed(() => {
     if (type.value === "link") return props.field.default_items || [];
     if (type.value === "single-select") return props.field.default_items?.[0] ?? null;

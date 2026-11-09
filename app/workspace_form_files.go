@@ -39,9 +39,8 @@ var formFileExtensions = map[string]bool{
 
 var errPendingFileMissing = errors.New("pending form file missing")
 
-// pendingFormFile is what an upload through a form's link keeps of a file
-// until the form is submitted. It is written next to the file, in the same
-// storage, so whichever server takes the submission can read it.
+// Written next to the file, in the same storage, so whichever server takes the
+// submission can read it.
 type pendingFormFile struct {
 	FormID   string `json:"form_id"`
 	UserID   string `json:"user_id"`
@@ -83,9 +82,6 @@ func (a *App) CheckFormUpload(ctx context.Context, token string, user *model.Use
 	return form, nil
 }
 
-// UploadFormFiles keeps files for a form's file fields until the form is
-// submitted, which makes them attachments of the new row. The form is the
-// one CheckFormUpload answered.
 func (a *App) UploadFormFiles(ctx context.Context, form *model.WorkspaceFormWithFields, files []*multipart.FileHeader, user model.User) ([]model.ProjectFileMetadata, *model.AppError) {
 	if len(files) == 0 || len(files) > maxFormFiles {
 		return nil, model.NewAppError("request.invalid", http.StatusBadRequest)
@@ -167,9 +163,7 @@ func (a *App) savePendingFormFile(ctx context.Context, storageID string, form *m
 	return model.ProjectFileMetadata{ID: id, Name: fh.Filename, Size: fh.Size, Type: mimeType}, nil
 }
 
-// pendingFormAttachments turns the pending files a submission names for a
-// file field into the new row's attachments. A file uploaded by someone
-// else or to another form counts as missing.
+// A file uploaded by someone else or to another form counts as missing.
 func (a *App) pendingFormAttachments(ctx context.Context, storageID string, form *model.WorkspaceFormWithFields, task model.FormTask, field model.WorkspaceFormField, ids []string) ([]model.WorkspaceAttachment, error) {
 	attachments := make([]model.WorkspaceAttachment, 0, len(ids))
 	for _, id := range ids {
@@ -271,14 +265,10 @@ func (a *App) dropPendingFormFiles(ctx context.Context, form *model.WorkspaceFor
 	}
 }
 
-// SweepPendingFormFiles removes the files uploaded to forms and not
-// submitted within pendingFormFileTTL.
 func (a *App) SweepPendingFormFiles(ctx context.Context) error {
 	return a.removePendingFiles(ctx, pendingFormRoot, time.Now().Add(-pendingFormFileTTL))
 }
 
-// removePendingFormFiles removes what was uploaded to a deleted form and not
-// submitted.
 func (a *App) removePendingFormFiles(ctx context.Context, formID string) {
 	if err := a.removePendingFiles(ctx, pendingFormDir(formID), time.Time{}); err != nil {
 		tlog.Warnw("Failed to remove a deleted form's uploaded files",
@@ -288,9 +278,8 @@ func (a *App) removePendingFormFiles(ctx context.Context, formID string) {
 	}
 }
 
-// removePendingFiles removes the files under dir last written before
-// before, or all of them for a zero before. Each storage is looked through,
-// as the primary one may have changed since the files were uploaded.
+// Each storage is looked through, as the primary one may have changed since the
+// files were uploaded.
 func (a *App) removePendingFiles(ctx context.Context, dir string, before time.Time) error {
 	storageIDs := append([]string{""}, slices.Sorted(maps.Keys(a.FileStorageObjects))...)
 
