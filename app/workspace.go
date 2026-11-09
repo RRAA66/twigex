@@ -4709,8 +4709,6 @@ func (a *App) GetWorkspaceAttachment(ctx context.Context, fileID, workspaceID st
 	return attachment, nil
 }
 
-// workspaceAttachment is an attachment of a task the user, a member of the
-// workspace, may see.
 func (a *App) workspaceAttachment(fileID, workspaceID string, user model.User) (*model.WorkspaceAttachment, *model.AppError) {
 	isMember, appErr := a.IsWorkspaceMember(workspaceID, user.ID)
 	if appErr != nil {

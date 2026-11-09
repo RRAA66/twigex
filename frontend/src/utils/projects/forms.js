@@ -116,8 +116,6 @@ export function fillableFormFields(fields) {
     return (fields || []).filter((f) => f.visible);
 }
 
-// Served by the workspace's attachment route, which reads the image the
-// same way it reads a row's files.
 export function formImageUrl(workspaceId, fileId) {
     return fileId ? `/api/workspaces/${workspaceId}/file/${fileId}` : "";
 }
