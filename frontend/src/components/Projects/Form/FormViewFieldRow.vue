@@ -93,6 +93,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     :model-value="defaultAnswer(field)"
                     :workspace-id="workspaceId"
                     :rows-loader="rowsLoader"
+                    :link-tables="linkTables"
                     @update:model-value="emit('update', defaultFromAnswer(field, $event))"
                 />
                 <p class="mt-1 text-xs text-gray-500">
@@ -158,6 +159,10 @@ const props = defineProps({
         type: String,
         required: true,
     },
+    linkTables: {
+        type: Array,
+        default: () => [],
+    },
     incomplete: {
         type: Boolean,
         default: false,
@@ -184,9 +189,8 @@ watch(
 
 const isNameField = computed(() => props.field.header_name === "name");
 
-// A file has nothing to start from, and a master link's tables are listed
-// only by the form's own link.
-const takesDefault = computed(() => !["file", "master-link"].includes(formFieldType(props.field)));
+// A file has nothing to start from.
+const takesDefault = computed(() => formFieldType(props.field) !== "file");
 
 const defaultField = computed(() => ({
     ...props.field,

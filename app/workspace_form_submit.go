@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"maps"
 	"math"
 	"net/http"
 	"slices"
@@ -198,8 +199,13 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 	}
 
 	fields := make(map[string]model.WorkspaceFormField, len(form.Fields))
+	fileFields := map[string]model.WorkspaceFormField{}
 	for _, f := range form.Fields {
-		if f.Visible && f.FieldType != "file" && !model.IsServerKeptColumn(f.HeaderName) {
+		switch {
+		case !f.Visible || model.IsServerKeptColumn(f.HeaderName):
+		case isFileField(f):
+			fileFields[f.HeaderName] = f
+		default:
 			fields[f.HeaderName] = f
 		}
 	}
@@ -234,10 +240,19 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		}
 	}
 
+	for name, f := range fileFields {
+		withFile := maps.Clone(fields)
+		withFile[name] = f
+		if !formFieldShown(name, withFile, submitted) {
+			delete(fileFields, name)
+		}
+	}
+
 	for _, name := range hidden {
 		delete(fields, name)
 	}
 
+	fileIDs := map[string][]string{}
 	linkTables := map[string]bool{}
 	if slices.ContainsFunc(form.Fields, func(f model.WorkspaceFormField) bool {
 		return isMasterLinkField(f) && (f.Visible || f.DefaultValue != "")
@@ -250,6 +265,19 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		for _, t := range tables {
 			linkTables[t.ID] = true
 		}
+	}
+
+	for _, v := range request.Fields {
+		if _, ok := fileFields[v.Name]; !ok {
+			continue
+		}
+
+		ids, ok := formFileIDs(v.Value)
+		if !ok {
+			return "", model.NewAppError("request.invalid", http.StatusBadRequest)
+		}
+
+		fileIDs[v.Name] = ids
 	}
 
 	for name, value := range submitted {
@@ -286,6 +314,12 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		}
 	}
 
+	for name, f := range fileFields {
+		if f.Required && len(fileIDs[name]) == 0 {
+			return "", model.NewAppError("workspace.form_submit_required_field", http.StatusBadRequest)
+		}
+	}
+
 	start, _ := task.Values["start_date"].(string)
 	due, _ := task.Values["due_date"].(string)
 	if start != "" && due != "" && start > due {
@@ -300,7 +334,17 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		SubmittedAt: now,
 	}
 
+	if len(fileIDs) > 0 {
+		if appErr := a.attachFormFiles(ctx, form, fileFields, fileIDs, &task); appErr != nil {
+			return "", appErr
+		}
+	}
+
 	row, err := a.Store.Workspace.CreateFormTask(ctx, form.WorkspaceID, form.TableID, task, submission)
+	if err != nil || row == nil {
+		a.demoteFormFiles(ctx, form, task.Attachments)
+	}
+
 	switch {
 	case errors.Is(err, model.ErrLinkTargetMissing), errors.Is(err, model.ErrValueRejected):
 		return "", model.NewAppError("request.invalid", http.StatusBadRequest)
@@ -318,19 +362,55 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		return "", model.NewAppError("workspace.form_not_found", http.StatusNotFound)
 	}
 
+	a.dropPendingFormFiles(ctx, form, task.Attachments)
 	a.publishTaskRow(ctx, "task_created", form.WorkspaceID, form.TableID, task.ID)
 
 	return task.ID, nil
 }
 
-// GetFormSubmissions lists a page of who submitted a form, newest first,
-// with the row each made as the grid would show it now. Rows are table data,
-// so it asks for reading the table as well as what reading the form asks for.
-func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, formID string, page int, user model.User) (*model.FormSubmissionsPage, *model.AppError) {
-	if !a.Server.License.HasForms() {
-		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
+// attachFormFiles moves the files a submission names to the new row before
+// the row is written, as the files cannot be part of its transaction.
+// SubmitForm moves them back when the row is not written.
+func (a *App) attachFormFiles(ctx context.Context, form *model.WorkspaceFormWithFields, fileFields map[string]model.WorkspaceFormField, fileIDs map[string][]string, task *model.FormTask) *model.AppError {
+	storageID, err := a.primaryStorageID()
+	if err != nil {
+		tlog.Errorw("Failed to get primary storage", "form_id", form.ID, "error", err)
+		return model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
 	}
 
+	for _, name := range slices.Sorted(maps.Keys(fileIDs)) {
+		attachments, err := a.pendingFormAttachments(ctx, storageID, form, *task, fileFields[name], fileIDs[name])
+		if errors.Is(err, errPendingFileMissing) {
+			return model.NewAppError("workspace.form_file_missing", http.StatusBadRequest)
+		}
+
+		if err != nil {
+			tlog.Errorw("Failed to read a form's uploaded files",
+				"form_id", form.ID,
+				"storage_id", storageID,
+				"error", err,
+			)
+			return model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
+		}
+
+		task.Attachments = append(task.Attachments, attachments...)
+	}
+
+	if err := a.promoteFormFiles(ctx, form, task.Attachments); err != nil {
+		tlog.Errorw("Failed to move a form's uploaded files to its row",
+			"form_id", form.ID,
+			"task_id", task.ID,
+			"error", err,
+		)
+		return model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
+	}
+
+	return nil
+}
+
+// GetFormSubmissions lists a page of who submitted a form within filter,
+// newest first, with the row each made as the grid would show it now.
+func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, formID string, filter model.FormSubmissionsFilter, page int, user model.User) (*model.FormSubmissionsPage, *model.AppError) {
 	if page < 1 {
 		page = 1
 	}
@@ -338,17 +418,13 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
-	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionUpdateWorkspaceView); appErr != nil {
-		return nil, appErr
-	}
-
-	if _, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
+	if _, appErr := a.submissionsForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
 		return nil, appErr
 	}
 
 	failed := model.NewAppError("workspace.form_submissions_failed", http.StatusInternalServerError)
 
-	submissions, err := a.Store.Workspace.GetFormSubmissions(ctx, formID, submissionsPageSize, (page-1)*submissionsPageSize)
+	submissions, err := a.Store.Workspace.GetFormSubmissions(ctx, formID, filter, submissionsPageSize, (page-1)*submissionsPageSize)
 	if err != nil {
 		tlog.Errorw("Failed to retrieve form submissions",
 			"form_id", formID,
@@ -357,7 +433,7 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 		return nil, failed
 	}
 
-	total, err := a.Store.Workspace.CountFormSubmissions(ctx, formID)
+	total, err := a.Store.Workspace.CountFormSubmissions(ctx, formID, filter)
 	if err != nil {
 		tlog.Errorw("Failed to count form submissions",
 			"form_id", formID,
@@ -385,6 +461,20 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	}
 
 	return result, nil
+}
+
+// submissionsForm opens a form's submissions to who may change its view and
+// read its table, since the submissions are rows of the table.
+func (a *App) submissionsForm(ctx context.Context, workspaceID, tableID, formID string, user model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
+	if !a.Server.License.HasForms() {
+		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
+	}
+
+	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionUpdateWorkspaceView); appErr != nil {
+		return nil, appErr
+	}
+
+	return a.getTableForm(ctx, workspaceID, tableID, formID, user)
 }
 
 func (a *App) nameSubmitters(submissions []model.WorkspaceFormSubmission) error {
@@ -482,16 +572,8 @@ func (a *App) getFormByToken(ctx context.Context, token string, user *model.User
 		return nil, model.NewAppError("workspace.form_not_found", http.StatusNotFound)
 	}
 
-	if !a.IsWorkspaceMemberOrGroupMember(form.WorkspaceID, user.ID) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
-	}
-
-	if appErr := a.requireViewAccess(ctx, user.ID, form.ID); appErr != nil {
+	if appErr := a.requireFormOpen(ctx, *user, form); appErr != nil {
 		return nil, appErr
-	}
-
-	if !a.canReadTable(ctx, *user, form.WorkspaceID, form.TableID) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
 	return form, nil
@@ -655,6 +737,35 @@ func formShows(form *model.WorkspaceFormWithFields, match func(model.WorkspaceFo
 	return slices.ContainsFunc(form.Fields, func(f model.WorkspaceFormField) bool {
 		return f.Visible && match(f)
 	})
+}
+
+// formFileIDs reads a file field's value: the ids of its uploads, comma
+// separated.
+func formFileIDs(value any) ([]string, bool) {
+	if value == nil {
+		return nil, true
+	}
+
+	text, ok := value.(string)
+	if !ok {
+		return nil, false
+	}
+
+	var ids []string
+	for _, id := range strings.Split(text, ",") {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+
+		if !validLinkID(id) || slices.Contains(ids, id) {
+			return nil, false
+		}
+
+		ids = append(ids, id)
+	}
+
+	return ids, len(ids) <= maxFormFiles
 }
 
 func isAssigneeField(f model.WorkspaceFormField) bool {

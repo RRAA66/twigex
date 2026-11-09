@@ -29,6 +29,31 @@ SPDX-License-Identifier: AGPL-3.0-only
             />
         </div>
 
+        <FormViewImageInput
+            :label="t('projects.form_view.settings.cover_image')"
+            :alt="t('projects.form_view.image_alt.cover')"
+            :src="formImageUrl(form.workspace_id, form.cover_image)"
+            :loading="busy === 'cover'"
+            :disabled="!form.id || busy !== ''"
+            @pick="setImage('cover', $event)"
+            @remove="removeImage('cover')"
+        />
+
+        <FormViewImageInput
+            :label="t('projects.form_view.settings.logo')"
+            :alt="t('projects.form_view.image_alt.logo')"
+            :src="formImageUrl(form.workspace_id, form.logo)"
+            contain
+            :loading="busy === 'logo'"
+            :disabled="!form.id || busy !== ''"
+            @pick="setImage('logo', $event)"
+            @remove="removeImage('logo')"
+        />
+
+        <p v-if="!form.id" class="text-xs text-gray-400">
+            {{ t("projects.form_view.settings.images_after_save") }}
+        </p>
+
         <h3
             class="border-b border-gray-100 pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500"
         >
@@ -79,8 +104,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script setup>
 import { computed, useId } from "vue";
 import { t } from "@/i18n/index.js";
+import { useFormImages } from "@/composables/projects/useFormImages";
+import { formImageUrl } from "@/utils/projects/forms";
 import BaseSelect from "@/components/BaseSelect.vue";
 import ToggleSwitch from "@/components/ToggleSwitch.vue";
+import FormViewImageInput from "@/components/Projects/Form/FormViewImageInput.vue";
 
 const props = defineProps({
     form: {
@@ -90,6 +118,11 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update"]);
+
+const { busy, setImage, removeImage } = useFormImages(
+    () => props.form,
+    (patch) => emit("update", patch),
+);
 
 const id = useId();
 
