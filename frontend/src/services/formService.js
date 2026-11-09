@@ -22,6 +22,18 @@ const formService = {
     deleteForm(workspaceId, tableId, formId) {
         return axios.delete(`/workspaces/${workspaceId}/table/${tableId}/forms/${formId}`);
     },
+
+    getPublicForm(token) {
+        return axios.get(`/public/forms/${token}`);
+    },
+
+    getPublicLinkedItems(token, tableId, params) {
+        return axios.get(`/public/forms/${token}/linked/${tableId}`, { params });
+    },
+
+    submitPublicForm(token, fields, honeypot) {
+        return axios.post(`/public/forms/${token}/submit`, { fields, honeypot });
+    },
 };
 
 export default formService;

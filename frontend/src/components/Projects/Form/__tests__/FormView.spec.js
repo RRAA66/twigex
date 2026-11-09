@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
+// Registers the time zones the submissions table formats dates with.
+import "moment-timezone";
 import FormView from "@/components/Projects/Form/FormView.vue";
 import FormViewNameDialog from "@/components/Projects/Form/FormViewNameDialog.vue";
 import formService from "@/services/formService";
@@ -14,7 +16,12 @@ import { useSettingsStore } from "@/store/settings";
 import { useWorkspaceRolesStore } from "@/store/workspaceRoles";
 
 vi.mock("@/services/formService", () => ({
-    default: { getForm: vi.fn(), createForm: vi.fn(), updateForm: vi.fn() },
+    default: {
+        getForm: vi.fn(),
+        createForm: vi.fn(),
+        updateForm: vi.fn(),
+        getPublicForm: vi.fn(),
+    },
 }));
 vi.mock("@/services/workspaceService", () => ({
     default: { getWorkspaceNav: vi.fn() },
@@ -46,6 +53,7 @@ async function mountAt(path, { licensed = true, user = { permissions: viewPermis
         routes: [
             { path: "/p/:id/form/:tid", name: "form-view-create", component: FormView },
             { path: "/p/:id/form/:tid/view/:fid", name: "form-view", component: FormView },
+            { path: "/forms/public/:token", name: "public-form", component: FormView },
         ],
     });
 
@@ -187,5 +195,77 @@ describe("FormView", () => {
 
         expect(button(w, "Save")).toBeDefined();
         w.unmount();
+    });
+
+    describe("a saved form", () => {
+        const saved = {
+            id: "f1",
+            workspace_id: "w1",
+            table_id: "t1",
+            name: "Intake",
+            public_token: "tok",
+            fields: [{ header_name: "name", label: "Title", visible: true, sort_order: 0 }],
+        };
+
+        function tab(w, name) {
+            return w.findAll("nav button").find((b) => b.text() === name);
+        }
+
+        beforeEach(() => {
+            formService.getForm.mockResolvedValue({ data: saved });
+        });
+
+        it("previews the form as its link serves it", async () => {
+            formService.getPublicForm.mockResolvedValue({
+                data: {
+                    ...saved,
+                    title: "Tell us",
+                    can_submit: true,
+                    fields: [{ ...saved.fields[0], field_type: "text" }],
+                },
+            });
+            const { w } = await mountAt("/p/w1/form/t1/view/f1");
+
+            await tab(w, "Preview").trigger("click");
+            await flushPromises();
+
+            expect(formService.getPublicForm).toHaveBeenCalledWith("tok");
+            expect(w.text()).toContain("Tell us");
+            expect(w.find("button[type='submit']").exists()).toBe(true);
+            w.unmount();
+        });
+
+        it("alerts when the link cannot be copied", async () => {
+            vi.stubGlobal(
+                "ResizeObserver",
+                class {
+                    observe() {}
+                    disconnect() {}
+                },
+            );
+            Object.assign(navigator, {
+                clipboard: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+            });
+            const { w } = await mountAt("/p/w1/form/t1/view/f1");
+            const showError = vi.spyOn(useAlertStore(), "showError");
+
+            await w
+                .findAll("button")
+                .find((b) => b.text() === "Form link")
+                .trigger("click");
+            await flushPromises();
+            expect(document.body.querySelector("input[readonly]").value).toBe(
+                `${window.location.origin}/forms/public/tok`,
+            );
+
+            [...document.body.querySelectorAll("button")]
+                .find((b) => b.textContent.trim() === "Copy")
+                .click();
+            await flushPromises();
+
+            expect(navigator.clipboard.writeText).toHaveBeenCalled();
+            expect(showError).toHaveBeenCalledWith("Failed to copy link.");
+            w.unmount();
+        });
     });
 });

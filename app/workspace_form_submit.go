@@ -33,18 +33,8 @@ func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User)
 
 	public := model.PublicForm{
 		WorkspaceFormWithFields: *form,
-		Members:                 []model.FormMember{},
 		LinkTables:              []model.FormLinkTable{},
 		CanSubmit:               a.canSubmitForm(*user, form),
-	}
-
-	if formShows(form, isAssigneeField) {
-		members, appErr := a.formMembers(ctx, form.WorkspaceID)
-		if appErr != nil {
-			return nil, appErr
-		}
-
-		public.Members = members
 	}
 
 	if formShows(form, isMasterLinkField) {
@@ -85,7 +75,7 @@ func (a *App) formLinkTables(ctx context.Context, user model.User, form *model.W
 }
 
 // GetPublicLinkedItems pages through the rows a link or single-select field
-// of the form can pick, by id and name only.
+// of the form can pick: their id and name, and an option's colour.
 func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search string, page, limit int, user *model.User) (*model.LinkedItemsResponse, *model.AppError) {
 	if limit <= 0 || limit > maxLinkedItemsPage {
 		limit = maxLinkedItemsPage
@@ -146,7 +136,8 @@ func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search s
 	for _, row := range rows[:min(len(rows), limit)] {
 		id, _ := row["id"].(string)
 		name, _ := row["name"].(string)
-		response.Items = append(response.Items, model.FormLinkedItem{ID: id, Name: name})
+		color, _ := row["color"].(string)
+		response.Items = append(response.Items, model.FormLinkedItem{ID: id, Name: name, Color: color})
 	}
 
 	return &response, nil
@@ -520,38 +511,6 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 	}
 
 	return nil
-}
-
-func (a *App) formMembers(ctx context.Context, workspaceID string) ([]model.FormMember, *model.AppError) {
-	members, err := a.Store.Workspace.GetMembers(workspaceID)
-	if err != nil {
-		tlog.Errorw("Failed to retrieve members for a form",
-			"workspace_id", workspaceID,
-			"error", err,
-		)
-		return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
-	}
-
-	ids := make([]string, 0, len(members))
-	for _, m := range members {
-		ids = append(ids, m.UserID)
-	}
-
-	users, err := a.Store.User.GetByIDs(ids)
-	if err != nil {
-		tlog.Errorw("Failed to retrieve members for a form",
-			"workspace_id", workspaceID,
-			"error", err,
-		)
-		return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
-	}
-
-	result := make([]model.FormMember, 0, len(users))
-	for _, u := range users {
-		result = append(result, formMember(u))
-	}
-
-	return result, nil
 }
 
 // formMember is all a form shows of a user.

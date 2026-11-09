@@ -3,7 +3,7 @@
 
 import { fieldLabel } from "@/utils/projects/rows";
 
-const DEFAULT_ACCENT_COLOR = "#4f46e5";
+export const DEFAULT_ACCENT_COLOR = "#4f46e5";
 
 const DEFAULT_FIELD_NAMES = {
     name: "projects.grid_view.name",
@@ -87,4 +87,59 @@ export function mergeFormFields(headers, savedFields, translate) {
     }
 
     return merged;
+}
+
+// Mirrors how SubmitForm reads a value: a link with a single-select target
+// takes one option, any other link a list of rows.
+export function formFieldType(field) {
+    const type = (field.field_type || "").toLowerCase();
+
+    if (field.header_name === "color") return "color";
+    if (type === "master link") return "master-link";
+    if (field.linked_id) return field.single_select ? "single-select" : "link";
+    if (type === "bool" || type === "checkbox") return "checkbox";
+    if (type === "date" || type === "default_date") return "date";
+    if (type === "assignee" || type === "default_assignee") return "assignee";
+    if (["url", "number", "decimal", "file"].includes(type)) return type;
+
+    return "text";
+}
+
+// The table whose rows a link field's picker lists, as the server checks it.
+export function linkedTableId(field) {
+    if (field.single_select) return field.linked_id || "";
+
+    return field.parent_table_id || field.linked_id || "";
+}
+
+// File fields come with uploads, which the form cannot send yet.
+export function fillableFormFields(fields) {
+    return (fields || []).filter((f) => f.visible && formFieldType(f) !== "file");
+}
+
+function isEmptyFormValue(value) {
+    return (
+        value == null ||
+        value === "" ||
+        value === false ||
+        (Array.isArray(value) && value.length === 0)
+    );
+}
+
+export function missingRequiredFields(fields, values) {
+    return fields
+        .filter((f) => f.required && isEmptyFormValue(values[f.header_name]))
+        .map((f) => f.header_name);
+}
+
+// Pickers hold the chosen rows as {id, name}; the server takes their ids.
+function submitValue(value) {
+    if (Array.isArray(value)) return value.map((item) => item.id).join(",");
+    if (value && typeof value === "object") return value.id;
+
+    return value ?? "";
+}
+
+export function formSubmitFields(fields, values) {
+    return fields.map((f) => ({ name: f.header_name, value: submitValue(values[f.header_name]) }));
 }

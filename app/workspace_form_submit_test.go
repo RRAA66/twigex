@@ -81,15 +81,6 @@ func (f *fakeFormSubmitStore) GetMemberUserIDs(_ context.Context, _ string, user
 	return found, nil
 }
 
-func (f *fakeFormSubmitStore) GetMembers(string) ([]model.WorkspaceMember, error) {
-	members := make([]model.WorkspaceMember, 0, len(f.members))
-	for _, id := range f.members {
-		members = append(members, model.WorkspaceMember{UserID: id})
-	}
-
-	return members, nil
-}
-
 func (f *fakeFormSubmitStore) GetLinkableTables(context.Context, string, string) ([]model.FormLinkTable, error) {
 	return []model.FormLinkTable{{ID: tbl2, Name: "t2"}, {ID: "table-4", Name: "t4"}}, nil
 }
@@ -101,7 +92,7 @@ func (f *fakeFormSubmitStore) GetLinkedRecordsLite(_ context.Context, _, _ strin
 
 	rows := []map[string]any{}
 	for i := range min(f.linkedRows, limit) {
-		rows = append(rows, map[string]any{"id": fmt.Sprintf("row-%d", i+1), "name": "Acme"})
+		rows = append(rows, map[string]any{"id": fmt.Sprintf("row-%d", i+1), "name": "Acme", "color": "#dc2626"})
 	}
 
 	return rows, nil
@@ -460,7 +451,7 @@ func TestPublicFormUnknownOrInactiveIsNotFound(t *testing.T) {
 	}
 }
 
-func TestPublicFormReadsMembersInOneBatch(t *testing.T) {
+func TestPublicFormSendsNoMemberList(t *testing.T) {
 	a, _, users := submitApp(model.WorkspaceFormField{HeaderName: "assignee", FieldType: "default_assignee", Visible: true})
 
 	form, appErr := a.GetPublicForm(context.Background(), "token-1", submitter)
@@ -468,32 +459,11 @@ func TestPublicFormReadsMembersInOneBatch(t *testing.T) {
 		t.Fatalf("GetPublicForm: %v", appErr)
 	}
 
-	if users.reads != 1 {
-		t.Errorf("read users %d times, want once", users.reads)
-	}
-
-	want := []model.FormMember{
-		{ID: "member-1", Name: "Anna", Lastname: "Ozola", Photo: "p1"},
-		{ID: "member-2", Name: "Jānis", Lastname: "Bērziņš"},
-	}
-	if !slices.Equal(form.Members, want) {
-		t.Errorf("members %+v, want %+v", form.Members, want)
+	if users.reads != 0 {
+		t.Errorf("read users %d times, want none: the person picker searches members itself", users.reads)
 	}
 	if len(form.LinkTables) != 0 {
 		t.Errorf("link tables %+v, want none without a master link field", form.LinkTables)
-	}
-}
-
-func TestPublicFormWithoutAPickerSharesNoMembers(t *testing.T) {
-	a, _, users := submitApp(textField("name", false))
-
-	form, appErr := a.GetPublicForm(context.Background(), "token-1", submitter)
-	if appErr != nil {
-		t.Fatalf("GetPublicForm: %v", appErr)
-	}
-
-	if users.reads != 0 || len(form.Members) != 0 {
-		t.Errorf("read users %d times for %+v, want no members", users.reads, form.Members)
 	}
 }
 
@@ -509,6 +479,9 @@ func TestPublicLinkedItemsOnlyForTheFormsFields(t *testing.T) {
 	if appErr != nil {
 		t.Fatalf("GetPublicLinkedItems: %v", appErr)
 	}
+	if want := (model.FormLinkedItem{ID: "row-1", Name: "Acme", Color: "#dc2626"}); len(items.Items) == 1 && items.Items[0] != want {
+		t.Errorf("item %+v, want %+v", items.Items[0], want)
+	}
 	if ws.linkedLimit != 51 || len(items.Items) != 1 || items.HasMore {
 		t.Errorf("asked the store for %d, answered %+v, want a page of at most 50 and one more to tell if there are more", ws.linkedLimit, items)
 	}
@@ -522,7 +495,7 @@ func TestPublicLinkedItemsSaysWhetherMoreFollow(t *testing.T) {
 	if appErr != nil {
 		t.Fatalf("GetPublicLinkedItems: %v", appErr)
 	}
-	if ws.linkedOffset != 10 || len(items.Items) != 10 || !items.HasMore || items.Items[0] != (model.FormLinkedItem{ID: "row-1", Name: "Acme"}) {
+	if ws.linkedOffset != 10 || len(items.Items) != 10 || !items.HasMore || items.Items[0] != (model.FormLinkedItem{ID: "row-1", Name: "Acme", Color: "#dc2626"}) {
 		t.Errorf("read from %d, answered %+v; want the second page of 10 with more to follow", ws.linkedOffset, items)
 	}
 }

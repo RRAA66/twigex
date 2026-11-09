@@ -154,7 +154,20 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 		return nil, model.NewAppError("workspace.form_update_failed", http.StatusInternalServerError)
 	}
 
-	return a.getTableForm(ctx, workspaceID, tableID, formID, user)
+	updated, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	// Named by form, so only the edited form's open pages reload.
+	a.publishProjectChange(ctx, projectChange{
+		kind:        "FORM_CONFIG_CHANGED",
+		workspaceID: workspaceID,
+		tableID:     tableID,
+		data:        map[string]any{"form_id": formID},
+	})
+
+	return updated, nil
 }
 
 func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID string, user model.User) *model.AppError {

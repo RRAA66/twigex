@@ -425,3 +425,57 @@ func TestCreateFormRefusesANameAnotherViewHas(t *testing.T) {
 		t.Errorf("wrote %d times, want none", ws.writes)
 	}
 }
+
+// formChangeStore serves one form to changeApp, whose connected clients
+// show what was published.
+type formChangeStore struct {
+	perUserRoleStore
+	form *model.WorkspaceFormWithFields
+}
+
+func (f formChangeStore) GetForm(_ context.Context, formID string) (*model.WorkspaceFormWithFields, error) {
+	if formID != f.form.ID {
+		return nil, nil
+	}
+
+	stored := *f.form
+	return &stored, nil
+}
+
+func (f formChangeStore) GetTableWorkspaceID(context.Context, string) (string, error) {
+	return f.form.WorkspaceID, nil
+}
+
+func (f formChangeStore) GetTableName(string) (string, error) {
+	return "table_a", nil
+}
+
+func (f formChangeStore) GetColumnNames(context.Context, string) ([]string, error) {
+	return nil, nil
+}
+
+func (f formChangeStore) UpdateForm(context.Context, model.WorkspaceForm, []model.WorkspaceFormField) error {
+	return nil
+}
+
+func TestUpdateFormTellsItsPagesWhichFormChanged(t *testing.T) {
+	a, clients := changeApp([]string{"member"}, changeRoles{})
+	a.Store.Workspace = formChangeStore{
+		perUserRoleStore: a.Store.Workspace.(perUserRoleStore),
+		form:             &model.WorkspaceFormWithFields{WorkspaceForm: model.WorkspaceForm{ID: "form-1", WorkspaceID: "ws-a", TableID: "t-a"}},
+	}
+	a.Server.License = &model.License{
+		StartsAt:  time.Now().Add(-time.Hour).Unix(),
+		ExpiresAt: time.Now().Add(time.Hour).Unix(),
+		Features:  &model.Features{Forms: boolPtr(true)},
+	}
+
+	if _, appErr := a.UpdateForm(context.Background(), "ws-a", "t-a", "form-1", model.WorkspaceForm{Name: "Renamed"}, nil, workspaceAdmin); appErr != nil {
+		t.Fatalf("UpdateForm: %v", appErr)
+	}
+
+	data := received(clients["member"])
+	if data["type"] != "FORM_CONFIG_CHANGED" || data["form_id"] != "form-1" || data["workspace_id"] != "ws-a" || data["table_id"] != "t-a" {
+		t.Errorf("published %v, want FORM_CONFIG_CHANGED for form-1", data)
+	}
+}
