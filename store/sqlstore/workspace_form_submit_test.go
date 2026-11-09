@@ -13,7 +13,6 @@ import (
 	"github.com/twigex/twigex/model"
 )
 
-// setupFormSubmit adds a form on table A of setupTaskLinks.
 func setupFormSubmit(t *testing.T) *workspaceRepository {
 	t.Helper()
 	w := setupTaskLinks(t)
