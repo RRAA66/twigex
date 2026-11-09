@@ -682,6 +682,9 @@ type WorkspaceFormField struct {
 type WorkspaceFormWithFields struct {
 	WorkspaceForm
 	Fields []WorkspaceFormField `json:"fields"`
+	// LinkTables are the tables a master link field may name, for the
+	// builder's default picker; empty outside the builder.
+	LinkTables []FormLinkTable `json:"link_tables,omitempty"`
 }
 
 type WorkspaceFormRequest struct {
@@ -738,13 +741,19 @@ type FormSubmitRequest struct {
 // FormTask is the row a form submission creates: Values by column, the row
 // ids for each link field, and the option chosen in each single-select field.
 type FormTask struct {
-	ID        string
-	CreatedBy string
-	CreatedAt int64
-	Values    map[string]any
-	Links     map[string][]string
-	Selects   map[string]string
+	ID          string
+	CreatedBy   string
+	CreatedAt   int64
+	Values      map[string]any
+	Links       map[string][]string
+	Selects     map[string]string
+	Attachments []WorkspaceAttachment
 }
+
+const (
+	FormImageCover = "cover"
+	FormImageLogo  = "logo"
+)
 
 type WorkspaceFormSubmission struct {
 	ID            string      `json:"id"`
@@ -756,6 +765,13 @@ type WorkspaceFormSubmission struct {
 	// Row is the row the submission made as it is now, left out when it was
 	// deleted or the user may not see it.
 	Row map[string]any `json:"row,omitempty"`
+}
+
+// FormSubmissionsFilter keeps the submissions sent from From until before To,
+// in unix seconds; zero leaves that end open.
+type FormSubmissionsFilter struct {
+	From int64
+	To   int64
 }
 
 type FormSubmissionsPage struct {

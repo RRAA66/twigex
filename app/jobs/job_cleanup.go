@@ -5,6 +5,7 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/twigex/twigex/model"
@@ -16,12 +17,19 @@ const (
 	cleanupInterval = time.Hour
 )
 
-type CleanupJob struct {
-	store store.JobsStore
+// PendingFileSweeper removes the files uploaded to forms that were never
+// submitted.
+type PendingFileSweeper interface {
+	SweepPendingFormFiles(ctx context.Context) error
 }
 
-func NewCleanupJob(store store.JobsStore) CleanupJob {
-	return CleanupJob{store: store}
+type CleanupJob struct {
+	store   store.JobsStore
+	sweeper PendingFileSweeper
+}
+
+func NewCleanupJob(store store.JobsStore, sweeper PendingFileSweeper) CleanupJob {
+	return CleanupJob{store: store, sweeper: sweeper}
 }
 
 func (j CleanupJob) Type() string {
@@ -33,5 +41,7 @@ func (j CleanupJob) Schedule() (time.Duration, bool) {
 }
 
 func (j CleanupJob) Run(ctx context.Context, job *model.Job) error {
-	return j.store.DeleteOld(time.Now().Add(-jobRetention).Unix())
+	jobsErr := j.store.DeleteOld(time.Now().Add(-jobRetention).Unix())
+
+	return errors.Join(jobsErr, j.sweeper.SweepPendingFormFiles(ctx))
 }

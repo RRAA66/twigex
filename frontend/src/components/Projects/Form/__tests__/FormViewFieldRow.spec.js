@@ -12,14 +12,16 @@ vi.mock("@/services/workspaceService", () => ({
 
 let w;
 
-async function mountRow(field) {
+async function mountRow(field, props = {}) {
     w = mount(FormViewFieldRow, {
         props: {
             field: { header_name: "budget", label: "Budget", visible: true, ...field },
             fields: [],
             workspaceId: "w1",
             tableId: "t1",
+            ...props,
         },
+        global: { stubs: { Portal: { template: "<div><slot /></div>" } } },
         attachTo: document.body,
     });
     await w.find("button[aria-expanded]").trigger("click");
@@ -56,13 +58,27 @@ describe("FormViewFieldRow", () => {
         expect(w.emitted("update").at(-1)).toEqual([{ read_only: true }]);
     });
 
-    it.each([
-        ["file", { field_type: "file" }],
-        ["master link", { field_type: "master link" }],
-    ])("offers no default for a %s field", async (_, field) => {
-        await mountRow(field);
+    it("offers no default for a file field", async () => {
+        await mountRow({ field_type: "file" });
 
         expect(w.text()).not.toContain("Default value");
         expect(w.text()).not.toContain("Read-only");
+    });
+
+    it("picks a master link's default from the tables it may name", async () => {
+        await mountRow(
+            { field_type: "master link" },
+            { linkTables: [{ id: "tbl-c", name: "Clients" }] },
+        );
+
+        expect(w.text()).toContain("Default value");
+        const picker = w.findAll("button").find((b) => b.text() === "Select table");
+        await picker.trigger("click");
+        await w
+            .findAll("li")
+            .find((o) => o.text() === "Clients")
+            .trigger("click");
+
+        expect(w.emitted("update").at(-1)[0]).toMatchObject({ default_value: "tbl-c" });
     });
 });
