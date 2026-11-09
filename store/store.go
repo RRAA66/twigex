@@ -545,7 +545,7 @@ type WorkspaceStore interface {
 	GetRow(workspaceID string) (*model.Workspace, error)
 	GetFolders(workspaceID string) ([]model.WorkspaceFolder, error)
 	GetTableViewMetadata(workspaceID, userID string, tableIDs []string) (map[string]*model.WorkspaceTableViewMetadata, error)
-	GetTableList(workspaceID, userID string) ([]model.WorkspaceTable, error)
+	GetTableList(ctx context.Context, workspaceID, userID string) ([]model.WorkspaceTable, error)
 	GetAllTablesBasic(workspaceID string) ([]model.WorkspaceTable, error)
 	CreateTable(id string, workspaceID string, name string, safeName string, linked bool, parent_table_id string, userID string, single_select bool, linkBothDirections bool, secondTableID string, folderID string, taskOrderJSON string, defaultStatuses []model.KanbanStatusOption, statusTableID string, statusTablePhysicalName string, mainViewID string) (*model.WorkspaceTable, error)
 	GetTableParentID(tableID string) string
@@ -642,6 +642,7 @@ type WorkspaceStore interface {
 	CreateFilter(workspaceID, tableID string, filters model.FilterPayload, name string, isPrivate bool, userID, id string) (string, error)
 	Update(workspaceID, name string, description *string) (*string, error)
 	UpdateTable(workspaceID string, tableID string, name string) (*string, error)
+	UpdateTableIcon(ctx context.Context, workspaceID, tableID, icon string) error
 	DeleteMember(workspaceID string, memberID string) (bool, error)
 	DeleteFolder(ctx context.Context, workspaceID, folderID string, withTables bool) ([]string, []map[string]interface{}, error)
 	GetFolderTableIDs(ctx context.Context, workspaceID, folderID string) ([]string, error)
