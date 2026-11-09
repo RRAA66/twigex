@@ -139,6 +139,24 @@ describe("FormFieldInput", () => {
         expect(input.attributes("aria-required")).toBe("true");
     });
 
+    it("labels a file field's button and ties its error and description to it", () => {
+        setActivePinia(createPinia());
+        mountField(
+            { field_type: "file", required: true, description: "Why" },
+            { error: "Required" },
+        );
+
+        const button = w.find("button");
+        const describedBy = button.attributes("aria-describedby").split(" ");
+
+        expect(labelFor(button.element)).toContain("Agree");
+        expect(describedBy.map((id) => document.getElementById(id).textContent.trim())).toEqual([
+            "Why",
+            "Required",
+        ]);
+        expect(button.attributes("aria-invalid")).toBe("true");
+    });
+
     it("leaves a valid optional field unmarked", () => {
         mountField({ field_type: "text" });
 

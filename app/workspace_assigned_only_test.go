@@ -306,13 +306,13 @@ func TestAssignedOnlyRefusesAttachmentsOnAnotherUsersTask(t *testing.T) {
 	a, ws := assignedOnlyApp(map[string]bool{"t-mine": true})
 	ctx := context.Background()
 
-	if _, appErr := a.GetWorkspaceAttachment("f-own", "ws-a", anna); appErr != nil {
+	if _, appErr := a.GetWorkspaceAttachment(context.Background(), "f-own", "ws-a", anna); appErr != nil {
 		t.Errorf("a file on her own task: %v, want allowed", appErr)
 	}
 
 	upload := httptest.NewRequest(http.MethodPost, "/", nil)
 	checks := map[string]*model.AppError{}
-	_, checks["open it"] = a.GetWorkspaceAttachment("f-bobs", "ws-a", anna)
+	_, checks["open it"] = a.GetWorkspaceAttachment(context.Background(), "f-bobs", "ws-a", anna)
 	_, checks["open it in the editor"] = a.GetUserWorkspaceAttachment("f-bobs", anna)
 	checks["delete it"] = a.DeleteWorkspaceAttachment(ctx, "f-bobs", "ws-a", anna)
 	_, checks["upload to the task"] = a.UploadWorkspaceFiles("ws-a", "t-mine", "bobs", "files", "", anna, upload)
@@ -343,7 +343,7 @@ func TestAttachmentChangesNeedTheUpdateTaskPermission(t *testing.T) {
 	a, ws := assignedOnlyApp(nil)
 	a.WorkspaceRoles = readOnlyRoles{}
 
-	if _, appErr := a.GetWorkspaceAttachment("f-own", "ws-a", anna); appErr != nil {
+	if _, appErr := a.GetWorkspaceAttachment(context.Background(), "f-own", "ws-a", anna); appErr != nil {
 		t.Errorf("opening a file on her own task: %v, want allowed", appErr)
 	}
 

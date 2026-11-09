@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 )
 
 const (
@@ -32,6 +33,14 @@ type FileBackend interface {
 	FileSize(path string) (int64, error)
 	FileETag(path string) (string, error)
 	CopyFileFromReader(ctx context.Context, path string, reader io.Reader, size int64) error
+	ListFiles(ctx context.Context, dir string) ([]FileInfo, error)
+}
+
+// FileInfo is a file found under a directory, by the path the other methods
+// take.
+type FileInfo struct {
+	Path    string
+	ModTime time.Time
 }
 
 type FileBackendSettings struct {

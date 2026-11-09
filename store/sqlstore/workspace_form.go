@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/twigex/twigex/model"
 )
@@ -16,8 +17,8 @@ import (
 // the tab.
 const formColumns = `id, workspace_id, table_id,
 	COALESCE((SELECT v.name FROM workspace_view v WHERE v.id = workspace_forms.id), workspace_forms.name), title, COALESCE(description, ''), COALESCE(cover_image, ''),
-	cover_position, COALESCE(logo, ''), COALESCE(accent_color, ''), public_token, active,
-	created_by, created_at, updated_at`
+	cover_position, COALESCE(logo, ''), COALESCE(accent_color, ''), COALESCE(success_message, ''), COALESCE(after_submit, ''), COALESCE(redirect_url, ''),
+	public_token, active, created_by, created_at, updated_at`
 
 // CreateForm writes the form with the workspace_view row that shows it as a
 // tab, so a form never exists without its view or the other way round.
@@ -41,11 +42,11 @@ func (w *workspaceRepository) CreateForm(ctx context.Context, form model.Workspa
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO workspace_forms
 		(id, workspace_id, table_id, name, title, description, cover_image, cover_position, logo, accent_color,
-		 public_token, active, created_by, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 success_message, after_submit, redirect_url, public_token, active, created_by, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		form.ID, form.WorkspaceID, form.TableID, form.Name, form.Title, form.Description,
 		form.CoverImage, form.CoverPosition, form.Logo, form.AccentColor,
-		form.PublicToken, form.Active, form.CreatedBy, form.CreatedAt, form.UpdatedAt,
+		form.SuccessMessage, form.AfterSubmit, form.RedirectURL, form.PublicToken, form.Active, form.CreatedBy, form.CreatedAt, form.UpdatedAt,
 	)
 	if err != nil {
 		return err
@@ -74,7 +75,8 @@ func (w *workspaceRepository) getFormWhere(ctx context.Context, where, arg strin
 	var form model.WorkspaceForm
 	err := w.Db.QueryRowContext(ctx, `SELECT `+formColumns+` FROM workspace_forms WHERE `+where, arg).Scan(
 		&form.ID, &form.WorkspaceID, &form.TableID, &form.Name, &form.Title, &form.Description,
-		&form.CoverImage, &form.CoverPosition, &form.Logo, &form.AccentColor, &form.PublicToken,
+		&form.CoverImage, &form.CoverPosition, &form.Logo, &form.AccentColor,
+		&form.SuccessMessage, &form.AfterSubmit, &form.RedirectURL, &form.PublicToken,
 		&form.Active, &form.CreatedBy, &form.CreatedAt, &form.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -94,6 +96,7 @@ func (w *workspaceRepository) getFormWhere(ctx context.Context, where, arg strin
 }
 
 // UpdateForm replaces the form's fields and keeps its view's name in step.
+// Its images are left as they are: SetFormImage changes them.
 func (w *workspaceRepository) UpdateForm(ctx context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error {
 	tx, err := w.Db.BeginTx(ctx, nil)
 	if err != nil {
@@ -104,11 +107,11 @@ func (w *workspaceRepository) UpdateForm(ctx context.Context, form model.Workspa
 
 	_, err = tx.ExecContext(ctx, `
 		UPDATE workspace_forms
-		SET name = ?, title = ?, description = ?, cover_image = ?, cover_position = ?, logo = ?, accent_color = ?,
-		    active = ?, updated_at = ?
+		SET name = ?, title = ?, description = ?, cover_position = ?, accent_color = ?,
+		    success_message = ?, after_submit = ?, redirect_url = ?, active = ?, updated_at = ?
 		WHERE id = ?`,
-		form.Name, form.Title, form.Description, form.CoverImage, form.CoverPosition, form.Logo, form.AccentColor,
-		form.Active, form.UpdatedAt, form.ID,
+		form.Name, form.Title, form.Description, form.CoverPosition, form.AccentColor,
+		form.SuccessMessage, form.AfterSubmit, form.RedirectURL, form.Active, form.UpdatedAt, form.ID,
 	)
 	if err != nil {
 		return err
@@ -146,7 +149,59 @@ func (w *workspaceRepository) DeleteForm(ctx context.Context, formID string) err
 		return err
 	}
 
+	if _, err := tx.ExecContext(ctx, `DELETE FROM workspace_attachments WHERE task_id = ?`, formID); err != nil {
+		return err
+	}
+
 	return tx.Commit()
+}
+
+// SetFormImage stores a form's cover or logo as an attachment of the form
+// and drops the one it replaces, or only drops it when image is nil.
+func (w *workspaceRepository) SetFormImage(ctx context.Context, formID, kind string, image *model.WorkspaceAttachment, replacedID string) error {
+	column, err := formImageColumn(kind)
+	if err != nil {
+		return err
+	}
+
+	tx, err := w.Db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback()
+
+	var imageID sql.NullString
+	if image != nil {
+		if err := insertAttachmentTx(ctx, tx, *image); err != nil {
+			return err
+		}
+
+		imageID = sql.NullString{String: image.ID, Valid: true}
+	}
+
+	if _, err := tx.ExecContext(ctx, `UPDATE workspace_forms SET `+column+` = ? WHERE id = ?`, imageID, formID); err != nil {
+		return err
+	}
+
+	if replacedID != "" {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM workspace_attachments WHERE id = ? AND task_id = ?`, replacedID, formID); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func formImageColumn(kind string) (string, error) {
+	switch kind {
+	case model.FormImageCover:
+		return "cover_image", nil
+	case model.FormImageLogo:
+		return "logo", nil
+	}
+
+	return "", fmt.Errorf("unknown form image %q", kind)
 }
 
 func createFormFieldsTx(ctx context.Context, tx *sql.Tx, formID string, fields []model.WorkspaceFormField) error {

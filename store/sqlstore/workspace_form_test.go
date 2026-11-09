@@ -12,6 +12,7 @@ import (
 
 func resetFormTables(t *testing.T) {
 	cleanTables(t,
+		"workspace_attachments",
 		"workspace_form_fields",
 		"workspace_forms",
 		"workspace_view",
@@ -74,6 +75,36 @@ func TestCreateFormWritesItsViewAndReadsFieldsFromTheTable(t *testing.T) {
 	}
 	if status.FieldType != "status" {
 		t.Errorf("status field %+v, want the system field type", status)
+	}
+}
+
+func TestFormKeepsWhatHappensAfterItIsSent(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100,
+		SuccessMessage: "Thanks, we will call you.", AfterSubmit: model.FormAfterSubmitLink, RedirectURL: "https://example.com/next"}
+	if err := w.CreateForm(ctx, form, nil); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	got, err := w.GetForm(ctx, "form-1")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+	if got.SuccessMessage != form.SuccessMessage || got.AfterSubmit != form.AfterSubmit || got.RedirectURL != form.RedirectURL {
+		t.Errorf("form %+v, want its thank-you and redirect", got.WorkspaceForm)
+	}
+
+	form.SuccessMessage, form.AfterSubmit, form.RedirectURL = "", model.FormAfterSubmitGrid, ""
+	if err := w.UpdateForm(ctx, form, nil); err != nil {
+		t.Fatalf("UpdateForm: %v", err)
+	}
+	if got, _ := w.GetForm(ctx, "form-1"); got.SuccessMessage != "" || got.AfterSubmit != model.FormAfterSubmitGrid || got.RedirectURL != "" {
+		t.Errorf("form %+v, want both cleared", got.WorkspaceForm)
 	}
 }
 
@@ -243,6 +274,11 @@ func TestDeleteTableViewDeletesTheFormItShows(t *testing.T) {
 		t.Fatalf("CreateForm: %v", err)
 	}
 
+	logo := &model.WorkspaceAttachment{ID: "img-1", WorkspaceID: "w1", TableID: "t1", FieldID: "form_logo", TaskID: "form-1", UserID: "u1", Name: "logo.png", MimeType: "image/png"}
+	if err := w.SetFormImage(ctx, "form-1", model.FormImageLogo, logo, ""); err != nil {
+		t.Fatalf("SetFormImage: %v", err)
+	}
+
 	if _, err := w.DeleteTableView(ctx, "w1", "t1", "form-1"); err != nil {
 		t.Fatalf("DeleteTableView: %v", err)
 	}
@@ -254,6 +290,9 @@ func TestDeleteTableViewDeletesTheFormItShows(t *testing.T) {
 	}
 	if n := countRows(t, testDB, `SELECT COUNT(*) FROM workspace_form_fields WHERE form_id = 'form-1'`); n != 0 {
 		t.Errorf("workspace_form_fields keeps %d rows of the form", n)
+	}
+	if n := countRows(t, testDB, `SELECT COUNT(*) FROM workspace_attachments WHERE task_id = 'form-1'`); n != 0 {
+		t.Errorf("workspace_attachments keeps %d images of the form", n)
 	}
 }
 
@@ -275,5 +314,55 @@ func TestDeleteTableViewKeepsAFormOfAnotherTable(t *testing.T) {
 
 	if n := countRows(t, testDB, `SELECT COUNT(*) FROM workspace_forms WHERE id = 'form-1'`); n != 1 {
 		t.Errorf("found %d forms, want the form kept", n)
+	}
+}
+
+func TestSetFormImageReplacesTheOldAttachment(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	if err := w.CreateForm(ctx, form, nil); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	image := func(id string) *model.WorkspaceAttachment {
+		return &model.WorkspaceAttachment{ID: id, WorkspaceID: "w1", TableID: "t1", FieldID: "form_cover", TaskID: "form-1", UserID: "u1", Name: "cover.png", MimeType: "image/png"}
+	}
+
+	if err := w.SetFormImage(ctx, "form-1", model.FormImageCover, image("img-1"), ""); err != nil {
+		t.Fatalf("SetFormImage: %v", err)
+	}
+	if err := w.SetFormImage(ctx, "form-1", model.FormImageCover, image("img-2"), "img-1"); err != nil {
+		t.Fatalf("second SetFormImage: %v", err)
+	}
+
+	got, err := w.GetForm(ctx, "form-1")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+	if got.CoverImage != "img-2" || got.Logo != "" {
+		t.Errorf("cover %q and logo %q, want img-2 and none", got.CoverImage, got.Logo)
+	}
+	if n := countRows(t, testDB, `SELECT COUNT(*) FROM workspace_attachments WHERE task_id = 'form-1'`); n != 1 {
+		t.Errorf("form keeps %d images, want 1", n)
+	}
+
+	form.CoverImage = "row-file"
+	if err := w.UpdateForm(ctx, form, nil); err != nil {
+		t.Fatalf("UpdateForm: %v", err)
+	}
+	if got, _ := w.GetForm(ctx, "form-1"); got.CoverImage != "img-2" {
+		t.Errorf("UpdateForm set the cover to %q, want it left as img-2", got.CoverImage)
+	}
+
+	if err := w.DeleteForm(ctx, "form-1"); err != nil {
+		t.Fatalf("DeleteForm: %v", err)
+	}
+	if n := countRows(t, testDB, `SELECT COUNT(*) FROM workspace_attachments WHERE task_id = 'form-1'`); n != 0 {
+		t.Errorf("deleted form keeps %d images", n)
 	}
 }

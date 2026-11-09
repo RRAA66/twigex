@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -16,7 +17,10 @@ import (
 	"github.com/twigex/twigex/tlog"
 )
 
-const maxFormTextBytes = 65535
+const (
+	maxFormTextBytes    = 65535
+	maxRedirectURLBytes = 2048
+)
 
 var formAccentColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
@@ -64,6 +68,8 @@ func (a *App) CreateForm(ctx context.Context, workspaceID, tableID string, form 
 	form.TableID = tableID
 	form.PublicToken = model.NewID()
 	form.Active = true
+	form.CoverImage = ""
+	form.Logo = ""
 	form.CreatedBy = user.ID
 	form.CreatedAt = now
 	form.UpdatedAt = now
@@ -104,6 +110,10 @@ func (a *App) CreateForm(ctx context.Context, workspaceID, tableID string, form 
 	a.publishViewChange(ctx, view.ID, projectChange{kind: "VIEW_CREATED", workspaceID: workspaceID, tableID: tableID,
 		data: map[string]any{"data": view}})
 
+	if appErr := a.prepareBuilderForm(ctx, user, created); appErr != nil {
+		return nil, appErr
+	}
+
 	return created, nil
 }
 
@@ -126,7 +136,9 @@ func (a *App) GetForm(ctx context.Context, workspaceID, tableID, formID string, 
 		return nil, appErr
 	}
 
-	a.nameFormDefaults(ctx, user, workspaceID, form.Fields)
+	if appErr := a.prepareBuilderForm(ctx, user, form); appErr != nil {
+		return nil, appErr
+	}
 
 	return form, nil
 }
@@ -182,6 +194,16 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 		return nil, appErr
 	}
 
+	a.publishFormChanged(ctx, workspaceID, tableID, formID)
+
+	if appErr := a.prepareBuilderForm(ctx, user, updated); appErr != nil {
+		return nil, appErr
+	}
+
+	return updated, nil
+}
+
+func (a *App) publishFormChanged(ctx context.Context, workspaceID, tableID, formID string) {
 	// Named by form, so only the edited form's open pages reload.
 	a.publishProjectChange(ctx, projectChange{
 		kind:        "FORM_CONFIG_CHANGED",
@@ -189,8 +211,6 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 		tableID:     tableID,
 		data:        map[string]any{"form_id": formID},
 	})
-
-	return updated, nil
 }
 
 func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID string, user model.User) *model.AppError {
@@ -205,7 +225,13 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
-	if _, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
+	form, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user)
+	if appErr != nil {
+		return appErr
+	}
+
+	images, appErr := a.formImages(form)
+	if appErr != nil {
 		return appErr
 	}
 
@@ -223,6 +249,8 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 		return model.NewAppError("workspace.form_delete_failed", http.StatusInternalServerError)
 	}
 
+	a.removeFormImageFiles(ctx, images)
+	a.removePendingFormFiles(ctx, formID)
 	a.publishProjectChange(ctx, deleted)
 
 	return nil
@@ -278,7 +306,20 @@ func validFormSettings(form model.WorkspaceForm) bool {
 		return false
 	}
 
-	if len(form.Description) > maxFormTextBytes {
+	if len(form.Description) > maxFormTextBytes || len(form.SuccessMessage) > maxFormTextBytes {
+		return false
+	}
+
+	switch form.AfterSubmit {
+	case model.FormAfterSubmitLink:
+		if !webAddress(form.RedirectURL) {
+			return false
+		}
+	case "", model.FormAfterSubmitGrid:
+		if form.RedirectURL != "" {
+			return false
+		}
+	default:
 		return false
 	}
 
@@ -297,6 +338,18 @@ func validFormField(f model.WorkspaceFormField) bool {
 	}
 
 	return len(f.HeaderID) <= 36 && fitsVarchar(f.Label, f.Placeholder) && len(f.Description) <= maxFormTextBytes
+}
+
+// webAddress is a whole http or https address of another page, the only
+// kind a form may send its user on to.
+func webAddress(link string) bool {
+	if len(link) > maxRedirectURLBytes {
+		return false
+	}
+
+	u, err := url.Parse(link)
+
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
 }
 
 func fitsVarchar(values ...string) bool {

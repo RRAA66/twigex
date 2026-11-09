@@ -24,7 +24,8 @@ const STATUS_BY_HTTP = {
 
 // live opens the app's websocket and closes it on unmount, so only a page
 // outside the app shell, which has no connection of its own, may pass it.
-export function usePublicForm(token, { live = false } = {}) {
+// preview checks the answers but sends nothing.
+export function usePublicForm(token, { live = false, preview = false } = {}) {
     const alertStore = useAlertStore();
 
     const status = ref("loading");
@@ -88,6 +89,13 @@ export function usePublicForm(token, { live = false } = {}) {
             ]),
         );
         if (Object.keys(fieldErrors.value).length > 0) return;
+
+        // The builder's preview shows what a sent form looks like without
+        // adding a row to the table.
+        if (preview) {
+            submitted.value = true;
+            return;
+        }
 
         submitting.value = true;
         try {

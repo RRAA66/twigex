@@ -613,6 +613,11 @@ type KanbanStatusOption struct {
 	StatusType string
 }
 
+const (
+	FormAfterSubmitGrid = "grid"
+	FormAfterSubmitLink = "link"
+)
+
 type WorkspaceForm struct {
 	ID            string `json:"id"`
 	WorkspaceID   string `json:"workspace_id"`
@@ -624,11 +629,17 @@ type WorkspaceForm struct {
 	CoverPosition int    `json:"cover_position"`
 	Logo          string `json:"logo"`
 	AccentColor   string `json:"accent_color"`
-	PublicToken   string `json:"public_token"`
-	Active        bool   `json:"active"`
-	CreatedBy     string `json:"created_by"`
-	CreatedAt     int64  `json:"created_at"`
-	UpdatedAt     int64  `json:"updated_at"`
+	// SuccessMessage thanks whoever sent the form in place of the usual
+	// words. AfterSubmit then takes them on: to the form's table
+	// (FormAfterSubmitGrid), to RedirectURL (FormAfterSubmitLink), or nowhere.
+	SuccessMessage string `json:"success_message"`
+	AfterSubmit    string `json:"after_submit"`
+	RedirectURL    string `json:"redirect_url"`
+	PublicToken    string `json:"public_token"`
+	Active         bool   `json:"active"`
+	CreatedBy      string `json:"created_by"`
+	CreatedAt      int64  `json:"created_at"`
+	UpdatedAt      int64  `json:"updated_at"`
 }
 
 // VisibilityRule shows a form field only while the field named by
@@ -675,6 +686,9 @@ type WorkspaceFormField struct {
 type WorkspaceFormWithFields struct {
 	WorkspaceForm
 	Fields []WorkspaceFormField `json:"fields"`
+	// LinkTables are the tables a master link field may name, for the
+	// builder's default picker; empty outside the builder.
+	LinkTables []FormLinkTable `json:"link_tables,omitempty"`
 }
 
 type WorkspaceFormRequest struct {
@@ -689,6 +703,9 @@ type PublicForm struct {
 	WorkspaceFormWithFields
 	LinkTables []FormLinkTable `json:"link_tables"`
 	CanSubmit  bool            `json:"can_submit"`
+	// GridViewID is the grid of the form's table a form that opens it goes
+	// to once sent.
+	GridViewID string `json:"grid_view_id,omitempty"`
 }
 
 type FormMember struct {
@@ -728,13 +745,19 @@ type FormSubmitRequest struct {
 // FormTask is the row a form submission creates: Values by column, the row
 // ids for each link field, and the option chosen in each single-select field.
 type FormTask struct {
-	ID        string
-	CreatedBy string
-	CreatedAt int64
-	Values    map[string]any
-	Links     map[string][]string
-	Selects   map[string]string
+	ID          string
+	CreatedBy   string
+	CreatedAt   int64
+	Values      map[string]any
+	Links       map[string][]string
+	Selects     map[string]string
+	Attachments []WorkspaceAttachment
 }
+
+const (
+	FormImageCover = "cover"
+	FormImageLogo  = "logo"
+)
 
 type WorkspaceFormSubmission struct {
 	ID            string      `json:"id"`
@@ -746,6 +769,13 @@ type WorkspaceFormSubmission struct {
 	// Row is the row the submission made as it is now, left out when it was
 	// deleted or the user may not see it.
 	Row map[string]any `json:"row,omitempty"`
+}
+
+// FormSubmissionsFilter keeps the submissions sent from From until before To,
+// in unix seconds; zero leaves that end open.
+type FormSubmissionsFilter struct {
+	From int64
+	To   int64
 }
 
 type FormSubmissionsPage struct {

@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
     <div class="h-screen overflow-y-auto bg-gray-100 px-4 py-12">
         <div class="mx-auto max-w-2xl">
-            <FormFill :token="route.params.token" live />
+            <FormFill :token="route.params.token" live follow-redirect />
         </div>
     </div>
 </template>

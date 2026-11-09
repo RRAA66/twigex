@@ -13,6 +13,7 @@ import {
     emptyFormData,
     fillableFormFields,
     formFieldType,
+    formImageUrl,
     formSubmitFields,
     headerLabel,
     incompleteConditionFields,
@@ -200,7 +201,7 @@ describe("linkedTableId", () => {
 });
 
 describe("fillableFormFields", () => {
-    it("keeps the visible fields in order, without file fields", () => {
+    it("keeps the visible fields in order, file fields among them", () => {
         const fields = [
             { header_name: "name", visible: true },
             { header_name: "hidden", visible: false },
@@ -208,8 +209,19 @@ describe("fillableFormFields", () => {
             { header_name: "notes", visible: true },
         ];
 
-        expect(fillableFormFields(fields).map((f) => f.header_name)).toEqual(["name", "notes"]);
+        expect(fillableFormFields(fields).map((f) => f.header_name)).toEqual([
+            "name",
+            "files",
+            "notes",
+        ]);
         expect(fillableFormFields(undefined)).toEqual([]);
+    });
+});
+
+describe("formImageUrl", () => {
+    it("reads a form's image through the workspace's file route", () => {
+        expect(formImageUrl("w1", "img1")).toBe("/api/workspaces/w1/file/img1");
+        expect(formImageUrl("w1", "")).toBe("");
     });
 });
 
@@ -238,7 +250,7 @@ describe("missingRequiredFields", () => {
 
 describe("formSubmitFields", () => {
     it("sends picked rows by id and an empty field as an empty string", () => {
-        const fields = ["name", "status", "tags", "done", "notes"].map((header_name) => ({
+        const fields = ["name", "status", "tags", "done", "notes", "docs"].map((header_name) => ({
             header_name,
         }));
         const values = {
@@ -249,6 +261,10 @@ describe("formSubmitFields", () => {
                 { id: "r2", name: "Two" },
             ],
             done: false,
+            docs: [
+                { id: "file1", name: "a.pdf" },
+                { id: "file2", name: "b.png" },
+            ],
         };
 
         expect(formSubmitFields(fields, values)).toEqual([
@@ -257,6 +273,7 @@ describe("formSubmitFields", () => {
             { name: "tags", value: "r1,r2" },
             { name: "done", value: false },
             { name: "notes", value: "" },
+            { name: "docs", value: "file1,file2" },
         ]);
     });
 });

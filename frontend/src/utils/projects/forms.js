@@ -41,9 +41,13 @@ export function normalizeFormData(data, workspaceId, tableId) {
         cover_position: data.cover_position ?? 50,
         logo: data.logo || "",
         accent_color: data.accent_color || DEFAULT_ACCENT_COLOR,
+        success_message: data.success_message || "",
+        after_submit: data.after_submit || "",
+        redirect_url: data.redirect_url || "",
         public_token: data.public_token || "",
         active: data.active ?? true,
         created_by: data.created_by || "",
+        link_tables: data.link_tables || [],
     };
 }
 
@@ -126,9 +130,14 @@ export function linkedTableId(field) {
     return field.parent_table_id || field.linked_id || "";
 }
 
-// File fields come with uploads, which the form cannot send yet.
 export function fillableFormFields(fields) {
-    return (fields || []).filter((f) => f.visible && formFieldType(f) !== "file");
+    return (fields || []).filter((f) => f.visible);
+}
+
+// Served by the workspace's attachment route, which reads the image the
+// same way it reads a row's files.
+export function formImageUrl(workspaceId, fileId) {
+    return fileId ? `/api/workspaces/${workspaceId}/file/${fileId}` : "";
 }
 
 function isEmptyFormValue(value) {
