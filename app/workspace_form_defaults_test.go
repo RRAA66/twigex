@@ -51,6 +51,29 @@ func TestSubmitFormAnswersAReadOnlyFieldsDefault(t *testing.T) {
 	}
 }
 
+func TestSubmitFormAnswersAMasterLinkDefaultOnATableTheSubmitterDoesNotSee(t *testing.T) {
+	cases := map[string]model.WorkspaceFormField{
+		"hidden":    {HeaderName: "source", FieldType: "master link", DefaultValue: "table-4"},
+		"read-only": {HeaderName: "source", FieldType: "master link", Visible: true, ReadOnly: true, DefaultValue: "table-4"},
+	}
+
+	for name, source := range cases {
+		t.Run(name, func(t *testing.T) {
+			a, ws, _ := submitApp(textField("name", true), source)
+			a.WorkspaceRoles = formRoles{hiddenTable: "table-4"}
+
+			_, appErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"})
+			if appErr != nil {
+				t.Fatalf("SubmitForm: %v", appErr)
+			}
+
+			if got := ws.created[0].Values["source"]; got != "table-4" {
+				t.Errorf("source %v, want the default table-4", got)
+			}
+		})
+	}
+}
+
 func TestSubmitFormTakesAnAnswerOverAVisibleDefault(t *testing.T) {
 	note := model.WorkspaceFormField{HeaderName: "description", FieldType: "text", Visible: true, DefaultValue: "Website"}
 	a, ws, _ := submitApp(textField("name", true), note)
