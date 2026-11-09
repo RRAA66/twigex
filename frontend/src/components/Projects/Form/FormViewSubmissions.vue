@@ -236,7 +236,6 @@ function open(submission) {
     });
 }
 
-// A new submission, or an edit to a row one made, shows without a reload.
 const stopChanges = onProjectChange((change) => {
     if (change?.table_id !== props.tableId || !String(change.type).startsWith("task_")) return;
 

@@ -62,8 +62,6 @@ func (w *workspaceRepository) GetForm(ctx context.Context, formID string) (*mode
 	return w.getFormWhere(ctx, `id = ?`, formID)
 }
 
-// GetFormByToken finds an active form by its link, unless its table is
-// deleted.
 func (w *workspaceRepository) GetFormByToken(ctx context.Context, token string) (*model.WorkspaceFormWithFields, error) {
 	return w.getFormWhere(ctx, `public_token = ? AND active = 1 AND EXISTS (
 		SELECT 1 FROM workspace_tables t
@@ -93,7 +91,6 @@ func (w *workspaceRepository) getFormWhere(ctx context.Context, where, arg strin
 	return &model.WorkspaceFormWithFields{WorkspaceForm: form, Fields: fields}, nil
 }
 
-// UpdateForm replaces the form's fields and keeps its view's name in step.
 // Its images are left as they are: SetFormImage changes them.
 func (w *workspaceRepository) UpdateForm(ctx context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error {
 	tx, err := w.Db.BeginTx(ctx, nil)
@@ -154,8 +151,6 @@ func (w *workspaceRepository) DeleteForm(ctx context.Context, formID string) err
 	return tx.Commit()
 }
 
-// SetFormImage stores a form's cover or logo as an attachment of the form
-// and drops the one it replaces, or only drops it when image is nil.
 func (w *workspaceRepository) SetFormImage(ctx context.Context, formID, kind string, image *model.WorkspaceAttachment, replacedID string) error {
 	column, err := formImageColumn(kind)
 	if err != nil {
