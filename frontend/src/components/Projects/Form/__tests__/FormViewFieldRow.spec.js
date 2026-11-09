@@ -73,6 +73,7 @@ describe("FormViewFieldRow", () => {
 
         expect(w.text()).toContain("Default value");
         const picker = w.findAll("button").find((b) => b.text() === "Select table");
+
         await picker.trigger("click");
         await w
             .findAll("li")
