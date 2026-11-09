@@ -71,8 +71,6 @@ func (a *App) formLinkTables(ctx context.Context, user model.User, form *model.W
 	return slices.DeleteFunc(tables, func(t model.FormLinkTable) bool { return !visible[t.ID] }), nil
 }
 
-// GetPublicLinkedItems pages through the rows a link or single-select field
-// of the form can pick: their id and name, and an option's colour.
 func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search string, page, limit int, user *model.User) (*model.LinkedItemsResponse, *model.AppError) {
 	if limit <= 0 || limit > maxLinkedItemsPage {
 		limit = maxLinkedItemsPage

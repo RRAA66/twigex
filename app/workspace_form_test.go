@@ -426,8 +426,6 @@ func TestCreateFormRefusesANameAnotherViewHas(t *testing.T) {
 	}
 }
 
-// formChangeStore serves one form to changeApp, whose connected clients
-// show what was published.
 type formChangeStore struct {
 	perUserRoleStore
 	form *model.WorkspaceFormWithFields
