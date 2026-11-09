@@ -2458,6 +2458,7 @@
     "projects.form_view.share.title": "Veidlapas saite",
     "projects.form_view.success.link_copied": "Saite nokopēta!",
     "projects.form_view.success.title": "Paldies!",
+    "projects.form_view.preview_not_saved": "Priekšskatījums — šeit iesniegtais netiek saglabāts.",
     "projects.form_view.success.body": "Jūsu atbilde ir reģistrēta.",
     "projects.form_view.error.linked_options_load_failed": "Neizdevās ielādēt opcijas.",
     "projects.form_view.error.incomplete_conditions": "Daži nosacījumi nav pabeigti. Pabeidziet vai noņemiet iezīmētos.",

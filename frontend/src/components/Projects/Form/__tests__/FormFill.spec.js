@@ -218,6 +218,27 @@ describe("FormFill", () => {
             expect(w.text()).toContain("Submit another response");
             w.unmount();
         });
+
+        it("sends nothing from the builder's preview", async () => {
+            const w = await send({}, { preview: true });
+
+            expect(formService.submitPublicForm).not.toHaveBeenCalled();
+            expect(w.text()).toContain("Thank you");
+            expect(w.text()).toContain("nothing sent here is saved");
+            w.unmount();
+        });
+
+        it("still asks for required answers in the preview", async () => {
+            formService.getPublicForm.mockResolvedValue({ data: form });
+            const w = await mountFill({ preview: true });
+
+            await w.find("form").trigger("submit");
+            await flushPromises();
+
+            expect(formService.submitPublicForm).not.toHaveBeenCalled();
+            expect(w.text()).not.toContain("Thank you");
+            w.unmount();
+        });
     });
 
     it("shows and requires a field only while its condition holds", async () => {

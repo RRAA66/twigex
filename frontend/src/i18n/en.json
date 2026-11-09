@@ -2458,6 +2458,7 @@
     "projects.form_view.share.title": "Form link",
     "projects.form_view.success.link_copied": "Link copied!",
     "projects.form_view.success.title": "Thank you!",
+    "projects.form_view.preview_not_saved": "Preview — nothing sent here is saved.",
     "projects.form_view.success.body": "Your response has been recorded.",
     "projects.form_view.error.linked_options_load_failed": "Failed to load options.",
     "projects.form_view.error.incomplete_conditions": "Some conditions are incomplete. Finish or remove the highlighted ones.",

@@ -24,6 +24,9 @@ SPDX-License-Identifier: AGPL-3.0-only
         <p class="max-w-md whitespace-pre-line text-sm text-gray-500">
             {{ form.success_message || t("projects.form_view.success.body") }}
         </p>
+        <p v-if="preview" class="text-xs text-gray-400">
+            {{ t("projects.form_view.preview_not_saved") }}
+        </p>
         <BaseButton v-if="canContinue" class="mt-2" size="small" @click="goNext">
             {{ t("projects.form_view.action.continue") }}
         </BaseButton>
@@ -101,6 +104,9 @@ SPDX-License-Identifier: AGPL-3.0-only
             >
                 {{ t("projects.form_view.action.submit") }}
             </BaseButton>
+            <p v-if="preview && form.can_submit" class="mt-2 text-center text-xs text-gray-400">
+                {{ t("projects.form_view.preview_not_saved") }}
+            </p>
         </div>
     </form>
 </template>
@@ -127,6 +133,7 @@ const props = defineProps({
     // Opens the form's next page once it is sent; the builder's preview
     // stays where it is.
     followRedirect: { type: Boolean, default: false },
+    preview: { type: Boolean, default: false },
 });
 
 const {
@@ -144,7 +151,7 @@ const {
     load,
     submit,
     startOver,
-} = usePublicForm(() => props.token, { live: props.live });
+} = usePublicForm(() => props.token, { live: props.live, preview: props.preview });
 
 const honeypotId = useId();
 

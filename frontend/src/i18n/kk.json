@@ -2458,6 +2458,7 @@
     "projects.form_view.share.title": "Форма сілтемесі",
     "projects.form_view.success.link_copied": "Сілтеме көшірілді!",
     "projects.form_view.success.title": "Рахмет!",
+    "projects.form_view.preview_not_saved": "Алдын ала қарау — мұнда жіберілген ештеңе сақталмайды.",
     "projects.form_view.success.body": "Сіздің жауабыңыз тіркелді.",
     "projects.form_view.error.linked_options_load_failed": "Опцияларды жүктеу сәтсіз аяқталды.",
     "projects.form_view.error.incomplete_conditions": "Кейбір шарттар толық емес. Белгіленгендерін аяқтаңыз немесе алып тастаңыз.",

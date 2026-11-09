@@ -2458,6 +2458,7 @@
     "projects.form_view.share.title": "Link do formularza",
     "projects.form_view.success.link_copied": "Link skopiowany!",
     "projects.form_view.success.title": "Dziękujemy!",
+    "projects.form_view.preview_not_saved": "Podgląd — nic, co tu wyślesz, nie zostanie zapisane.",
     "projects.form_view.success.body": "Twoja odpowiedź została zarejestrowana.",
     "projects.form_view.error.linked_options_load_failed": "Nie udało się załadować opcji.",
     "projects.form_view.error.incomplete_conditions": "Niektóre warunki są niekompletne. Uzupełnij lub usuń zaznaczone.",

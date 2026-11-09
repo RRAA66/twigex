@@ -99,7 +99,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             class="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-6"
         >
             <div class="mx-auto max-w-2xl">
-                <FormFill :token="formData.public_token" />
+                <FormFill :token="formData.public_token" preview />
             </div>
         </div>
         <FormViewSubmissions
