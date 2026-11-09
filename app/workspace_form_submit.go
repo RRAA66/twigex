@@ -300,9 +300,8 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 	return task.ID, nil
 }
 
-// attachFormFiles moves the files a submission names to the new row before
-// the row is written, as the files cannot be part of its transaction.
-// SubmitForm moves them back when the row is not written.
+// Moved before the row is written, as the files cannot be part of its
+// transaction; SubmitForm moves them back when the row is not written.
 func (a *App) attachFormFiles(ctx context.Context, form *model.WorkspaceFormWithFields, fileFields map[string]model.WorkspaceFormField, fileIDs map[string][]string, task *model.FormTask) *model.AppError {
 	storageID, err := a.primaryStorageID()
 	if err != nil {

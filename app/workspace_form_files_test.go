@@ -38,8 +38,6 @@ func (f *fakeFormStorageStore) GetByID(id string) (*model.Storage, error) {
 	return f.primary, nil
 }
 
-// useLocalProjectFiles runs the test where project files fall back to when
-// no storage is configured, and answers that directory.
 func useLocalProjectFiles(t *testing.T, a *App) string {
 	t.Helper()
 
@@ -50,8 +48,6 @@ func useLocalProjectFiles(t *testing.T, a *App) string {
 	return filepath.Join(dir, "data", "projects")
 }
 
-// usePrimaryStorage gives the app a configured local storage, as an
-// administrator would set one up, and answers where its project files go.
 func usePrimaryStorage(t *testing.T, a *App) string {
 	t.Helper()
 
@@ -97,8 +93,6 @@ func fileField(name string, required bool) model.WorkspaceFormField {
 	return model.WorkspaceFormField{HeaderID: "field-" + name, HeaderName: name, FieldType: "file", Visible: true, Required: required}
 }
 
-// uploadFiles checks the upload and then stores the files, as the endpoint
-// does.
 func uploadFiles(a *App, user *model.User, files []*multipart.FileHeader) ([]model.ProjectFileMetadata, *model.AppError) {
 	form, appErr := a.CheckFormUpload(context.Background(), "token-1", user, "10.0.0.1")
 	if appErr != nil {
