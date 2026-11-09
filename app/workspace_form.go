@@ -338,8 +338,7 @@ func validFormField(f model.WorkspaceFormField) bool {
 	return len(f.HeaderID) <= 36 && fitsVarchar(f.Label, f.Placeholder) && len(f.Description) <= maxFormTextBytes
 }
 
-// webAddress is a whole http or https address of another page, the only
-// kind a form may send its user on to.
+// Only a whole http or https address may be where a form sends its user.
 func webAddress(link string) bool {
 	if len(link) > maxRedirectURLBytes {
 		return false
