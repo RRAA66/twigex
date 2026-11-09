@@ -1978,5 +1978,21 @@
   {
     "id": "workspace.form_submissions_failed",
     "translation": "Nie udało się wczytać zgłoszeń formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_file_too_large",
+    "translation": "Ten plik jest za duży."
+  },
+  {
+    "id": "workspace.form_file_type_not_allowed",
+    "translation": "Plików tego typu nie można przesłać do formularza."
+  },
+  {
+    "id": "workspace.form_file_missing",
+    "translation": "Nie znaleziono przesłanego pliku. Prześlij go ponownie."
+  },
+  {
+    "id": "workspace.form_image_type_not_allowed",
+    "translation": "Użyj obrazu JPEG, PNG, GIF lub WebP."
   }
 ]

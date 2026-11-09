@@ -15,6 +15,46 @@ SPDX-License-Identifier: AGPL-3.0-only
             @row-click="open"
             @update:current-page="load"
         >
+            <template #toolbar>
+                <div class="flex flex-wrap items-end gap-3">
+                    <div class="w-44">
+                        <label
+                            :for="`${id}-from`"
+                            class="mb-1 block text-xs font-medium text-gray-600"
+                        >
+                            {{ t("projects.form_view.submissions.from") }}
+                        </label>
+                        <DatePickerField
+                            :id="`${id}-from`"
+                            v-model="fromDay"
+                            :placeholder="t('projects.form_view.placeholder.pick_date')"
+                        />
+                    </div>
+                    <div class="w-44">
+                        <label
+                            :for="`${id}-to`"
+                            class="mb-1 block text-xs font-medium text-gray-600"
+                        >
+                            {{ t("projects.form_view.submissions.to") }}
+                        </label>
+                        <DatePickerField
+                            :id="`${id}-to`"
+                            v-model="toDay"
+                            :placeholder="t('projects.form_view.placeholder.pick_date')"
+                        />
+                    </div>
+                    <BaseButton
+                        type="button"
+                        size="small"
+                        variant="secondary"
+                        class="ml-auto"
+                        :prepend-icon="TableCellsIcon"
+                        @click="downloadCSV"
+                    >
+                        {{ t("projects.form_view.submissions.export") }}
+                    </BaseButton>
+                </div>
+            </template>
             <template #empty>
                 {{ t("projects.form_view.no_submissions") }}
             </template>
@@ -49,7 +89,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";
+import { TableCellsIcon } from "@heroicons/vue/20/solid";
 import { t } from "@/i18n/index.js";
 import useDateOperations from "@/composables/useDateOperations.js";
 import { useOpenTask } from "@/composables/projects/useOpenTask";
@@ -57,11 +98,14 @@ import { onProjectChange } from "@/js/websocket";
 import formService from "@/services/formService";
 import workspaceService from "@/services/workspaceService";
 import { useAlertStore } from "@/store/alerts";
+import { useUserStore } from "@/store/user";
 import { useWorkspaceStore } from "@/store/workspaces";
 import { extractErrorMessage } from "@/utils/errors";
 import { fillableFormFields, formFieldType } from "@/utils/projects/forms";
 import { tableDisplayNames } from "@/utils/projects/gridView";
+import BaseButton from "@/components/BaseButton.vue";
 import DataTable from "@/components/DataTable.vue";
+import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 import FormSubmissionValue from "@/components/Projects/Form/FormSubmissionValue.vue";
 
@@ -76,15 +120,29 @@ const props = defineProps({
 });
 
 const alertStore = useAlertStore();
-const { getDateAndTime } = useDateOperations();
+const { getDateAndTime, getTimestampFromDateString, getEndOfDayTimestamp } = useDateOperations();
+const id = useId();
 const { openTask } = useOpenTask();
 
 const submissions = ref([]);
 const total = ref(0);
 const page = ref(1);
 const loading = ref(true);
+const fromDay = ref("");
+const toDay = ref("");
 let request = 0;
 let reloadTimer = null;
+
+// The days picked, in the user's timezone, as the server's unix range: from
+// the start of the first day to the end of the last.
+const range = computed(() => {
+    const params = {};
+
+    if (fromDay.value) params.from = getTimestampFromDateString(fromDay.value);
+    if (toDay.value) params.to = getEndOfDayTimestamp(toDay.value) + 1;
+
+    return params;
+});
 
 const shownFields = computed(() => fillableFormFields(props.fields));
 
@@ -114,7 +172,7 @@ async function load(next = page.value) {
             props.workspaceId,
             props.tableId,
             props.formId,
-            next,
+            { page: next, ...range.value },
         );
 
         if (current !== request) return;
@@ -143,6 +201,31 @@ async function loadTableNames() {
     }
 }
 
+// The server streams the file and the browser saves it straight to disk, as
+// the task report's export does.
+function downloadCSV() {
+    const userStore = useUserStore();
+    const params = new URLSearchParams(range.value);
+
+    if (userStore.getTimezone) params.set("tz", userStore.getTimezone);
+    params.set("clock", userStore.getClockDisplay);
+    params.set(
+        "labels",
+        JSON.stringify({
+            submitted_by: t.value("projects.form_view.submissions.submitted_by"),
+            submitted_at: t.value("projects.form_view.submissions.date"),
+        }),
+    );
+
+    const a = document.createElement("a");
+
+    a.href = `/api/workspaces/${props.workspaceId}/table/${props.tableId}/forms/${props.formId}/submissions/export?${params}`;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
+
 function open(submission) {
     if (!submission.row) return;
 
@@ -160,6 +243,8 @@ const stopChanges = onProjectChange((change) => {
     clearTimeout(reloadTimer);
     reloadTimer = setTimeout(() => load(), RELOAD_DELAY_MS);
 });
+
+watch([fromDay, toDay], () => load(1));
 
 onMounted(() => {
     load(1);

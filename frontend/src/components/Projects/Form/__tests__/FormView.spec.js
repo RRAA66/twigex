@@ -257,7 +257,7 @@ describe("FormView", () => {
             await tab(w, "Submissions").trigger("click");
             await flushPromises();
 
-            expect(formService.getSubmissions).toHaveBeenCalledWith("w1", "t1", "f1", 1);
+            expect(formService.getSubmissions).toHaveBeenCalledWith("w1", "t1", "f1", { page: 1 });
             expect(w.text()).toContain("Ann Lee");
             expect(w.text()).toContain("Title");
             expect(w.text()).toContain("Repair the roof");

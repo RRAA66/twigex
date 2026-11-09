@@ -29,11 +29,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 
     <form
         v-else
-        class="w-full rounded-lg border-t-4 bg-white shadow-sm ring-1 ring-gray-200"
+        class="w-full overflow-hidden rounded-lg border-t-4 bg-white shadow-sm ring-1 ring-gray-200"
         :style="{ borderTopColor: form.accent_color || DEFAULT_ACCENT_COLOR }"
         novalidate
         @submit.prevent="submit"
     >
+        <FormCoverImage
+            v-if="form.cover_image"
+            :src="formImageUrl(form.workspace_id, form.cover_image)"
+            :position="form.cover_position"
+        />
         <div class="space-y-2 px-6 pt-8 sm:px-10">
             <p
                 v-if="configChanged"
@@ -49,6 +54,12 @@ SPDX-License-Identifier: AGPL-3.0-only
             >
                 {{ t("projects.form_view.public.read_only") }}
             </p>
+            <img
+                v-if="form.logo"
+                :src="formImageUrl(form.workspace_id, form.logo)"
+                :alt="t('projects.form_view.image_alt.logo')"
+                class="h-12 w-auto max-w-48 object-contain"
+            />
             <h1 class="text-2xl font-bold text-gray-900">
                 {{ form.title || form.name || t("projects.form_view.untitled_form") }}
             </h1>
@@ -110,9 +121,10 @@ import {
 } from "@heroicons/vue/24/outline";
 import { t } from "@/i18n/index.js";
 import { usePublicForm } from "@/composables/projects/usePublicForm";
-import { DEFAULT_ACCENT_COLOR } from "@/utils/projects/forms";
+import { DEFAULT_ACCENT_COLOR, formImageUrl } from "@/utils/projects/forms";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseSpinner from "@/components/BaseSpinner.vue";
+import FormCoverImage from "@/components/Projects/Form/FormCoverImage.vue";
 import FormFieldInput from "@/components/Projects/Form/FormFieldInput.vue";
 
 const props = defineProps({
