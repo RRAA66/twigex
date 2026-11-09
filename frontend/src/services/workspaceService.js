@@ -409,6 +409,10 @@ const workspaceService = {
         });
     },
 
+    updateTableIcon(workspaceId, tableId, icon) {
+        return axios.patch(`/workspaces/${workspaceId}/table/${tableId}/icon`, { icon });
+    },
+
     saveFilter(data) {
         return axios.post(
             `/workspaces/${data.workspace_id}/table/${data.table_id}/view/${data.view_id}/save-filter`,
