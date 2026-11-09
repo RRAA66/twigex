@@ -13,8 +13,6 @@ import (
 	"github.com/twigex/twigex/tlog"
 )
 
-// checkFormDefaults refuses a default its field would refuse as an answer,
-// and one on a file field, which has nothing to start from.
 func (a *App) checkFormDefaults(ctx context.Context, workspaceID, tableID string, fields []model.WorkspaceFormField, user model.User, failedID string) *model.AppError {
 	invalid := model.NewAppError("request.invalid", http.StatusBadRequest)
 
@@ -65,8 +63,6 @@ func (a *App) checkFormDefaults(ctx context.Context, workspaceID, tableID string
 	return nil
 }
 
-// presetFormValues answers the defaults of the fields the form does not
-// show, which no one can change.
 func (a *App) presetFormValues(ctx context.Context, form *model.WorkspaceFormWithFields, linkTables map[string]bool, task *model.FormTask) *model.AppError {
 	for _, f := range form.Fields {
 		if f.Visible || f.DefaultValue == "" || f.FieldType == "file" || isCalculationField(f) || model.IsServerKeptColumn(f.HeaderName) {
@@ -81,8 +77,6 @@ func (a *App) presetFormValues(ctx context.Context, form *model.WorkspaceFormWit
 	return nil
 }
 
-// prepareBuilderForm adds what the builder shows beside the saved form: the
-// names of linked defaults and the tables a master link may name.
 func (a *App) prepareBuilderForm(ctx context.Context, user model.User, form *model.WorkspaceFormWithFields) *model.AppError {
 	a.nameFormDefaults(ctx, user, form.WorkspaceID, form.Fields)
 
@@ -94,8 +88,7 @@ func (a *App) prepareBuilderForm(ctx context.Context, user model.User, form *mod
 	return nil
 }
 
-// nameFormDefaults gives a linked field's default the names its picker
-// shows, from the rows the user may see.
+// Names come from the rows the user may see.
 func (a *App) nameFormDefaults(ctx context.Context, user model.User, workspaceID string, fields []model.WorkspaceFormField) {
 	for i, f := range fields {
 		if f.DefaultValue == "" || f.LinkedID == "" {

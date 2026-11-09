@@ -15,8 +15,6 @@ func (f *fakeFormSubmitStore) GetTableHeaderMeta(string) (*model.TableHeaderMeta
 	return f.meta, nil
 }
 
-// defaultsMeta describes the fake table's budget column as a field of
-// fieldType, and its status as a single-select of the options table.
 func defaultsMeta(fieldType string) *model.TableHeaderMeta {
 	return &model.TableHeaderMeta{
 		Fields:       map[string]model.WorkspaceFieldData{"budget": {Name: "budget", FieldType: fieldType}},

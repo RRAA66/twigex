@@ -17,9 +17,8 @@ import (
 	"github.com/twigex/twigex/model"
 )
 
-// primaryStorageID is the storage new project files go to, or "" for the
-// local data directory when none is configured, as UploadWorkspaceFiles
-// chooses.
+// Chosen as UploadWorkspaceFiles chooses, so a form's files go where the
+// project's other files do.
 func (a *App) primaryStorageID() (string, error) {
 	primary, err := a.Store.Storage.GetPrimary()
 	if err != nil || primary == nil {
@@ -84,8 +83,8 @@ func attachmentPath(a model.WorkspaceAttachment) string {
 	return a.WorkspaceID + "/" + a.TableID + "/" + a.TaskID + "/" + a.ID + filepath.Ext(a.Name)
 }
 
-// sniffContentType reads the type from the file's first bytes instead of
-// trusting the one the client sent.
+// The type is read from the file's first bytes; the one the client sent is not
+// trusted.
 func sniffContentType(f multipart.File) (string, error) {
 	buf := make([]byte, 512)
 
