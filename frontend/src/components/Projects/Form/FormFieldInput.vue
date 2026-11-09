@@ -176,7 +176,6 @@ const props = defineProps({
     // Lists a linked field's options in place of the form link, as the
     // builder does for a default.
     rowsLoader: { type: Function, default: null },
-    // Every answer on the form, which a calculation is worked out from.
     answers: { type: Object, default: () => ({}) },
     linkTables: { type: Array, default: () => [] },
     error: { type: String, default: "" },

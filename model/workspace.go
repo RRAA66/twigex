@@ -672,9 +672,9 @@ type WorkspaceFormField struct {
 	SingleSelect  bool   `json:"single_select,omitempty"`
 	ParentTableID string `json:"parent_table_id,omitempty"`
 	DisplayName   string `json:"display_name,omitempty"`
-	// Formula is a calculation's, which the form works out from the other
-	// answers as the grid does from a row; the form never sends it.
-	Formula *FormulaSpec `json:"formula,omitempty"`
+	// The form works a calculation out from the other answers and never sends
+	// it.
+	Formula      *FormulaSpec     `json:"formula,omitempty"`
 	DefaultItems []FormLinkedItem `json:"default_items,omitempty"`
 }
 
