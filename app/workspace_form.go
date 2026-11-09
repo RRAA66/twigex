@@ -221,6 +221,11 @@ func (a *App) validateForm(ctx context.Context, tableID string, form model.Works
 		columns, err = a.Store.Workspace.GetColumnNames(ctx, tableName)
 	}
 
+	var meta *model.TableHeaderMeta
+	if err == nil {
+		meta, err = a.Store.Workspace.GetTableHeaderMeta(tableID)
+	}
+
 	if err != nil {
 		tlog.Errorw("Failed to load the form's table columns",
 			"table_id", tableID,
@@ -243,10 +248,21 @@ func (a *App) validateForm(ctx context.Context, tableID string, form model.Works
 			return invalid
 		}
 
+		fields[i].HeaderID = formHeaderID(meta, tableID, f.HeaderName)
 		seen[f.HeaderName] = true
 	}
 
 	return nil
+}
+
+// formHeaderID is the id the grid gives the column, so a file field's uploads
+// land on its own column whatever the client sent.
+func formHeaderID(meta *model.TableHeaderMeta, tableID, name string) string {
+	if model.SystemFieldData(tableID, name) != nil {
+		return name
+	}
+
+	return meta.Fields[name].ID
 }
 
 func validFormSettings(form model.WorkspaceForm) bool {
