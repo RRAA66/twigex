@@ -366,6 +366,7 @@ const transformTable = (table) => {
         id: table.id,
         name: table.name,
         display_name: table.display_name,
+        icon: table.icon,
         type: "project",
         view_id: viewId,
     };

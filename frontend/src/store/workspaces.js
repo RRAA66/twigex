@@ -4,6 +4,7 @@
 import { defineStore } from "pinia";
 import { t } from "@/i18n/index.js";
 import workspaceService from "@/services/workspaceService";
+import { findTreeNode } from "@/utils/projects/tree";
 
 // Requests for a workspace's navigation still in flight, by workspace id.
 // Views that load together on one navigation share a single request; once it
@@ -50,6 +51,7 @@ export const useWorkspaceStore = defineStore("workspaces", {
             fieldName: "",
             sortOptions: [{ field: "", direction: "asc" }],
             gridReloadToken: 0,
+            gridCountToken: 0,
             gridPage: 1,
             kanbanDisplayNameUpdateKey: 220,
             selectedWorkspaces: [],
@@ -166,6 +168,9 @@ export const useWorkspaceStore = defineStore("workspaces", {
         },
         getGridReloadToken() {
             return this.gridReloadToken;
+        },
+        getGridCountToken() {
+            return this.gridCountToken;
         },
         getFieldName() {
             return this.fieldName;
@@ -381,6 +386,9 @@ export const useWorkspaceStore = defineStore("workspaces", {
         bumpGridReloadToken() {
             this.gridReloadToken++;
         },
+        bumpGridCountToken() {
+            this.gridCountToken++;
+        },
         setFieldName(fieldName) {
             this.fieldName = fieldName;
         },
@@ -420,6 +428,19 @@ export const useWorkspaceStore = defineStore("workspaces", {
 
         setWorkspaceFolders(workspaceFolders) {
             this.workspaceFolders = workspaceFolders;
+        },
+
+        setTableIcon(workspaceId, tableId, icon) {
+            const workspace = this.workspaces.find((ws) => ws.id === workspaceId);
+            const nodes = [
+                findTreeNode(this.workspaceFolders, tableId),
+                findTreeNode(workspace?.children || [], tableId),
+                workspace?.tables?.find((table) => table.id === tableId),
+            ];
+
+            for (const node of nodes) {
+                if (node) node.icon = icon;
+            }
         },
 
         setSelectedItem(selectedItem) {

@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"net/http"
 	"slices"
 	"testing"
 
@@ -400,6 +401,8 @@ func (fakeRenameStore) UpdateTable(_, _, name string) (*string, error) { return 
 
 func (fakeRenameStore) UpdateFolder(_, _, _ string) (bool, error) { return true, nil }
 
+func (fakeRenameStore) UpdateTableIcon(context.Context, string, string, string) error { return nil }
+
 func TestTableChangesFollowTableVisibilityAndFolderChangesDoNot(t *testing.T) {
 	everyone := []string{"member", "hidden"}
 	roles := changeRoles{hidden: map[string]bool{"hidden": true}}
@@ -520,5 +523,34 @@ func TestATaskChangeHidesLinksAUserMayNotSee(t *testing.T) {
 	}
 	if got := names(received(clients["assigned"])); !slices.Equal(got, []any{"Theirs", ""}) {
 		t.Errorf("assigned-only user saw links %v, want only their own task named", got)
+	}
+}
+
+func TestTableIconChangeReachesOnlyThoseWhoSeeTheTable(t *testing.T) {
+	a, clients := changeApp([]string{"member", "hidden"}, changeRoles{hidden: map[string]bool{"hidden": true}})
+	a.Store.Workspace = fakeRenameStore{a.Store.Workspace.(perUserRoleStore)}
+
+	if appErr := a.UpdateTableIcon(context.Background(), "ws-a", "t-a", "StarIcon", workspaceAdmin); appErr != nil {
+		t.Fatalf("UpdateTableIcon: %v", appErr)
+	}
+
+	data := received(clients["member"])
+	changed, _ := data["data"].(map[string]any)
+	if data["type"] != "UPDATE_TABLE_ICON" || changed["icon"] != "StarIcon" {
+		t.Errorf("member got %v", data)
+	}
+
+	if received(clients["hidden"]) != nil {
+		t.Error("a user who cannot see the table received the icon change")
+	}
+}
+
+func TestUpdateTableIconRefusesAnUnknownIcon(t *testing.T) {
+	a, _ := changeApp([]string{"member"}, changeRoles{})
+	a.Store.Workspace = fakeRenameStore{a.Store.Workspace.(perUserRoleStore)}
+
+	appErr := a.UpdateTableIcon(context.Background(), "ws-a", "t-a", "NotAnIcon", workspaceAdmin)
+	if appErr == nil || appErr.Status != http.StatusBadRequest {
+		t.Fatalf("got %v, want 400", appErr)
 	}
 }

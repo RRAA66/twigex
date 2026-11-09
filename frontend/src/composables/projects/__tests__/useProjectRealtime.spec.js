@@ -7,6 +7,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createRouter, createMemoryHistory } from "vue-router";
 import { useWorkspaceStore } from "@/store/workspaces";
+import workspaceService from "@/services/workspaceService";
 import { useProjectRealtime } from "../useProjectRealtime";
 
 let deliver;
@@ -66,6 +67,49 @@ describe("useProjectRealtime", () => {
         expect(store.getTableData.map((r) => r.id)).toEqual(["b"]);
     });
 
+    it("recounts the grid when another tab deletes a task", () => {
+        store.setTableData([{ id: "a" }]);
+        deliver(change({ type: "task_deleted", table_id: "t1", task: { id: "a" } }));
+
+        expect(store.getGridCountToken).toBe(1);
+    });
+
+    it("recounts the grid when another tab creates a task", async () => {
+        store.setTableData([]);
+        deliver(change({ type: "task_created", table_id: "t1", task: { id: "a" } }));
+        await flushPromises();
+
+        expect(store.getTableData.map((r) => r.id)).toEqual(["a"]);
+        expect(store.getGridCountToken).toBe(1);
+    });
+
+    it("recounts a filtered grid when another tab changes a task off this page", async () => {
+        store.setTableData([]);
+        store.setFilterActive(true);
+        store.setSavedGroups([{ conditions: [{ field: "status" }] }]);
+        vi.spyOn(workspaceService, "taskMatchesFilter").mockResolvedValue({
+            data: { matches: false },
+        });
+        deliver(change({ type: "task_updated", table_id: "t1", task: { id: "elsewhere" } }));
+        await flushPromises();
+
+        expect(store.getGridCountToken).toBe(1);
+    });
+
+    it("does not recount an unfiltered grid for a changed task", async () => {
+        store.setTableData([{ id: "a" }]);
+        deliver(change({ type: "task_updated", table_id: "t1", task: { id: "a", name: "x" } }));
+        await flushPromises();
+
+        expect(store.getGridCountToken).toBe(0);
+    });
+
+    it("does not recount for a task in another table", () => {
+        deliver(change({ type: "task_deleted", table_id: "t2", task: { id: "a" } }));
+
+        expect(store.getGridCountToken).toBe(0);
+    });
+
     it("puts a field's new formula on the table's headers", () => {
         store.setTableHeaders([{ name: "c1" }, { name: "c2" }]);
         deliver(
@@ -105,6 +149,13 @@ describe("useProjectRealtime", () => {
         );
 
         expect(store.getKanbanTaskList.map((c) => c.tasks.map((t) => t.id))).toEqual([[], ["a"]]);
+    });
+
+    it("shows a table icon another tab chose", () => {
+        store.setWorkspaceFolders([{ id: "f1", isFolder: true, children: [{ id: "t1" }] }]);
+        deliver(change({ type: "UPDATE_TABLE_ICON", data: { id: "t1", icon: "StarIcon" } }));
+
+        expect(store.getWorkspaceFolders[0].children[0].icon).toBe("StarIcon");
     });
 
     it("renames a folder in the navigation", async () => {
