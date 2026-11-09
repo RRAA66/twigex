@@ -148,6 +148,18 @@ describe("usePublicForm", () => {
         expect(state.submitted.value).toBe(false);
     });
 
+    it("drops the server's reason once an answer changes", async () => {
+        formService.submitPublicForm.mockRejectedValue(httpError(400, "Dates reversed"));
+        const { state } = await setup();
+
+        state.values.value = { name: "Task" };
+        await state.submit();
+        state.values.value.name = "Task, dates fixed";
+        await nextTick();
+
+        expect(state.submitError.value).toBe("");
+    });
+
     describe("live", () => {
         it("connects while mounted", async () => {
             const { wrapper } = await setup({ live: true });
