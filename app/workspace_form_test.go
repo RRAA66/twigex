@@ -38,6 +38,13 @@ func (f *fakeFormStore) GetColumnNames(_ context.Context, _ string) ([]string, e
 	return []string{"id", "name", "status", "budget", "notes", "created_at", "parent_task_id"}, nil
 }
 
+func (f *fakeFormStore) GetTableHeaderMeta(string) (*model.TableHeaderMeta, error) {
+	return &model.TableHeaderMeta{Fields: map[string]model.WorkspaceFieldData{
+		"status": {ID: "field-status"},
+		"budget": {ID: "field-budget"},
+	}}, nil
+}
+
 func (f *fakeFormStore) ViewExistsByName(tableID, name string) (bool, error) {
 	for _, form := range f.forms {
 		if form.TableID == tableID && form.Name == name {
@@ -367,6 +374,24 @@ func TestCreateFormStoresAFieldWithoutPositionAsFullWidth(t *testing.T) {
 	}
 }
 
+func TestCreateFormTakesEachFieldsColumnIDFromTheTable(t *testing.T) {
+	a, ws := formApp(workspaceAdminAccess(), true)
+
+	fields := []model.WorkspaceFormField{
+		{HeaderName: "budget", HeaderID: "field-status"},
+		{HeaderName: "name", HeaderID: "field-budget"},
+	}
+	created, appErr := a.CreateForm(context.Background(), wsID, tbl1, model.WorkspaceForm{Name: "Signup"}, fields, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("CreateForm: %v", appErr)
+	}
+
+	stored := ws.forms[created.ID].Fields
+	if stored[0].HeaderID != "field-budget" || stored[1].HeaderID != "name" {
+		t.Errorf("header ids %q, %q, want field-budget, name", stored[0].HeaderID, stored[1].HeaderID)
+	}
+}
+
 type fakeFormChangeStore struct {
 	perUserRoleStore
 	deleted []string
@@ -453,6 +478,10 @@ func (f formChangeStore) GetTableName(string) (string, error) {
 
 func (f formChangeStore) GetColumnNames(context.Context, string) ([]string, error) {
 	return nil, nil
+}
+
+func (f formChangeStore) GetTableHeaderMeta(string) (*model.TableHeaderMeta, error) {
+	return &model.TableHeaderMeta{}, nil
 }
 
 func (f formChangeStore) UpdateForm(context.Context, model.WorkspaceForm, []model.WorkspaceFormField) error {
