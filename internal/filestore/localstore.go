@@ -402,8 +402,7 @@ func (l *LocalFileBackend) RemoveFile(ctx context.Context, path string) error {
 	return nil
 }
 
-// ListFiles walks dir and the directories in it. A missing dir holds no
-// files.
+// A missing dir holds no files.
 func (l *LocalFileBackend) ListFiles(ctx context.Context, dir string) ([]FileInfo, error) {
 	if dir == "" || strings.Contains(dir, "..") {
 		return nil, errors.New("invalid path")
