@@ -182,8 +182,6 @@ const statusMessage = computed(() => {
 
 const router = useRouter();
 
-// The page the form goes on to once sent: its table's grid inside the app,
-// or a link.
 const nextPage = computed(() => {
     const after = form.value?.after_submit;
 

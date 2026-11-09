@@ -135,8 +135,6 @@ export function fillableFormFields(fields) {
     return (fields || []).filter((f) => f.visible);
 }
 
-// Served by the workspace's attachment route, which reads the image the
-// same way it reads a row's files.
 export function formImageUrl(workspaceId, fileId) {
     return fileId ? `/api/workspaces/${workspaceId}/file/${fileId}` : "";
 }
@@ -168,8 +166,6 @@ export function formSubmitFields(fields, values) {
     return fields.map((f) => ({ name: f.header_name, value: submitValue(values[f.header_name]) }));
 }
 
-// The answer a field starts with: its default, as its input holds it. A
-// linked field's default comes with the rows it picks.
 export function defaultAnswer(field) {
     if (!field.default_value) return undefined;
 
@@ -191,8 +187,7 @@ export function defaultAnswers(fields) {
     );
 }
 
-// What a default is kept as, from the answer the builder's input holds:
-// written as that answer would be sent.
+// Written as that answer would be sent.
 export function defaultFromAnswer(field, answer) {
     const type = formFieldType(field);
 

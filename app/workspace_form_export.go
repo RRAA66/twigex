@@ -16,8 +16,6 @@ import (
 	"github.com/twigex/twigex/tlog"
 )
 
-// FormSubmissionsExport is a prepared CSV of a form's submissions: who sent
-// each and when, then the form's fields as the task report writes them.
 type FormSubmissionsExport struct {
 	*TaskExport
 	form   *model.WorkspaceFormWithFields
@@ -29,9 +27,6 @@ type FormSubmissionsExport struct {
 	labels []string
 }
 
-// PrepareFormSubmissionsExport readies the submissions within filter for
-// export. labels names the submitter and date columns; the fields keep the
-// labels the form gives them.
 func (a *App) PrepareFormSubmissionsExport(ctx context.Context, workspaceID, tableID, formID string, filter model.FormSubmissionsFilter, timezone, clock string, labels map[string]string, user model.User) (*FormSubmissionsExport, *model.AppError) {
 	dbCtx, cancel := a.dbCtx(ctx)
 	defer cancel()
@@ -112,9 +107,8 @@ func (e *FormSubmissionsExport) FileName() string {
 	return firstNonEmpty(e.form.Name, "Form") + " " + time.Now().In(e.loc).Format("2006-01-02") + ".csv"
 }
 
-// WriteCSV writes the submissions newest first, a chunk at a time. A row the
-// user may not see, or that was deleted, keeps its submitter and date with
-// its answers left empty, as the submissions list shows it.
+// A row the user may not see, or that was deleted, keeps its submitter and date
+// with its answers left empty, as the submissions list shows it.
 func (e *FormSubmissionsExport) WriteCSV(ctx context.Context, w io.Writer, flush func()) error {
 	if _, err := io.WriteString(w, "\xEF\xBB\xBF"); err != nil {
 		return err
@@ -193,8 +187,6 @@ func (e *FormSubmissionsExport) WriteCSV(ctx context.Context, w io.Writer, flush
 	return out.Error()
 }
 
-// readRows reads the rows a chunk of submissions made, as the submissions
-// list reads them, and the names they refer to.
 func (e *FormSubmissionsExport) readRows(ctx context.Context, submissions []model.WorkspaceFormSubmission) (map[string]map[string]any, exportLookups, error) {
 	taskIDs := make([]string, 0, len(submissions))
 	for _, s := range submissions {

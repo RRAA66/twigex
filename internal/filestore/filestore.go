@@ -36,8 +36,6 @@ type FileBackend interface {
 	ListFiles(ctx context.Context, dir string) ([]FileInfo, error)
 }
 
-// FileInfo is a file found under a directory, by the path the other methods
-// take.
 type FileInfo struct {
 	Path    string
 	ModTime time.Time

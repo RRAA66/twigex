@@ -74,9 +74,8 @@ func validateFormConditions(fields []model.WorkspaceFormField) *model.AppError {
 	return nil
 }
 
-// formFieldShown tells whether a field is on the form given the submitted
-// values. A field that is not shown has no value, so a rule watching it sees
-// an empty one.
+// A field that is not shown has no value, so a rule watching it sees an empty
+// one.
 func formFieldShown(name string, fields map[string]model.WorkspaceFormField, values map[string]any) bool {
 	rule := fields[name].VisibilityRule
 	if rule == nil {

@@ -256,9 +256,7 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 	return nil
 }
 
-// validateForm refuses what the form's columns would not hold, and fields
-// that are not the table's own columns or that the server keeps, as a 400
-// rather than a failed write. A field without a position is full width.
+// validateForm refuses, as a 400, what would otherwise fail as a write.
 func (a *App) validateForm(ctx context.Context, tableID string, form model.WorkspaceForm, fields []model.WorkspaceFormField, failedID string) *model.AppError {
 	invalid := model.NewAppError("request.invalid", http.StatusBadRequest)
 
@@ -340,8 +338,7 @@ func validFormField(f model.WorkspaceFormField) bool {
 	return len(f.HeaderID) <= 36 && fitsVarchar(f.Label, f.Placeholder) && len(f.Description) <= maxFormTextBytes
 }
 
-// webAddress is a whole http or https address of another page, the only
-// kind a form may send its user on to.
+// Only a whole http or https address may be where a form sends its user.
 func webAddress(link string) bool {
 	if len(link) > maxRedirectURLBytes {
 		return false
@@ -362,9 +359,8 @@ func fitsVarchar(values ...string) bool {
 	return true
 }
 
-// requireFormTableAccess asks what the view endpoints ask, the workspace
-// permission or the table's manage_views, and also that the user may read the
-// table: a role can hide one table from a member who manages views elsewhere.
+// Also needs the user to read the table: a role can hide one table from a
+// member who manages views elsewhere.
 func (a *App) requireFormTableAccess(ctx context.Context, user model.User, workspaceID, tableID, permission string) *model.AppError {
 	if !a.ProjectWorkspaceHasPermission(user, workspaceID, permission) &&
 		!a.ProjectWorkspaceTableHasPermission(user, workspaceID, tableID, "manage_views") {

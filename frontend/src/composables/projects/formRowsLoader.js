@@ -3,9 +3,8 @@
 
 import workspaceService from "@/services/workspaceService";
 
-// Lists a table's rows for a form picker through the workspace, as the form
-// builder does, in place of the form's own link. The rows are not counted,
-// so one row past the page tells there are more.
+// The builder has no form link to list rows through, so it asks the workspace.
+// The rows are not counted, so one row past the page tells there are more.
 export function formRowsLoader(workspaceId, tableId) {
     return async ({ page, limit, search }) => {
         const { data } = await workspaceService.getLinkedRecordsLite(workspaceId, tableId, {
