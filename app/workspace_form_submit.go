@@ -64,6 +64,15 @@ func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User)
 
 // Only the tables of its workspace the user may see.
 func (a *App) formLinkTables(ctx context.Context, user model.User, form *model.WorkspaceFormWithFields) ([]model.FormLinkTable, *model.AppError) {
+	tables, appErr := a.formLinkableTables(ctx, form)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	return a.visibleLinkTables(user, form, tables), nil
+}
+
+func (a *App) formLinkableTables(ctx context.Context, form *model.WorkspaceFormWithFields) ([]model.FormLinkTable, *model.AppError) {
 	tables, err := a.Store.Workspace.GetLinkableTables(ctx, form.WorkspaceID, form.TableID)
 	if err != nil {
 		tlog.Errorw("Failed to retrieve tables for a form",
@@ -73,6 +82,10 @@ func (a *App) formLinkTables(ctx context.Context, user model.User, form *model.W
 		return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
 	}
 
+	return tables, nil
+}
+
+func (a *App) visibleLinkTables(user model.User, form *model.WorkspaceFormWithFields, tables []model.FormLinkTable) []model.FormLinkTable {
 	candidates := make([]model.WorkspaceTable, 0, len(tables))
 	for _, t := range tables {
 		candidates = append(candidates, model.WorkspaceTable{ID: t.ID})
@@ -83,7 +96,7 @@ func (a *App) formLinkTables(ctx context.Context, user model.User, form *model.W
 		visible[t.ID] = true
 	}
 
-	return slices.DeleteFunc(tables, func(t model.FormLinkTable) bool { return !visible[t.ID] }), nil
+	return slices.DeleteFunc(tables, func(t model.FormLinkTable) bool { return !visible[t.ID] })
 }
 
 func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search string, page, limit int, user *model.User) (*model.LinkedItemsResponse, *model.AppError) {
@@ -238,15 +251,22 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 
 	fileIDs := map[string][]string{}
 	linkTables := map[string]bool{}
+	// The editor's defaults were checked against the tables the editor sees,
+	// so the submitter's narrower view must not refuse them.
+	defaultLinkTables := map[string]bool{}
 	if slices.ContainsFunc(form.Fields, func(f model.WorkspaceFormField) bool {
 		return isMasterLinkField(f) && (f.Visible || f.DefaultValue != "")
 	}) {
-		tables, appErr := a.formLinkTables(ctx, *user, form)
+		tables, appErr := a.formLinkableTables(ctx, form)
 		if appErr != nil {
 			return "", appErr
 		}
 
 		for _, t := range tables {
+			defaultLinkTables[t.ID] = true
+		}
+
+		for _, t := range a.visibleLinkTables(*user, form, tables) {
 			linkTables[t.ID] = true
 		}
 	}
@@ -270,12 +290,17 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 			continue
 		}
 
-		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, value, linkTables, &task); appErr != nil {
+		allowed := linkTables
+		if field.ReadOnly {
+			allowed = defaultLinkTables
+		}
+
+		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, value, allowed, &task); appErr != nil {
 			return "", appErr
 		}
 	}
 
-	if appErr := a.presetFormValues(ctx, form, linkTables, &task); appErr != nil {
+	if appErr := a.presetFormValues(ctx, form, defaultLinkTables, &task); appErr != nil {
 		return "", appErr
 	}
 
