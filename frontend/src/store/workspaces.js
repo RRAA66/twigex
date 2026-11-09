@@ -50,6 +50,7 @@ export const useWorkspaceStore = defineStore("workspaces", {
             fieldName: "",
             sortOptions: [{ field: "", direction: "asc" }],
             gridReloadToken: 0,
+            gridCountToken: 0,
             gridPage: 1,
             kanbanDisplayNameUpdateKey: 220,
             selectedWorkspaces: [],
@@ -166,6 +167,9 @@ export const useWorkspaceStore = defineStore("workspaces", {
         },
         getGridReloadToken() {
             return this.gridReloadToken;
+        },
+        getGridCountToken() {
+            return this.gridCountToken;
         },
         getFieldName() {
             return this.fieldName;
@@ -380,6 +384,9 @@ export const useWorkspaceStore = defineStore("workspaces", {
         },
         bumpGridReloadToken() {
             this.gridReloadToken++;
+        },
+        bumpGridCountToken() {
+            this.gridCountToken++;
         },
         setFieldName(fieldName) {
             this.fieldName = fieldName;
