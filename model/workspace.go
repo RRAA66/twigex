@@ -16,8 +16,6 @@ import (
 // is not in the linked table.
 var ErrLinkTargetMissing = errors.New("a linked row does not exist")
 
-// ErrValueRejected is returned when the database refuses a value for its
-// column, as too long, out of range or not of the column's type.
 var ErrValueRejected = errors.New("a value does not fit its column")
 
 // NewTaskFields holds what a task may be created with besides its name. A
@@ -634,9 +632,8 @@ type WorkspaceFormRequest struct {
 	Fields []WorkspaceFormField `json:"fields"`
 }
 
-// PublicForm is a form as its link serves it. Members fill an assignee
-// field's picker and LinkTables a master link field's; each is left empty
-// unless the form shows such a field.
+// LinkTables fills a master link field's picker; it is empty unless the form
+// shows such a field.
 type PublicForm struct {
 	WorkspaceFormWithFields
 	Members    []FormMember    `json:"members"`
@@ -677,8 +674,6 @@ type FormSubmitRequest struct {
 	Honeypot string      `json:"honeypot"`
 }
 
-// FormTask is the row a form submission creates: Values by column, the row
-// ids for each link field, and the option chosen in each single-select field.
 type FormTask struct {
 	ID        string
 	CreatedBy string

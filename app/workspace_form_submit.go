@@ -20,8 +20,6 @@ import (
 
 const maxLinkedItemsPage = 50
 
-// GetPublicForm serves a form by its link, with what its pickers offer and
-// whether the user may submit it.
 func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User) (*model.PublicForm, *model.AppError) {
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
@@ -59,8 +57,7 @@ func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User)
 	return &public, nil
 }
 
-// formLinkTables lists the tables a master link field of the form may name:
-// those of its workspace the user may see.
+// Only the tables of its workspace the user may see.
 func (a *App) formLinkTables(ctx context.Context, user model.User, form *model.WorkspaceFormWithFields) ([]model.FormLinkTable, *model.AppError) {
 	tables, err := a.Store.Workspace.GetLinkableTables(ctx, form.WorkspaceID, form.TableID)
 	if err != nil {
@@ -152,9 +149,8 @@ func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search s
 	return &response, nil
 }
 
-// SubmitForm creates a row from a submitted form and returns its id. A
-// filled honeypot is dropped without an error and answered with a made-up
-// id, so a bot cannot tell it was caught.
+// A filled honeypot is dropped without an error and answered with a made-up id,
+// so a bot cannot tell it was caught.
 func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSubmitRequest, user *model.User, clientIP string) (string, *model.AppError) {
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
@@ -337,8 +333,8 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	return submissions, nil
 }
 
-// getFormByToken opens a form to whoever would see its view in the grid: a
-// member of its workspace who is shown the view and may read its table.
+// Open to whoever would see its view in the grid: a member of its workspace who
+// is shown the view and may read its table.
 func (a *App) getFormByToken(ctx context.Context, token string, user *model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
 	if user == nil {
 		return nil, model.NewAppError("workspace.form_login_required", http.StatusUnauthorized)
@@ -377,9 +373,7 @@ func (a *App) canSubmitForm(user model.User, form *model.WorkspaceFormWithFields
 	return a.CanPerformRowAction(user, form.WorkspaceID, form.TableID, model.PermissionCreateTask, model.PermissionCreateTask)
 }
 
-// setFormValue checks one submitted value against its field and puts it in
-// the task. An empty value leaves the column to its default. linkTables are
-// the tables a master link may name.
+// An empty value leaves the column to its default.
 func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.WorkspaceFormField, value any, linkTables map[string]bool, task *model.FormTask) *model.AppError {
 	invalid := model.NewAppError("request.invalid", http.StatusBadRequest)
 
@@ -554,7 +548,6 @@ func (a *App) formMembers(ctx context.Context, workspaceID string) ([]model.Form
 	return result, nil
 }
 
-// formMember is all a form shows of a user.
 func formMember(u model.User) model.FormMember {
 	return model.FormMember{ID: u.ID, Name: u.Name, Lastname: u.LastName, Photo: u.Photo}
 }
@@ -607,8 +600,7 @@ func fitsTextColumn(column, text string) bool {
 	return len(text) <= maxTaskDescription
 }
 
-// pickedTable is the table whose rows a field's picker lists. A
-// single-select's options table has the field's own table as its parent, so
+// A single-select's options table has the field's own table as its parent, so
 // the parent is the target only for a link.
 func pickedTable(f model.WorkspaceFormField) string {
 	if f.SingleSelect || f.ParentTableID == "" {
