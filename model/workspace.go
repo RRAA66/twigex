@@ -689,6 +689,11 @@ type FormTask struct {
 	Attachments []WorkspaceAttachment
 }
 
+const (
+	FormImageCover = "cover"
+	FormImageLogo  = "logo"
+)
+
 type WorkspaceFormSubmission struct {
 	ID            string      `json:"id"`
 	FormID        string      `json:"form_id"`

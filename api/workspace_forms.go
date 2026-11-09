@@ -201,6 +201,52 @@ func (a *API) uploadPublicFormFiles(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, uploaded)
 }
 
+func (a *API) setFormImage(w http.ResponseWriter, r *http.Request) {
+	files, ok := parseUploadedFiles(w, r, maxFormImageBytes, "file")
+	if !ok {
+		return
+	}
+
+	if len(files) != 1 {
+		respondAppError(w, r, model.NewAppError("request.invalid", http.StatusBadRequest))
+		return
+	}
+
+	user, appErr := a.app.GetCurrentUser(r)
+	if appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
+	params := mux.Vars(r)
+
+	form, appErr := a.app.SetFormImage(r.Context(), params["id"], params["tid"], params["fid"], params["kind"], files[0], *user)
+	if appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, form)
+}
+
+func (a *API) removeFormImage(w http.ResponseWriter, r *http.Request) {
+	user, appErr := a.app.GetCurrentUser(r)
+	if appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
+	params := mux.Vars(r)
+
+	form, appErr := a.app.RemoveFormImage(r.Context(), params["id"], params["tid"], params["fid"], params["kind"], *user)
+	if appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, form)
+}
+
 func parseUploadedFiles(w http.ResponseWriter, r *http.Request, maxBytes int64, key string) ([]*multipart.FileHeader, bool) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
 

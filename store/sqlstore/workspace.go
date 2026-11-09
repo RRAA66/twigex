@@ -3441,9 +3441,20 @@ func (w *workspaceRepository) DeleteTableView(ctx context.Context, workspaceID s
 
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(ctx, "DELETE FROM workspace_forms WHERE workspace_id = ? AND table_id = ? AND id = ?", workspaceID, tableID, viewID)
+	forms, err := tx.ExecContext(ctx, "DELETE FROM workspace_forms WHERE workspace_id = ? AND table_id = ? AND id = ?", workspaceID, tableID, viewID)
 	if err != nil {
 		return false, err
+	}
+
+	deletedForms, err := forms.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	if deletedForms > 0 {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM workspace_attachments WHERE task_id = ?", viewID); err != nil {
+			return false, err
+		}
 	}
 
 	_, err = tx.ExecContext(ctx, "DELETE FROM workspace_view WHERE workspace_id = ? AND table_id = ? AND id = ?", workspaceID, tableID, viewID)

@@ -7,6 +7,7 @@ import {
     emptyFormData,
     fillableFormFields,
     formFieldType,
+    formImageUrl,
     formSubmitFields,
     headerLabel,
     linkedTableId,
@@ -163,6 +164,13 @@ describe("fillableFormFields", () => {
             "notes",
         ]);
         expect(fillableFormFields(undefined)).toEqual([]);
+    });
+});
+
+describe("formImageUrl", () => {
+    it("reads a form's image through the workspace's file route", () => {
+        expect(formImageUrl("w1", "img1")).toBe("/api/workspaces/w1/file/img1");
+        expect(formImageUrl("w1", "")).toBe("");
     });
 });
 

@@ -1986,5 +1986,9 @@
   {
     "id": "workspace.form_file_missing",
     "translation": "Nie znaleziono przesłanego pliku. Prześlij go ponownie."
+  },
+  {
+    "id": "workspace.form_image_type_not_allowed",
+    "translation": "Użyj obrazu JPEG, PNG, GIF lub WebP."
   }
 ]

@@ -106,6 +106,8 @@ func (a *API) initWorkspaces() {
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}", a.updateForm).Methods("PUT")
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}", a.deleteForm).Methods("DELETE")
 	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}/submissions", a.getFormSubmissions).Methods("GET")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}/images/{kind}", a.setFormImage).Methods("POST")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}/images/{kind}", a.removeFormImage).Methods("DELETE")
 	a.BaseRoutes.Workspaces.Use(a.RequireSession)
 	a.BaseRoutes.Workspaces.Use(a.RequireCSRF)
 	a.BaseRoutes.Workspaces.Use(a.RequireTableInWorkspace)
@@ -307,7 +309,7 @@ func (a *API) getWorkspaceFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	attachment, appErr := a.app.GetWorkspaceAttachment(fileID, workspaceID, *user)
+	attachment, appErr := a.app.GetWorkspaceAttachment(r.Context(), fileID, workspaceID, *user)
 	if appErr != nil {
 		respondAppError(w, r, appErr)
 		return

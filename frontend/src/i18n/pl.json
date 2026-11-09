@@ -2463,5 +2463,16 @@
     "projects.form_view.public.read_only": "Możesz wyświetlić ten formularz, ale nie masz uprawnień do dodawania rekordów do tej tabeli.",
     "projects.form_view.action.add_files": "Dodaj pliki",
     "projects.form_view.action.remove_file": "Usuń {name}",
-    "projects.form_view.error.too_many_files": "Pole przyjmuje najwyżej {max} plików. Pozostałe zostały pominięte."
+    "projects.form_view.action.upload_image": "Prześlij",
+    "projects.form_view.action.replace_image": "Zastąp",
+    "projects.form_view.action.reposition": "Zmień położenie",
+    "projects.form_view.action.reposition_done": "Gotowe",
+    "projects.form_view.error.too_many_files": "Pole przyjmuje najwyżej {max} plików. Pozostałe zostały pominięte.",
+    "projects.form_view.cover_position": "Położenie obrazu okładki",
+    "projects.form_view.cover_position_hint": "Użyj strzałek w górę i w dół, aby przesunąć obraz, a następnie naciśnij Enter lub Escape, aby zakończyć.",
+    "projects.form_view.settings.cover_image": "Obraz okładki",
+    "projects.form_view.settings.logo": "Logo",
+    "projects.form_view.settings.images_after_save": "Zapisz formularz, aby dodać obraz okładki i logo.",
+    "projects.form_view.image_alt.cover": "Obraz okładki formularza",
+    "projects.form_view.image_alt.logo": "Logo formularza"
 }

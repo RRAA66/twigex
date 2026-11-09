@@ -2046,5 +2046,9 @@
   {
     "id": "workspace.form_file_missing",
     "translation": "An uploaded file was not found. Upload it again."
+  },
+  {
+    "id": "workspace.form_image_type_not_allowed",
+    "translation": "Use a JPEG, PNG, GIF or WebP image."
   }
 ]

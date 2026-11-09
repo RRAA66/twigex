@@ -56,6 +56,8 @@ func (a *App) CreateForm(ctx context.Context, workspaceID, tableID string, form 
 	form.TableID = tableID
 	form.PublicToken = model.NewID()
 	form.Active = true
+	form.CoverImage = ""
+	form.Logo = ""
 	form.CreatedBy = user.ID
 	form.CreatedAt = now
 	form.UpdatedAt = now
@@ -159,6 +161,12 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 		return nil, appErr
 	}
 
+	a.publishFormChanged(ctx, workspaceID, tableID, formID)
+
+	return updated, nil
+}
+
+func (a *App) publishFormChanged(ctx context.Context, workspaceID, tableID, formID string) {
 	// Named by form, so only the edited form's open pages reload.
 	a.publishProjectChange(ctx, projectChange{
 		kind:        "FORM_CONFIG_CHANGED",
@@ -166,8 +174,6 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 		tableID:     tableID,
 		data:        map[string]any{"form_id": formID},
 	})
-
-	return updated, nil
 }
 
 func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID string, user model.User) *model.AppError {
@@ -182,7 +188,13 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
-	if _, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
+	form, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user)
+	if appErr != nil {
+		return appErr
+	}
+
+	images, appErr := a.formImages(form)
+	if appErr != nil {
 		return appErr
 	}
 
@@ -200,6 +212,7 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 		return model.NewAppError("workspace.form_delete_failed", http.StatusInternalServerError)
 	}
 
+	a.removeFormImageFiles(ctx, images)
 	a.removePendingFormFiles(ctx, formID)
 	a.publishProjectChange(ctx, deleted)
 

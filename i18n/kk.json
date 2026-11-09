@@ -1986,5 +1986,9 @@
   {
     "id": "workspace.form_file_missing",
     "translation": "Жүктелген файл табылмады. Оны қайта жүктеңіз."
+  },
+  {
+    "id": "workspace.form_image_type_not_allowed",
+    "translation": "JPEG, PNG, GIF немесе WebP суретін пайдаланыңыз."
   }
 ]

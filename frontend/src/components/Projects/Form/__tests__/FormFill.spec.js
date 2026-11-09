@@ -152,6 +152,28 @@ describe("FormFill", () => {
         w.unmount();
     });
 
+    it("shows the form's cover at its position and its logo", async () => {
+        formService.getPublicForm.mockResolvedValue({
+            data: {
+                ...form,
+                workspace_id: "w1",
+                cover_image: "c1",
+                cover_position: 20,
+                logo: "l1",
+            },
+        });
+        const w = await mountFill();
+
+        const cover = w.find("img[alt='Form cover image']");
+        const logo = w.find("img[alt='Form logo']");
+
+        expect(cover.attributes("src")).toBe("/api/workspaces/w1/file/c1");
+        expect(cover.attributes("style")).toContain("50% 20%");
+        expect(logo.attributes("src")).toBe("/api/workspaces/w1/file/l1");
+        expect(w.text()).not.toContain("Reposition");
+        w.unmount();
+    });
+
     it("shows the form without a way to send it to someone who may not add rows", async () => {
         formService.getPublicForm.mockResolvedValue({ data: { ...form, can_submit: false } });
         const w = await mountFill();
