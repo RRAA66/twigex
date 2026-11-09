@@ -200,6 +200,7 @@ func (a *App) DeleteForm(ctx context.Context, workspaceID, tableID, formID strin
 		return model.NewAppError("workspace.form_delete_failed", http.StatusInternalServerError)
 	}
 
+	a.removePendingFormFiles(ctx, formID)
 	a.publishProjectChange(ctx, deleted)
 
 	return nil

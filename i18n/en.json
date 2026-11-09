@@ -2034,5 +2034,17 @@
   {
     "id": "workspace.form_submissions_failed",
     "translation": "Failed to load the form's submissions. Please try again."
+  },
+  {
+    "id": "workspace.form_file_too_large",
+    "translation": "This file is too large."
+  },
+  {
+    "id": "workspace.form_file_type_not_allowed",
+    "translation": "Files of this type cannot be uploaded to a form."
+  },
+  {
+    "id": "workspace.form_file_missing",
+    "translation": "An uploaded file was not found. Upload it again."
   }
 ]

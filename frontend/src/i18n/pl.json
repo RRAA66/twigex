@@ -2460,5 +2460,8 @@
     "projects.form_view.error.copy_failed": "Nie udało się skopiować linku.",
     "projects.form_view.public.no_access": "Nie masz dostępu do tego formularza. Poproś członka jego obszaru roboczego o dodanie Cię.",
     "projects.form_view.public.not_found": "Ten formularz nie istnieje lub nie jest już otwarty.",
-    "projects.form_view.public.read_only": "Możesz wyświetlić ten formularz, ale nie masz uprawnień do dodawania rekordów do tej tabeli."
+    "projects.form_view.public.read_only": "Możesz wyświetlić ten formularz, ale nie masz uprawnień do dodawania rekordów do tej tabeli.",
+    "projects.form_view.action.add_files": "Dodaj pliki",
+    "projects.form_view.action.remove_file": "Usuń {name}",
+    "projects.form_view.error.too_many_files": "Pole przyjmuje najwyżej {max} plików. Pozostałe zostały pominięte."
 }

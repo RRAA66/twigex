@@ -17,7 +17,7 @@ import (
 func setupFormSubmit(t *testing.T) *workspaceRepository {
 	t.Helper()
 	w := setupTaskLinks(t)
-	cleanTables(t, "workspace_form_submissions", "workspace_form_fields", "workspace_forms", "workspace_view")
+	cleanTables(t, "workspace_form_submissions", "workspace_form_fields", "workspace_forms", "workspace_view", "workspace_attachments")
 
 	mustExec(t, `INSERT INTO workspace_forms (id, workspace_id, table_id, name, public_token, active, created_by, created_at, updated_at)
 		VALUES ('form-1', 'ws', 't-a', 'Intake', 'token-1', 1, 'u1', 1, 1),
@@ -68,10 +68,32 @@ func TestCreateFormTaskWritesTheRowLinksAndSubmission(t *testing.T) {
 	}
 }
 
+func TestCreateFormTaskAttachesItsFiles(t *testing.T) {
+	w := setupFormSubmit(t)
+
+	task, submission := formTask(nil)
+	task.Attachments = []model.WorkspaceAttachment{{
+		ID: "file-1", WorkspaceID: "ws", TableID: "t-a", FieldID: "f-docs", TaskID: task.ID, UserID: "u1",
+		Name: "report.pdf", Size: 8, MimeType: "application/pdf", CreatedAt: 100, UpdatedAt: 100,
+	}}
+	if _, err := w.CreateFormTask(context.Background(), "ws", "t-a", task, submission); err != nil {
+		t.Fatalf("CreateFormTask: %v", err)
+	}
+
+	got, err := w.GetAttachment("file-1", "ws")
+	if err != nil {
+		t.Fatalf("GetAttachment: %v", err)
+	}
+	if got == nil || got.TaskID != "new-1" || got.FieldID != "f-docs" || got.UserID != "u1" || got.StorageID != "" {
+		t.Errorf("attachment %+v, want new-1's file by u1 on local disk", got)
+	}
+}
+
 func TestCreateFormTaskWritesNothingWhenALinkFails(t *testing.T) {
 	w := setupFormSubmit(t)
 
 	task, submission := formTask(map[string][]string{"related": {"b1", "missing"}})
+	task.Attachments = []model.WorkspaceAttachment{{ID: "file-1", WorkspaceID: "ws", TableID: "t-a", TaskID: task.ID, Name: "a.pdf"}}
 	_, err := w.CreateFormTask(context.Background(), "ws", "t-a", task, submission)
 	if !errors.Is(err, model.ErrLinkTargetMissing) {
 		t.Fatalf("CreateFormTask = %v, want ErrLinkTargetMissing", err)
@@ -82,6 +104,9 @@ func TestCreateFormTaskWritesNothingWhenALinkFails(t *testing.T) {
 	}
 	if n := countRows(t, testDB, "SELECT COUNT(*) FROM workspace_form_submissions"); n != 0 {
 		t.Errorf("kept %d submission records, want none", n)
+	}
+	if n := countRows(t, testDB, "SELECT COUNT(*) FROM workspace_attachments"); n != 0 {
+		t.Errorf("kept %d attachments, want none", n)
 	}
 }
 

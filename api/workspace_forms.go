@@ -4,11 +4,18 @@
 package api
 
 import (
+	"errors"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/twigex/twigex/internal/parse"
 	"github.com/twigex/twigex/model"
+)
+
+const (
+	maxFormUploadBytes = 100 << 20
+	maxFormImageBytes  = 6 << 20
 )
 
 func (a *API) createForm(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +103,7 @@ func (a *API) initPublicForms() {
 	forms := a.BaseRoutes.PublicSharedFiles.PathPrefix("/forms").Subrouter()
 	forms.HandleFunc("/{token}", a.getPublicForm).Methods("GET")
 	forms.HandleFunc("/{token}/submit", a.submitPublicForm).Methods("POST")
+	forms.HandleFunc("/{token}/files", a.uploadPublicFormFiles).Methods("POST")
 	forms.HandleFunc("/{token}/linked/{tableId}", a.getPublicLinkedItems).Methods("GET")
 	forms.Use(a.RequireCSRF)
 }
@@ -164,4 +172,48 @@ func (a *API) submitPublicForm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, map[string]string{"id": taskID})
+}
+
+func (a *API) uploadPublicFormFiles(w http.ResponseWriter, r *http.Request) {
+	user, appErr := a.app.GetCurrentUser(r)
+	if appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
+	form, appErr := a.app.CheckFormUpload(r.Context(), mux.Vars(r)["token"], user, a.app.ClientIP(r))
+	if appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
+	files, ok := parseUploadedFiles(w, r, maxFormUploadBytes, "files")
+	if !ok {
+		return
+	}
+
+	uploaded, appErr := a.app.UploadFormFiles(r.Context(), form, files, *user)
+	if appErr != nil {
+		respondAppError(w, r, appErr)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, uploaded)
+}
+
+func parseUploadedFiles(w http.ResponseWriter, r *http.Request, maxBytes int64, key string) ([]*multipart.FileHeader, bool) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+
+	if err := r.ParseMultipartForm(maxBytes); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			respondAppError(w, r, model.NewAppError("workspace.form_file_too_large", http.StatusRequestEntityTooLarge))
+			return nil, false
+		}
+
+		respondAppError(w, r, model.NewAppError("request.invalid", http.StatusBadRequest))
+		return nil, false
+	}
+
+	return r.MultipartForm.File[key], true
 }
