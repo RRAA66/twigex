@@ -76,6 +76,7 @@ import DetailedTaskReport from "@/components/Projects/Reports/DetailedTaskReport
 import CreateRole from "@/components/Projects/Members/CreateRole.vue";
 import GanttView from "@/components/Projects/GanttView.vue";
 import CalendarView from "@/components/Projects/CalendarView.vue";
+import FormView from "@/components/Projects/Form/FormView.vue";
 
 const routes = [
     {
@@ -685,6 +686,22 @@ const routes = [
                             requireAuth: true,
                         },
                         component: CalendarView,
+                    },
+                    {
+                        path: ":id/form/:tid",
+                        name: "form-view-create",
+                        meta: {
+                            requireAuth: true,
+                        },
+                        component: FormView,
+                    },
+                    {
+                        path: ":id/form/:tid/view/:fid",
+                        name: "form-view",
+                        meta: {
+                            requireAuth: true,
+                        },
+                        component: FormView,
                     },
                     {
                         path: "assigned-to-me",

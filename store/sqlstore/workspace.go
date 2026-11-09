@@ -1984,15 +1984,17 @@ func attachFilterAndSort(tableID string, views []model.WorkspaceView, filters ma
 }
 
 // The ORDER BY is the order the (table_id, view_type) index returned views in
-// when they were read one table at a time. Form views were removed but their
-// rows were kept, so they are left out here.
+// when they were read one table at a time. An earlier, removed form feature
+// left 'form' rows behind with no form of their own, so a form view is shown
+// only when its form exists.
 func (w *workspaceRepository) viewsByTable(workspaceID string, tableIDs []string) (map[string][]model.WorkspaceView, error) {
 	args := append([]any{workspaceID}, toInterfaceSlice(tableIDs)...)
 	rows, err := w.Db.Query(`
-		SELECT id, workspace_id, table_id, view_type, parent_table_id, name, item_order, created_by, created_at, updated_at, deleted_at, COALESCE(is_public, 1)
-		FROM workspace_view
-		WHERE workspace_id = ? AND table_id IN (`+sqlPlaceholders(len(tableIDs))+`) AND main_view = 0 AND view_type <> 'form'
-		ORDER BY table_id, view_type, id
+		SELECT v.id, v.workspace_id, v.table_id, v.view_type, v.parent_table_id, v.name, v.item_order, v.created_by, v.created_at, v.updated_at, v.deleted_at, COALESCE(v.is_public, 1)
+		FROM workspace_view v
+		WHERE v.workspace_id = ? AND v.table_id IN (`+sqlPlaceholders(len(tableIDs))+`) AND v.main_view = 0
+		  AND (v.view_type <> 'form' OR EXISTS (SELECT 1 FROM workspace_forms f WHERE f.id = v.id))
+		ORDER BY v.table_id, v.view_type, v.id
 	`, args...)
 	if err != nil {
 		return nil, err
