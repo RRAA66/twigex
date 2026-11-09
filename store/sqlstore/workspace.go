@@ -2901,8 +2901,7 @@ func (w *workspaceRepository) GetLinkedRecordsLite(ctx context.Context, tableNam
 	return items, err
 }
 
-// GetTasksByIDs returns the tasks among ids that are not deleted and that
-// access lets the user see, in no particular order.
+// The tasks come back in no particular order.
 func (w *workspaceRepository) GetTasksByIDs(ctx context.Context, tableName string, ids []string, access model.SQLFilter) ([]map[string]interface{}, error) {
 	if len(ids) == 0 {
 		return []map[string]interface{}{}, nil

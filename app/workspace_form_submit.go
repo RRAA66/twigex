@@ -357,9 +357,6 @@ func (a *App) nameSubmitters(submissions []model.WorkspaceFormSubmission) error 
 	return nil
 }
 
-// attachSubmissionRows reads the submissions' rows as the grid reads its
-// page: only those the user may see, their links, options and files filled
-// in.
 func (a *App) attachSubmissionRows(ctx context.Context, submissions []model.WorkspaceFormSubmission, workspaceID, tableID string, user model.User) error {
 	if len(submissions) == 0 {
 		return nil
