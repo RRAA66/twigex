@@ -91,19 +91,7 @@ func (a *App) PrepareTaskExport(ctx context.Context, workspaceIDs []string, user
 		return nil, appErr
 	}
 
-	if timezone == "" {
-		timezone = a.resolveUserTimezone(user.ID)
-	}
-
-	loc, lerr := time.LoadLocation(timezone)
-	if lerr != nil || timezone == "" {
-		loc = time.UTC
-	}
-
-	export := &TaskExport{a: a, loc: loc, dateLayout: "02.01.2006", tableNames: map[string]string{}}
-	if clock == "12h" {
-		export.dateLayout = "01/02/2006"
-	}
+	export := a.newTaskExport(user, timezone, clock)
 	// One order runs on every table in the report, so only the columns every
 	// task table has can be sorted on.
 	export.orderSQL = buildSortSQL(filters.Sort, func(name string) bool { return taskReportSortable[name] })
@@ -152,7 +140,7 @@ func (a *App) PrepareTaskExport(ctx context.Context, workspaceIDs []string, user
 			name:    exportTableName(t),
 			headers: map[string]model.WorkspaceHeaders{},
 			list:    list,
-			filter:  a.filterSQLForHeaders(t.ID, list, filters, loc),
+			filter:  a.filterSQLForHeaders(t.ID, list, filters, export.loc),
 		}
 		if siteURL != "" {
 			et.link = fmt.Sprintf("%s/projects/%s/grid/%s/view/%s", siteURL, url.PathEscape(t.WorkspaceID), url.PathEscape(t.ID), url.PathEscape(viewIDs[t.ID]))
@@ -178,6 +166,26 @@ func (a *App) PrepareTaskExport(ctx context.Context, workspaceIDs []string, user
 	}
 
 	return export, nil
+}
+
+// newTaskExport sets an export's dates in timezone, or the user's own, laid
+// out the way clock ("12h" or "24h") asks for.
+func (a *App) newTaskExport(user model.User, timezone, clock string) *TaskExport {
+	if timezone == "" {
+		timezone = a.resolveUserTimezone(user.ID)
+	}
+
+	loc, err := time.LoadLocation(timezone)
+	if err != nil || timezone == "" {
+		loc = time.UTC
+	}
+
+	export := &TaskExport{a: a, loc: loc, dateLayout: "02.01.2006", tableNames: map[string]string{}}
+	if clock == "12h" {
+		export.dateLayout = "01/02/2006"
+	}
+
+	return export
 }
 
 // FileName names the export after its workspace when it covers only one, with

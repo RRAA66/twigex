@@ -93,6 +93,15 @@ SPDX-License-Identifier: AGPL-3.0-only
             :placeholder="field.placeholder || t('projects.form_view.placeholder.select_table')"
             @update:model-value="update"
         />
+        <FormFileInput
+            v-else-if="type === 'file'"
+            :id="id"
+            :model-value="modelValue"
+            :token="token"
+            :aria-describedby="aria['aria-describedby']"
+            :aria-invalid="aria['aria-invalid']"
+            @update:model-value="update"
+        />
         <input
             v-else
             :id="id"
@@ -123,6 +132,7 @@ import { t } from "@/i18n/index.js";
 import { formFieldType, linkedTableId } from "@/utils/projects/forms";
 import BaseSelect from "@/components/BaseSelect.vue";
 import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
+import FormFileInput from "@/components/Projects/Form/FormFileInput.vue";
 import FormLinkedPicker from "@/components/Projects/Form/FormLinkedPicker.vue";
 import FormPersonPicker from "@/components/Projects/Form/FormPersonPicker.vue";
 
