@@ -118,7 +118,14 @@ export function usePublicForm(token, { live = false } = {}) {
         configChanged.value = false;
     }
 
-    watch(values, clearFilledErrors, { deep: true });
+    watch(
+        values,
+        () => {
+            submitError.value = "";
+            clearFilledErrors();
+        },
+        { deep: true },
+    );
 
     if (live) {
         initialize();
