@@ -385,9 +385,7 @@ var systemFields = map[string][2]string{
 	"status":     {"status", "Status"},
 }
 
-// DescribeFormField fills in what a form field is from the table it is on:
-// its type, display name and the table it links to. It reports false for a
-// field the table no longer has.
+// Reports false for a field the table no longer has.
 func (m *TableHeaderMeta) DescribeFormField(tableID string, f *WorkspaceFormField) bool {
 	field := SystemFieldData(tableID, f.HeaderName)
 	if field == nil {
@@ -649,21 +647,20 @@ type WorkspaceFormField struct {
 	Visible        bool   `json:"visible"`
 	SortOrder      int    `json:"sort_order"`
 	ColumnPosition string `json:"column_position,omitempty"`
-	// DefaultValue starts the field's answer, written as a submitted answer
-	// is. A hidden or read-only field always answers it.
+	// A hidden or read-only field always answers its default, written as a
+	// submitted answer is.
 	DefaultValue string `json:"default_value"`
 	ReadOnly     bool   `json:"read_only"`
 
 	VisibilityRule *VisibilityRule `json:"visibility_rule"`
 
 	// Read from the table's field and its link, not stored with the form.
-	FieldType     string `json:"field_type,omitempty"`
-	LinkedID      string `json:"linked_id,omitempty"`
-	SingleSelect  bool   `json:"single_select,omitempty"`
-	ParentTableID string `json:"parent_table_id,omitempty"`
-	DisplayName   string `json:"display_name,omitempty"`
-	// DefaultItems names the rows or option a linked field's default picks.
-	DefaultItems []FormLinkedItem `json:"default_items,omitempty"`
+	FieldType     string           `json:"field_type,omitempty"`
+	LinkedID      string           `json:"linked_id,omitempty"`
+	SingleSelect  bool             `json:"single_select,omitempty"`
+	ParentTableID string           `json:"parent_table_id,omitempty"`
+	DisplayName   string           `json:"display_name,omitempty"`
+	DefaultItems  []FormLinkedItem `json:"default_items,omitempty"`
 }
 
 type WorkspaceFormWithFields struct {
