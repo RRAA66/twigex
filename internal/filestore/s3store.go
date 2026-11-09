@@ -405,7 +405,6 @@ func (b *S3FileBackend) RemoveFile(ctx context.Context, filePath string) error {
 	return b.client.RemoveObject(ctx, b.bucket, filePath, minio.RemoveObjectOptions{})
 }
 
-// ListFiles lists the objects under dir and the prefixes in it.
 func (b *S3FileBackend) ListFiles(ctx context.Context, dir string) ([]FileInfo, error) {
 	if dir == "" || strings.Contains(dir, "..") {
 		return nil, errors.New("invalid path")

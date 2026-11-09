@@ -25,8 +25,6 @@ var formImageTypes = map[string]string{
 	".webp": "image/webp",
 }
 
-// SetFormImage stores a form's cover or logo as a workspace attachment of
-// the form, served like a row's files, and removes the one it replaces.
 func (a *App) SetFormImage(ctx context.Context, workspaceID, tableID, formID, kind string, image *multipart.FileHeader, user model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
@@ -166,8 +164,6 @@ func (a *App) checkFormImageChange(ctx context.Context, workspaceID, tableID, ki
 	return nil
 }
 
-// formImageAttachment is the form's current image of the kind, or an empty
-// attachment when it has none.
 func (a *App) formImageAttachment(form *model.WorkspaceFormWithFields, kind string) (model.WorkspaceAttachment, *model.AppError) {
 	id := form.Logo
 	if kind == model.FormImageCover {
@@ -195,8 +191,6 @@ func (a *App) formImageAttachment(form *model.WorkspaceFormWithFields, kind stri
 	return *attachment, nil
 }
 
-// formImages are the form's cover and logo, for removing their files once
-// the form is deleted.
 func (a *App) formImages(form *model.WorkspaceFormWithFields) ([]model.WorkspaceAttachment, *model.AppError) {
 	images := make([]model.WorkspaceAttachment, 0, 2)
 	for _, kind := range []string{model.FormImageCover, model.FormImageLogo} {
@@ -211,8 +205,6 @@ func (a *App) formImages(form *model.WorkspaceFormWithFields) ([]model.Workspace
 	return images, nil
 }
 
-// viewFormImages are formImages of the form a view of the table is, or nil
-// when the view is not a form.
 func (a *App) viewFormImages(ctx context.Context, workspaceID, tableID, viewID string) ([]model.WorkspaceAttachment, *model.AppError) {
 	form, err := a.Store.Workspace.GetForm(ctx, viewID)
 	if err != nil {
@@ -261,7 +253,6 @@ func (a *App) formImageChanged(ctx context.Context, workspaceID, tableID, formID
 	return updated, nil
 }
 
-// formOfImage is the form whose cover or logo the attachment is, or nil.
 func (a *App) formOfImage(ctx context.Context, attachment *model.WorkspaceAttachment) *model.WorkspaceFormWithFields {
 	if attachment.FieldID != formImageFieldID(model.FormImageCover) && attachment.FieldID != formImageFieldID(model.FormImageLogo) {
 		return nil

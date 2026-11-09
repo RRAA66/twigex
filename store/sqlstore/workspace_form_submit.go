@@ -46,11 +46,10 @@ func (w *workspaceRepository) GetLinkableTables(ctx context.Context, workspaceID
 	return tables, rows.Err()
 }
 
-// CreateFormTask writes a submitted form's row, its links, its place on the
-// table's Kanban boards, its files and the submission record in one
-// transaction, so a failure leaves no row without the rest. It returns nil
-// when the table is gone, model.ErrLinkTargetMissing when a row to link is
-// not there, and model.ErrValueRejected when a value does not fit its column.
+// One transaction, so a failure leaves no row without its links, Kanban places,
+// files or submission record. It returns nil when the table is gone,
+// model.ErrLinkTargetMissing when a row to link is not there, and
+// model.ErrValueRejected when a value does not fit its column.
 func (w *workspaceRepository) CreateFormTask(ctx context.Context, workspaceID, tableID string, task model.FormTask, submission model.WorkspaceFormSubmission) (map[string]any, error) {
 	// Read committed, as changeTaskLinksTx needs.
 	tx, err := w.Db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
