@@ -671,6 +671,9 @@ type WorkspaceFormField struct {
 type WorkspaceFormWithFields struct {
 	WorkspaceForm
 	Fields []WorkspaceFormField `json:"fields"`
+	// LinkTables are the tables a master link field may name, for the
+	// builder's default picker; empty outside the builder.
+	LinkTables []FormLinkTable `json:"link_tables,omitempty"`
 }
 
 type WorkspaceFormRequest struct {

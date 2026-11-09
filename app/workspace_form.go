@@ -104,6 +104,10 @@ func (a *App) CreateForm(ctx context.Context, workspaceID, tableID string, form 
 	a.publishViewChange(ctx, view.ID, projectChange{kind: "VIEW_CREATED", workspaceID: workspaceID, tableID: tableID,
 		data: map[string]any{"data": view}})
 
+	if appErr := a.prepareBuilderForm(ctx, user, created); appErr != nil {
+		return nil, appErr
+	}
+
 	return created, nil
 }
 
@@ -126,7 +130,9 @@ func (a *App) GetForm(ctx context.Context, workspaceID, tableID, formID string, 
 		return nil, appErr
 	}
 
-	a.nameFormDefaults(ctx, user, workspaceID, form.Fields)
+	if appErr := a.prepareBuilderForm(ctx, user, form); appErr != nil {
+		return nil, appErr
+	}
 
 	return form, nil
 }
@@ -189,6 +195,10 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 		tableID:     tableID,
 		data:        map[string]any{"form_id": formID},
 	})
+
+	if appErr := a.prepareBuilderForm(ctx, user, updated); appErr != nil {
+		return nil, appErr
+	}
 
 	return updated, nil
 }

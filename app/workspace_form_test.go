@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -18,8 +19,13 @@ import (
 
 type fakeFormStore struct {
 	fakeAccessWorkspaceStore
-	forms  map[string]*model.WorkspaceFormWithFields
-	writes int
+	forms     map[string]*model.WorkspaceFormWithFields
+	writes    int
+	linkables []model.FormLinkTable
+}
+
+func (f *fakeFormStore) GetLinkableTables(context.Context, string, string) ([]model.FormLinkTable, error) {
+	return slices.Clone(f.linkables), nil
 }
 
 func (f *fakeFormStore) GetTableWorkspaceID(_ context.Context, tableID string) (string, error) {
@@ -436,6 +442,10 @@ type formChangeStore struct {
 	form *model.WorkspaceFormWithFields
 }
 
+func (f formChangeStore) GetLinkableTables(context.Context, string, string) ([]model.FormLinkTable, error) {
+	return nil, nil
+}
+
 func (f formChangeStore) GetForm(_ context.Context, formID string) (*model.WorkspaceFormWithFields, error) {
 	if formID != f.form.ID {
 		return nil, nil
@@ -480,5 +490,28 @@ func TestUpdateFormTellsItsPagesWhichFormChanged(t *testing.T) {
 	data := received(clients["member"])
 	if data["type"] != "FORM_CONFIG_CHANGED" || data["form_id"] != "form-1" || data["workspace_id"] != "ws-a" || data["table_id"] != "t-a" {
 		t.Errorf("published %v, want FORM_CONFIG_CHANGED for form-1", data)
+	}
+}
+
+func TestTheBuilderGetsTheTablesAMasterLinkMayName(t *testing.T) {
+	a, ws := formApp(workspaceAdminAccess(), true)
+	ws.linkables = []model.FormLinkTable{{ID: tbl2, Name: "t2"}, {ID: "table-4", Name: "t4"}}
+	a.WorkspaceRoles = formRoles{hiddenTable: "table-4"}
+	ctx := context.Background()
+
+	got, appErr := a.GetForm(ctx, wsID, tbl1, "form-1", workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("GetForm: %v", appErr)
+	}
+	if want := []model.FormLinkTable{{ID: tbl2, Name: "t2"}}; !slices.Equal(got.LinkTables, want) {
+		t.Errorf("get: link tables %+v, want %+v", got.LinkTables, want)
+	}
+
+	saved, appErr := a.UpdateForm(ctx, wsID, tbl1, "form-1", model.WorkspaceForm{Name: "Renamed"}, nil, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("UpdateForm: %v", appErr)
+	}
+	if len(saved.LinkTables) != 1 {
+		t.Errorf("update: link tables %+v, want the same list back after a save", saved.LinkTables)
 	}
 }

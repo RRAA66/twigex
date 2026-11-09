@@ -43,6 +43,7 @@ export function normalizeFormData(data, workspaceId, tableId) {
         public_token: data.public_token || "",
         active: data.active ?? true,
         created_by: data.created_by || "",
+        link_tables: data.link_tables || [],
     };
 }
 

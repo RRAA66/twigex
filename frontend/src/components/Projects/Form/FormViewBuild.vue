@@ -41,6 +41,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         :fields="fields"
                         :workspace-id="form.workspace_id"
                         :table-id="form.table_id"
+                        :link-tables="form.link_tables"
                         :incomplete="incompleteFields.includes(element.header_name)"
                         @update="emit('change-field', element.header_name, $event)"
                     />
