@@ -16,3 +16,7 @@ func (a *App) loginLimiter() ratelimit.Limiter {
 func (a *App) shareAuthLimiter() ratelimit.Limiter {
 	return ratelimit.New(a.Store.Auth, "share_auth", 5, 5*time.Minute)
 }
+
+func (a *App) formSubmitLimiter() ratelimit.Limiter {
+	return ratelimit.New(a.Store.Auth, "form_submit", 20, time.Minute)
+}

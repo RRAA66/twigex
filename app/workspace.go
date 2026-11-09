@@ -3638,7 +3638,7 @@ func (a *App) CreateWorkspaceTask(ctx context.Context, workspaceID string, table
 	}
 
 	if parentTaskID == "" {
-		if err := a.Store.Workspace.SyncTaskKanban(workspaceID, tableID, taskID, selects, *workspaceTask); err != nil {
+		if err := a.Store.Workspace.SyncTaskKanban(ctx, workspaceID, tableID, taskID, selects, *workspaceTask); err != nil {
 			tlog.Errorw("Failed to sync task kanban",
 				"workspace_id", workspaceID,
 				"table_id", tableID,

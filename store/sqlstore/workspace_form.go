@@ -58,8 +58,20 @@ func (w *workspaceRepository) CreateForm(ctx context.Context, form model.Workspa
 }
 
 func (w *workspaceRepository) GetForm(ctx context.Context, formID string) (*model.WorkspaceFormWithFields, error) {
+	return w.getFormWhere(ctx, `id = ?`, formID)
+}
+
+// GetFormByToken finds an active form by its link, unless its table is
+// deleted.
+func (w *workspaceRepository) GetFormByToken(ctx context.Context, token string) (*model.WorkspaceFormWithFields, error) {
+	return w.getFormWhere(ctx, `public_token = ? AND active = 1 AND EXISTS (
+		SELECT 1 FROM workspace_tables t
+		WHERE t.id = workspace_forms.table_id AND (t.deleted_at IS NULL OR t.deleted_at = 0))`, token)
+}
+
+func (w *workspaceRepository) getFormWhere(ctx context.Context, where, arg string) (*model.WorkspaceFormWithFields, error) {
 	var form model.WorkspaceForm
-	err := w.Db.QueryRowContext(ctx, `SELECT `+formColumns+` FROM workspace_forms WHERE id = ?`, formID).Scan(
+	err := w.Db.QueryRowContext(ctx, `SELECT `+formColumns+` FROM workspace_forms WHERE `+where, arg).Scan(
 		&form.ID, &form.WorkspaceID, &form.TableID, &form.Name, &form.Title, &form.Description,
 		&form.CoverImage, &form.CoverPosition, &form.Logo, &form.AccentColor, &form.PublicToken,
 		&form.Active, &form.CreatedBy, &form.CreatedAt, &form.UpdatedAt,

@@ -2010,5 +2010,29 @@
   {
     "id": "workspace.form_update_failed",
     "translation": "Failed to update form. Please try again."
+  },
+  {
+    "id": "workspace.form_login_required",
+    "translation": "Log in to open this form."
+  },
+  {
+    "id": "workspace.form_linked_failed",
+    "translation": "Failed to load the records to choose from. Please try again."
+  },
+  {
+    "id": "workspace.form_linked_not_found",
+    "translation": "This form has no field that chooses from these records."
+  },
+  {
+    "id": "workspace.form_submit_required_field",
+    "translation": "Fill in all required fields."
+  },
+  {
+    "id": "workspace.form_submit_failed",
+    "translation": "Failed to submit the form. Please try again."
+  },
+  {
+    "id": "workspace.form_submissions_failed",
+    "translation": "Failed to load the form's submissions. Please try again."
   }
 ]
