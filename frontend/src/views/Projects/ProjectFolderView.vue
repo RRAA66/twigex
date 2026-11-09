@@ -36,7 +36,17 @@ SPDX-License-Identifier: AGPL-3.0-only
                             ]"
                         >
                             <FolderIcon v-if="item.isFolder" class="h-6 w-6" aria-hidden="true" />
-                            <TableCellsIcon v-else class="h-6 w-6" aria-hidden="true" />
+                            <TableIconPicker
+                                v-else-if="canEditItem(item)"
+                                :icon="item.icon"
+                                @select="(icon) => changeTableIcon(item, icon)"
+                            />
+                            <component
+                                :is="tableIcons[item.icon] || tableIcons.TableCellsIcon"
+                                v-else
+                                class="h-6 w-6"
+                                aria-hidden="true"
+                            />
                         </div>
                         <div class="min-w-0 flex-auto">
                             <p
@@ -108,7 +118,12 @@ import NavigationItemMenu from "@/components/Projects/Menu/NavigationItemMenu.vu
 import ItemActionsMenu from "@/components/Projects/Menu/ItemActionsMenu.vue";
 
 import { t } from "@/i18n/index.js";
-import { FolderIcon, FolderOpenIcon, TableCellsIcon } from "@heroicons/vue/24/outline";
+import { FolderIcon, FolderOpenIcon } from "@heroicons/vue/24/outline";
+import { tableIcons } from "@/constants/tableIcons";
+import TableIconPicker from "@/components/Projects/TableIconPicker.vue";
+import workspaceService from "@/services/workspaceService";
+import { useAlertStore } from "@/store/alerts";
+import { extractErrorMessage } from "@/utils/errors";
 import PaginationProjectFolder from "@/components/Projects/Navigation/PaginationProjectFolder.vue";
 import MoveItemDialog from "@/components/Projects/Dialogs/MoveItemDialog.vue";
 import { useMoveProjectItem } from "@/composables/projects/useMoveProjectItem";
@@ -118,12 +133,27 @@ const route = useRoute();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
 const rolesStore = useWorkspaceRolesStore();
+const alertStore = useAlertStore();
 const folder = ref(null);
 const currentPage = ref(1);
 const itemsPerPage = ref(20);
 
 const movingItem = ref(null);
 const { dragged, pressItem } = useMoveProjectItem();
+
+async function changeTableIcon(item, icon) {
+    const previous = item.icon || "";
+
+    workspaceStore.setTableIcon(route.params.id, item.id, icon);
+    try {
+        await workspaceService.updateTableIcon(route.params.id, item.id, icon);
+    } catch (error) {
+        workspaceStore.setTableIcon(route.params.id, item.id, previous);
+        alertStore.showError(
+            extractErrorMessage(error, t.value("projects.table_icon.update_failed")),
+        );
+    }
+}
 
 function canEditItem(item) {
     return item.isFolder

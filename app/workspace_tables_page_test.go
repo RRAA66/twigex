@@ -4,6 +4,7 @@
 package app
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -15,7 +16,7 @@ func TestGetWorkspaceTablesRefusesToSendEveryRow(t *testing.T) {
 	user := model.User{ID: "u1", Role: model.SystemAdminRoleId}
 
 	for _, mode := range []string{"all", "filtred", ""} {
-		if _, appErr := a.GetWorkspaceTables("ws-a", user, mode, 1, 0); appErr == nil || appErr.Status != http.StatusBadRequest {
+		if _, appErr := a.GetWorkspaceTables(context.Background(), "ws-a", user, mode, 1, 0); appErr == nil || appErr.Status != http.StatusBadRequest {
 			t.Errorf("%q without a page size = %v, want a bad request", mode, appErr)
 		}
 	}
