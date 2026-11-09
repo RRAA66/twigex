@@ -94,6 +94,7 @@ export function usePublicForm(token, { live = false, preview = false } = {}) {
         // adding a row to the table.
         if (preview) {
             submitted.value = true;
+
             return;
         }
 
