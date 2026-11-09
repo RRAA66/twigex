@@ -16,6 +16,8 @@ import (
 // is not in the linked table.
 var ErrLinkTargetMissing = errors.New("a linked row does not exist")
 
+var ErrValueRejected = errors.New("a value does not fit its column")
+
 // NewTaskFields holds what a task may be created with besides its name. A
 // zero value leaves that field empty.
 type NewTaskFields struct {
@@ -591,4 +593,145 @@ type KanbanStatusOption struct {
 	Name       string
 	Color      string
 	StatusType string
+}
+
+type WorkspaceForm struct {
+	ID            string `json:"id"`
+	WorkspaceID   string `json:"workspace_id"`
+	TableID       string `json:"table_id"`
+	Name          string `json:"name"`
+	Title         string `json:"title"`
+	Description   string `json:"description"`
+	CoverImage    string `json:"cover_image"`
+	CoverPosition int    `json:"cover_position"`
+	Logo          string `json:"logo"`
+	AccentColor   string `json:"accent_color"`
+	PublicToken   string `json:"public_token"`
+	Active        bool   `json:"active"`
+	CreatedBy     string `json:"created_by"`
+	CreatedAt     int64  `json:"created_at"`
+	UpdatedAt     int64  `json:"updated_at"`
+}
+
+// VisibilityRule shows a form field only while the field named by
+// TriggerField has a value that meets it. Value is unused by is_empty and
+// is_not_empty.
+type VisibilityRule struct {
+	TriggerField string `json:"trigger_field"`
+	Operator     string `json:"operator"`
+	Value        string `json:"value"`
+}
+
+type WorkspaceFormField struct {
+	ID             string `json:"id"`
+	FormID         string `json:"form_id"`
+	HeaderID       string `json:"header_id"`
+	HeaderName     string `json:"header_name"`
+	Label          string `json:"label"`
+	Placeholder    string `json:"placeholder"`
+	Description    string `json:"description"`
+	Required       bool   `json:"required"`
+	Visible        bool   `json:"visible"`
+	SortOrder      int    `json:"sort_order"`
+	ColumnPosition string `json:"column_position,omitempty"`
+
+	VisibilityRule *VisibilityRule `json:"visibility_rule"`
+
+	// Read from the table's field and its link, not stored with the form.
+	FieldType     string `json:"field_type,omitempty"`
+	LinkedID      string `json:"linked_id,omitempty"`
+	SingleSelect  bool   `json:"single_select,omitempty"`
+	ParentTableID string `json:"parent_table_id,omitempty"`
+	DisplayName   string `json:"display_name,omitempty"`
+}
+
+type WorkspaceFormWithFields struct {
+	WorkspaceForm
+	Fields []WorkspaceFormField `json:"fields"`
+}
+
+type WorkspaceFormRequest struct {
+	Form   WorkspaceForm        `json:"form"`
+	Fields []WorkspaceFormField `json:"fields"`
+}
+
+// LinkTables fills a master link field's picker; it is empty unless the form
+// shows such a field.
+type PublicForm struct {
+	WorkspaceFormWithFields
+	LinkTables []FormLinkTable `json:"link_tables"`
+	CanSubmit  bool            `json:"can_submit"`
+}
+
+type FormMember struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Lastname string `json:"lastname"`
+	Photo    string `json:"photo"`
+}
+
+type FormLinkTable struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name,omitempty"`
+}
+
+type FormLinkedItem struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color,omitempty"`
+}
+
+type LinkedItemsResponse struct {
+	Items   []FormLinkedItem `json:"items"`
+	HasMore bool             `json:"has_more"`
+}
+
+type FormValue struct {
+	Name  string `json:"name"`
+	Value any    `json:"value"`
+}
+
+type FormSubmitRequest struct {
+	Fields   []FormValue `json:"fields"`
+	Honeypot string      `json:"honeypot"`
+}
+
+type FormTask struct {
+	ID          string
+	CreatedBy   string
+	CreatedAt   int64
+	Values      map[string]any
+	Links       map[string][]string
+	Selects     map[string]string
+	Attachments []WorkspaceAttachment
+}
+
+const (
+	FormImageCover = "cover"
+	FormImageLogo  = "logo"
+)
+
+type WorkspaceFormSubmission struct {
+	ID            string      `json:"id"`
+	FormID        string      `json:"form_id"`
+	TaskID        string      `json:"task_id"`
+	SubmittedBy   string      `json:"submitted_by"`
+	SubmittedAt   int64       `json:"submitted_at"`
+	SubmitterInfo *FormMember `json:"submitter_info,omitempty"`
+	// Row is the row the submission made as it is now, left out when it was
+	// deleted or the user may not see it.
+	Row map[string]any `json:"row,omitempty"`
+}
+
+// FormSubmissionsFilter keeps the submissions sent from From until before To,
+// in unix seconds; zero leaves that end open.
+type FormSubmissionsFilter struct {
+	From int64
+	To   int64
+}
+
+type FormSubmissionsPage struct {
+	Items []WorkspaceFormSubmission `json:"items"`
+	Total int                       `json:"total"`
 }

@@ -143,7 +143,7 @@ func (a *App) InitJobs() error {
 
 	handlers := []jobs.Job{
 		jobs.NewMoveFilesJob(a.Store.File, a),
-		jobs.NewCleanupJob(a.Store.Jobs),
+		jobs.NewCleanupJob(a.Store.Jobs, a),
 		jobs.NewDeleteChannelJob(a),
 	}
 

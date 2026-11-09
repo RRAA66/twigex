@@ -402,6 +402,38 @@ func (l *LocalFileBackend) RemoveFile(ctx context.Context, path string) error {
 	return nil
 }
 
+// A missing dir holds no files.
+func (l *LocalFileBackend) ListFiles(ctx context.Context, dir string) ([]FileInfo, error) {
+	if dir == "" || strings.Contains(dir, "..") {
+		return nil, errors.New("invalid path")
+	}
+
+	var files []FileInfo
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return ctx.Err()
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		files = append(files, FileInfo{Path: path, ModTime: info.ModTime()})
+
+		return nil
+	})
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	return files, err
+}
+
 func (l *LocalFileBackend) ServeFile(path string, w http.ResponseWriter, r *http.Request) error {
 	if path == "" {
 		return errors.New("empty path")

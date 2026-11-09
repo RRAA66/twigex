@@ -536,7 +536,7 @@ type WorkspaceStore interface {
 	ConvertTaskDatesToDays() error
 	RenameTaskAndKanbanSectionTx(workspaceID, tableID, taskID, field, newName, oldName, linkedTableName, linkedTableID string) error
 	CreateTask(workspaceID, tableID, name, userID, parentTaskID, taskID string, timestamp int64, fields map[string]any) (*map[string]interface{}, error)
-	SyncTaskKanban(workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error
+	SyncTaskKanban(ctx context.Context, workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error
 	CreateTx(workspaceID, userID, name, description, prefix string, adminRole, userRole model.ProjectWorkspaceRole, member model.WorkspaceMember) error
 	UpdateTaskTx(workspaceID, tableID, taskID, field, value string, typedValue interface{}, hasUpdatedAt, isKanbanField, syncColors bool) (*map[string]interface{}, error)
 	GenerateUniquePrefix() (string, error)
@@ -554,6 +554,7 @@ type WorkspaceStore interface {
 	GetTasksByDateRange(ctx context.Context, tableName string, from, to string, filter model.SQLFilter, limit int) ([]map[string]interface{}, int, error)
 	GetTasksByCalendarRange(ctx context.Context, tableName string, from, to string, filter model.SQLFilter) ([]map[string]interface{}, error)
 	GetLinkedRecordsLite(ctx context.Context, tableName, search string, ids []string, limit, offset int, access model.SQLFilter) ([]map[string]interface{}, error)
+	GetTasksByIDs(ctx context.Context, tableName string, ids []string, access model.SQLFilter) ([]map[string]interface{}, error)
 	GetTaskAssignees(ctx context.Context, tableName string, taskIDs []string) (map[string]string, error)
 	GetTableRows(tableName string) ([]map[string]interface{}, error)
 	GetTableRowsFiltered(ctx context.Context, tableName string, filter model.SQLFilter) ([]map[string]interface{}, error)
@@ -614,7 +615,7 @@ type WorkspaceStore interface {
 	GetJunctionTablesForLinkedTable(tableID string) ([]string, error)
 	GetJunctionTablesForMainTable(tableID string) ([]string, error)
 	DeleteTaskTx(tableName string, isSingleSelect bool, taskIDs []string, cascades []model.DeleteCascade) (bool, error)
-	DeleteTableView(workspaceID string, tableID string, viewID string) (bool, error)
+	DeleteTableView(ctx context.Context, workspaceID string, tableID string, viewID string) (bool, error)
 	DeleteTableField(workspaceID string, tableID string, fieldID string, parentFieldID string) error
 	GetFieldParentInfo(fieldID string) (parentFieldID string, parentTableID string, err error)
 	DeleteTableSingleField(workspaceID string, tableID string, fieldID string, linkedTableID string, linkedTableName string) (bool, error)
@@ -700,6 +701,17 @@ type WorkspaceStore interface {
 	UpdateGroupRoles(ctx context.Context, workspaceID, groupID string, roles []string) error
 	SearchMembers(ctx context.Context, workspaceIDs []string, query string, limit, offset int) ([]model.User, error)
 	GetGroupRolesForUser(userID, workspaceID string) ([]string, error)
+
+	CreateForm(ctx context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error
+	GetForm(ctx context.Context, formID string) (*model.WorkspaceFormWithFields, error)
+	UpdateForm(ctx context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error
+	DeleteForm(ctx context.Context, formID string) error
+	SetFormImage(ctx context.Context, formID, kind string, image *model.WorkspaceAttachment, replacedID string) error
+	GetFormByToken(ctx context.Context, token string) (*model.WorkspaceFormWithFields, error)
+	GetLinkableTables(ctx context.Context, workspaceID, excludeTableID string) ([]model.FormLinkTable, error)
+	CreateFormTask(ctx context.Context, workspaceID, tableID string, task model.FormTask, submission model.WorkspaceFormSubmission) (map[string]any, error)
+	GetFormSubmissions(ctx context.Context, formID string, filter model.FormSubmissionsFilter, limit, offset int) ([]model.WorkspaceFormSubmission, error)
+	CountFormSubmissions(ctx context.Context, formID string, filter model.FormSubmissionsFilter) (int, error)
 }
 
 type UploadSessionStore interface {

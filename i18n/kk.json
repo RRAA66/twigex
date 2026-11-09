@@ -1930,5 +1930,69 @@
   {
     "id": "channel.role_invalid",
     "translation": "Бұл арнаның жарамды рөлі емес."
+  },
+  {
+    "id": "workspace.form_create_failed",
+    "translation": "Пішінді жасау сәтсіз аяқталды. Қайталап көріңіз."
+  },
+  {
+    "id": "workspace.form_delete_failed",
+    "translation": "Пішінді жою сәтсіз аяқталды. Қайталап көріңіз."
+  },
+  {
+    "id": "workspace.form_get_failed",
+    "translation": "Пішінді жүктеу сәтсіз аяқталды. Қайталап көріңіз."
+  },
+  {
+    "id": "workspace.form_not_found",
+    "translation": "Пішін табылмады."
+  },
+  {
+    "id": "workspace.form_update_failed",
+    "translation": "Пішінді жаңарту сәтсіз аяқталды. Қайталап көріңіз."
+  },
+  {
+    "id": "workspace.form_login_required",
+    "translation": "Бұл пішінді ашу үшін жүйеге кіріңіз."
+  },
+  {
+    "id": "workspace.form_linked_failed",
+    "translation": "Таңдауға арналған жазбаларды жүктеу сәтсіз аяқталды. Қайталап көріңіз."
+  },
+  {
+    "id": "workspace.form_linked_not_found",
+    "translation": "Бұл пішінде осы жазбалардан таңдайтын өріс жоқ."
+  },
+  {
+    "id": "workspace.form_invalid_condition",
+    "translation": "Өрістің «Тек мынада көрсету» шарты толық емес немесе пішін пайдалана алмайтын өріске сілтейді."
+  },
+  {
+    "id": "workspace.form_submit_required_field",
+    "translation": "Барлық міндетті өрістерді толтырыңыз."
+  },
+  {
+    "id": "workspace.form_submit_failed",
+    "translation": "Пішінді жіберу сәтсіз аяқталды. Қайталап көріңіз."
+  },
+  {
+    "id": "workspace.form_submissions_failed",
+    "translation": "Пішінге жіберілген жауаптарды жүктеу сәтсіз аяқталды. Қайталап көріңіз."
+  },
+  {
+    "id": "workspace.form_file_too_large",
+    "translation": "Бұл файл тым үлкен."
+  },
+  {
+    "id": "workspace.form_file_type_not_allowed",
+    "translation": "Бұл түрдегі файлдарды пішінге жүктеуге болмайды."
+  },
+  {
+    "id": "workspace.form_file_missing",
+    "translation": "Жүктелген файл табылмады. Оны қайта жүктеңіз."
+  },
+  {
+    "id": "workspace.form_image_type_not_allowed",
+    "translation": "JPEG, PNG, GIF немесе WebP суретін пайдаланыңыз."
   }
 ]

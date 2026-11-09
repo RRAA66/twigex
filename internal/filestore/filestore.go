@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 )
 
 const (
@@ -32,6 +33,12 @@ type FileBackend interface {
 	FileSize(path string) (int64, error)
 	FileETag(path string) (string, error)
 	CopyFileFromReader(ctx context.Context, path string, reader io.Reader, size int64) error
+	ListFiles(ctx context.Context, dir string) ([]FileInfo, error)
+}
+
+type FileInfo struct {
+	Path    string
+	ModTime time.Time
 }
 
 type FileBackendSettings struct {

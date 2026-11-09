@@ -1930,5 +1930,69 @@
   {
     "id": "channel.role_invalid",
     "translation": "To nie jest prawidłowa rola w kanale."
+  },
+  {
+    "id": "workspace.form_create_failed",
+    "translation": "Nie udało się utworzyć formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_delete_failed",
+    "translation": "Nie udało się usunąć formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_get_failed",
+    "translation": "Nie udało się wczytać formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_not_found",
+    "translation": "Nie znaleziono formularza."
+  },
+  {
+    "id": "workspace.form_update_failed",
+    "translation": "Nie udało się zaktualizować formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_login_required",
+    "translation": "Zaloguj się, aby otworzyć ten formularz."
+  },
+  {
+    "id": "workspace.form_linked_failed",
+    "translation": "Nie udało się wczytać rekordów do wyboru. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_linked_not_found",
+    "translation": "Ten formularz nie ma pola z wyborem spośród tych rekordów."
+  },
+  {
+    "id": "workspace.form_invalid_condition",
+    "translation": "Warunek „Pokaż tylko, gdy” pola jest niepełny lub odnosi się do pola, którego formularz nie może użyć."
+  },
+  {
+    "id": "workspace.form_submit_required_field",
+    "translation": "Wypełnij wszystkie wymagane pola."
+  },
+  {
+    "id": "workspace.form_submit_failed",
+    "translation": "Nie udało się wysłać formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_submissions_failed",
+    "translation": "Nie udało się wczytać zgłoszeń formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_file_too_large",
+    "translation": "Ten plik jest za duży."
+  },
+  {
+    "id": "workspace.form_file_type_not_allowed",
+    "translation": "Plików tego typu nie można przesłać do formularza."
+  },
+  {
+    "id": "workspace.form_file_missing",
+    "translation": "Nie znaleziono przesłanego pliku. Prześlij go ponownie."
+  },
+  {
+    "id": "workspace.form_image_type_not_allowed",
+    "translation": "Użyj obrazu JPEG, PNG, GIF lub WebP."
   }
 ]

@@ -29,6 +29,7 @@ import { t } from "@/i18n/index.js";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import RenameDialog from "@/components/Projects/Menu/RenameDialog.vue";
 import workspaceService from "@/services/workspaceService";
+import formService from "@/services/formService";
 import { useWorkspaceStore } from "@/store/workspaces";
 import { useAlertStore } from "@/store/alerts";
 import { extractErrorMessage } from "@/utils/errors";
@@ -98,11 +99,16 @@ async function deleteView() {
 
     try {
         if (view?.id) {
-            await workspaceService.deleteWorkspaceTableView({
-                workspace_id: route.params.id,
-                table_id: route.params.tid,
-                view_id: view.id,
-            });
+            if (view.view_type === "form") {
+                await formService.deleteForm(route.params.id, route.params.tid, view.id);
+            } else {
+                await workspaceService.deleteWorkspaceTableView({
+                    workspace_id: route.params.id,
+                    table_id: route.params.tid,
+                    view_id: view.id,
+                });
+            }
+
             workspaceStore.setViewTypes(
                 (workspaceStore.getViewTypes || []).filter((v) => v.id !== view.id),
             );

@@ -41,7 +41,7 @@ func nameFilter(value string) string {
 func setupViewMetadata(t *testing.T) {
 	t.Helper()
 	requireDB(t)
-	cleanTables(t, "workspace_view", "workspace_sort", "workspace_filters", "workspace_saved_filters")
+	cleanTables(t, "workspace_view", "workspace_forms", "workspace_sort", "workspace_filters", "workspace_saved_filters")
 
 	for _, v := range []struct {
 		id, workspace, table, viewType string
@@ -53,12 +53,16 @@ func setupViewMetadata(t *testing.T) {
 		{"g1", "w1", "t1", "grid", true},
 		{"v4", "w1", "t2", "list", false},
 		{"v9", "w1", "t2", "form", false},
+		{"v10", "w1", "t2", "form", false},
 		{"g2", "w1", "t2", "grid", true},
 		{"v8", "w2", "t1", "kanban", false},
 	} {
 		mustExec(t, `INSERT INTO workspace_view (id, workspace_id, table_id, view_type, parent_table_id, name, item_order, created_by, main_view, created_at, updated_at, deleted_at, is_public)
 			VALUES (?, ?, ?, ?, '', ?, '[]', 'u1', ?, 0, 0, 0, 1)`, v.id, v.workspace, v.table, v.viewType, "view "+v.id, v.main)
 	}
+
+	mustExec(t, `INSERT INTO workspace_forms (id, workspace_id, table_id, name, public_token, created_by, created_at, updated_at)
+		VALUES ('v10', 'w1', 't2', 'view v10', 'token-v10', 'u1', 0, 0)`)
 
 	insertSavedFilter(t, "s1", "w1", "t1", "v1", "u1", false, true, 100, nameFilter("older"))
 	insertSavedFilter(t, "s2", "w1", "t1", "v1", "u1", false, true, 200, nameFilter("newest active"))
@@ -111,7 +115,7 @@ func TestGetTableViewMetadata(t *testing.T) {
 			saved: []string{"s4", "s3", "s2", "s1", "s5"},
 		},
 		"t2": {
-			views: []string{"v4 filter=second table"},
+			views: []string{"v10", "v4 filter=second table"},
 			grid:  []string{"g2"},
 			saved: []string{"s7"},
 		},

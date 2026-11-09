@@ -2681,6 +2681,7 @@ func (a *App) GetItemForTableByID(ctx context.Context, workspaceID, tableID, ite
 	}
 
 	a.restrictLinkedItems(ctx, []map[string]interface{}{item}, headers, user, workspaceID)
+	a.hydrateFileAttachments(ctx, []map[string]interface{}{item}, headers, tableID)
 
 	return item, headers, nil
 }
@@ -3667,7 +3668,7 @@ func (a *App) CreateWorkspaceTask(ctx context.Context, workspaceID string, table
 	}
 
 	if parentTaskID == "" {
-		if err := a.Store.Workspace.SyncTaskKanban(workspaceID, tableID, taskID, selects, *workspaceTask); err != nil {
+		if err := a.Store.Workspace.SyncTaskKanban(ctx, workspaceID, tableID, taskID, selects, *workspaceTask); err != nil {
 			tlog.Errorw("Failed to sync task kanban",
 				"workspace_id", workspaceID,
 				"table_id", tableID,
@@ -4266,7 +4267,15 @@ func (a *App) DeleteWorkspaceTableView(ctx context.Context, workspaceID string, 
 		deleted.onlyUsers = audience
 	}
 
-	ok, err := a.Store.Workspace.DeleteTableView(workspaceID, tableID, viewID)
+	dbCtx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	formImages, appErr := a.viewFormImages(dbCtx, workspaceID, tableID, viewID)
+	if appErr != nil {
+		return false, appErr
+	}
+
+	ok, err := a.Store.Workspace.DeleteTableView(dbCtx, workspaceID, tableID, viewID)
 	if err != nil {
 		tlog.Errorw("Failed to delete table view",
 			"workspace_id", workspaceID,
@@ -4275,6 +4284,11 @@ func (a *App) DeleteWorkspaceTableView(ctx context.Context, workspaceID string, 
 			"error", err,
 		)
 		return false, model.NewAppError("workspace.table_view_delete_failed", http.StatusInternalServerError)
+	}
+
+	if formImages != nil {
+		a.removeFormImageFiles(ctx, formImages)
+		a.removePendingFormFiles(ctx, viewID)
 	}
 
 	a.publishProjectChange(ctx, deleted)
@@ -4624,7 +4638,7 @@ func (a *App) GetWorkspaceTablesForRoleEditor(workspaceID string, user model.Use
 }
 
 func (a *App) DeleteWorkspaceAttachment(ctx context.Context, fileID, workspaceID string, user model.User) *model.AppError {
-	attachment, appErr := a.GetWorkspaceAttachment(fileID, workspaceID, user)
+	attachment, appErr := a.workspaceAttachment(fileID, workspaceID, user)
 	if appErr != nil {
 		return appErr
 	}
@@ -4684,7 +4698,47 @@ func (a *App) DeleteWorkspaceAttachment(ctx context.Context, fileID, workspaceID
 	return nil
 }
 
-func (a *App) GetWorkspaceAttachment(fileID, workspaceID string, user model.User) (*model.WorkspaceAttachment, *model.AppError) {
+func (a *App) GetWorkspaceAttachment(ctx context.Context, fileID, workspaceID string, user model.User) (*model.WorkspaceAttachment, *model.AppError) {
+	isMember, appErr := a.IsWorkspaceMember(workspaceID, user.ID)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	if !isMember && !a.IsWorkspaceMemberOrGroupMember(workspaceID, user.ID) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	attachment, appErr := a.getAttachment(fileID, workspaceID)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	ctx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	// A form's cover and logo are shown to whoever may open the form, which
+	// includes members through a group and members who see only their own
+	// tasks.
+	if form := a.formOfImage(ctx, attachment); form != nil {
+		if appErr := a.requireFormOpen(ctx, user, form); appErr != nil {
+			return nil, appErr
+		}
+
+		return attachment, nil
+	}
+
+	if !isMember {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if appErr := a.requireTaskAccess(user, workspaceID, attachment.TableID, attachment.TaskID); appErr != nil {
+		return nil, appErr
+	}
+
+	return attachment, nil
+}
+
+func (a *App) workspaceAttachment(fileID, workspaceID string, user model.User) (*model.WorkspaceAttachment, *model.AppError) {
 	isMember, appErr := a.IsWorkspaceMember(workspaceID, user.ID)
 	if appErr != nil {
 		return nil, appErr
@@ -4694,6 +4748,19 @@ func (a *App) GetWorkspaceAttachment(fileID, workspaceID string, user model.User
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
+	attachment, appErr := a.getAttachment(fileID, workspaceID)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	if appErr := a.requireTaskAccess(user, workspaceID, attachment.TableID, attachment.TaskID); appErr != nil {
+		return nil, appErr
+	}
+
+	return attachment, nil
+}
+
+func (a *App) getAttachment(fileID, workspaceID string) (*model.WorkspaceAttachment, *model.AppError) {
 	attachment, err := a.Store.Workspace.GetAttachment(fileID, workspaceID)
 	if err != nil {
 		tlog.Errorw("Failed to get workspace attachment", "file_id", fileID, "workspace_id", workspaceID, "error", err)
@@ -4702,10 +4769,6 @@ func (a *App) GetWorkspaceAttachment(fileID, workspaceID string, user model.User
 
 	if attachment == nil {
 		return nil, model.NewAppError("workspace.attachment_not_found", http.StatusNotFound)
-	}
-
-	if appErr := a.requireTaskAccess(user, workspaceID, attachment.TableID, attachment.TaskID); appErr != nil {
-		return nil, appErr
 	}
 
 	return attachment, nil

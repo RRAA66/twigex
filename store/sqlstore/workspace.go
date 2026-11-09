@@ -123,8 +123,8 @@ func (w *workspaceRepository) CreateTask(workspaceID, tableID, name, userID, par
 
 // SyncTaskKanban updates kanban views and sections for a newly created
 // top-level task; selects gives the option chosen for each single-select field.
-func (w *workspaceRepository) SyncTaskKanban(workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error {
-	tx, err := w.Db.Begin()
+func (w *workspaceRepository) SyncTaskKanban(ctx context.Context, workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error {
+	tx, err := w.Db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -135,18 +135,26 @@ func (w *workspaceRepository) SyncTaskKanban(workspaceID, tableID, taskID string
 		}
 	}()
 
-	if err = w.UpdateKanbanViewsTx(tx, workspaceID, tableID, task); err != nil {
+	if err = w.syncTaskKanbanTx(ctx, tx, workspaceID, tableID, taskID, selects, task); err != nil {
 		return err
-	}
-
-	for _, field := range slices.Sorted(maps.Keys(selects)) {
-		if _, err = w.UpdateKanbanSectionsTx(tx, workspaceID, tableID, taskID, field, selects[field]); err != nil {
-			return err
-		}
 	}
 
 	err = tx.Commit()
 	return err
+}
+
+func (w *workspaceRepository) syncTaskKanbanTx(ctx context.Context, tx *sql.Tx, workspaceID, tableID, taskID string, selects map[string]string, task map[string]interface{}) error {
+	if err := w.UpdateKanbanViewsTx(ctx, tx, workspaceID, tableID, task); err != nil {
+		return err
+	}
+
+	for _, field := range slices.Sorted(maps.Keys(selects)) {
+		if _, err := w.UpdateKanbanSectionsTx(tx, workspaceID, tableID, taskID, field, selects[field]); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // CreateTx creates a workspace, its default roles, and the creator as admin member
@@ -1976,15 +1984,17 @@ func attachFilterAndSort(tableID string, views []model.WorkspaceView, filters ma
 }
 
 // The ORDER BY is the order the (table_id, view_type) index returned views in
-// when they were read one table at a time. Form views were removed but their
-// rows were kept, so they are left out here.
+// when they were read one table at a time. An earlier, removed form feature
+// left 'form' rows behind with no form of their own, so a form view is shown
+// only when its form exists.
 func (w *workspaceRepository) viewsByTable(workspaceID string, tableIDs []string) (map[string][]model.WorkspaceView, error) {
 	args := append([]any{workspaceID}, toInterfaceSlice(tableIDs)...)
 	rows, err := w.Db.Query(`
-		SELECT id, workspace_id, table_id, view_type, parent_table_id, name, item_order, created_by, created_at, updated_at, deleted_at, COALESCE(is_public, 1)
-		FROM workspace_view
-		WHERE workspace_id = ? AND table_id IN (`+sqlPlaceholders(len(tableIDs))+`) AND main_view = 0 AND view_type <> 'form'
-		ORDER BY table_id, view_type, id
+		SELECT v.id, v.workspace_id, v.table_id, v.view_type, v.parent_table_id, v.name, v.item_order, v.created_by, v.created_at, v.updated_at, v.deleted_at, COALESCE(v.is_public, 1)
+		FROM workspace_view v
+		WHERE v.workspace_id = ? AND v.table_id IN (`+sqlPlaceholders(len(tableIDs))+`) AND v.main_view = 0
+		  AND (v.view_type <> 'form' OR EXISTS (SELECT 1 FROM workspace_forms f WHERE f.id = v.id))
+		ORDER BY v.table_id, v.view_type, v.id
 	`, args...)
 	if err != nil {
 		return nil, err
@@ -2413,18 +2423,18 @@ func addTaskToUnassignedSection(itemOrderJSON string, task map[string]interface{
 	return itemOrderJSON, false, nil
 }
 
-func (w *workspaceRepository) UpdateKanbanViewsTx(tx *sql.Tx, workspaceID string, tableID string, task map[string]interface{}) error {
+func (w *workspaceRepository) UpdateKanbanViewsTx(ctx context.Context, tx *sql.Tx, workspaceID string, tableID string, task map[string]interface{}) error {
 	if tx == nil {
 		return sql.ErrConnDone
 	}
 
 	var ping string
-	err := tx.QueryRow(`SELECT 'ping'`).Scan(&ping)
+	err := tx.QueryRowContext(ctx, `SELECT 'ping'`).Scan(&ping)
 	if err != nil {
 		return err
 	}
 
-	rows, err := tx.Query(`
+	rows, err := tx.QueryContext(ctx, `
         SELECT id, item_order
         FROM workspace_view
         WHERE workspace_id = ? AND table_id = ? AND view_type = 'kanban'
@@ -2469,7 +2479,7 @@ func (w *workspaceRepository) UpdateKanbanViewsTx(tx *sql.Tx, workspaceID string
 			continue
 		}
 
-		_, err = tx.Exec(`
+		_, err = tx.ExecContext(ctx, `
             UPDATE workspace_view
             SET item_order = ?
             WHERE id = ?
@@ -2870,7 +2880,13 @@ func (w *workspaceRepository) GetLinkedRecordsLite(ctx context.Context, tableNam
 
 	args = append(args, limit, offset)
 
-	rows, err := w.Db.QueryContext(ctx, "SELECT id, name FROM "+table+" WHERE "+strings.Join(where, " AND ")+
+	// A single-select's options carry the colour they are shown with.
+	selected := "id, name"
+	if slices.Contains(columns, "color") {
+		selected += ", color"
+	}
+
+	rows, err := w.Db.QueryContext(ctx, "SELECT "+selected+" FROM "+table+" WHERE "+strings.Join(where, " AND ")+
 		" ORDER BY "+order+" LIMIT ? OFFSET ?", args...)
 	if err != nil {
 		return nil, err
@@ -2884,6 +2900,34 @@ func (w *workspaceRepository) GetLinkedRecordsLite(ctx context.Context, tableNam
 	}
 
 	return items, err
+}
+
+// The tasks come back in no particular order.
+func (w *workspaceRepository) GetTasksByIDs(ctx context.Context, tableName string, ids []string, access model.SQLFilter) ([]map[string]interface{}, error) {
+	if len(ids) == 0 {
+		return []map[string]interface{}{}, nil
+	}
+
+	table, err := quoteIdent(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	where := "main.id IN (" + sqlPlaceholders(len(ids)) + ") AND (main.deleted_at IS NULL OR main.deleted_at = 0)"
+	args := toInterfaceSlice(ids)
+	if access.SQL != "" {
+		where += " AND " + access.SQL
+		args = append(args, access.Args...)
+	}
+
+	rows, err := w.Db.QueryContext(ctx, "SELECT main.* FROM "+table+" AS main WHERE "+where, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	return scanRowsToMaps(rows)
 }
 
 // GetTasksByCalendarRange returns tasks whose date range overlaps [from, to]:
@@ -3389,9 +3433,36 @@ func (w *workspaceRepository) GetTableNamesByIDs(ids []string) (map[string]strin
 	return result, rows.Err()
 }
 
-func (w *workspaceRepository) DeleteTableView(workspaceID string, tableID string, viewID string) (bool, error) {
-	_, err := w.Db.Exec("DELETE FROM workspace_view WHERE workspace_id = ? AND table_id = ? AND id = ?", workspaceID, tableID, viewID)
+func (w *workspaceRepository) DeleteTableView(ctx context.Context, workspaceID string, tableID string, viewID string) (bool, error) {
+	tx, err := w.Db.BeginTx(ctx, nil)
 	if err != nil {
+		return false, err
+	}
+
+	defer tx.Rollback()
+
+	forms, err := tx.ExecContext(ctx, "DELETE FROM workspace_forms WHERE workspace_id = ? AND table_id = ? AND id = ?", workspaceID, tableID, viewID)
+	if err != nil {
+		return false, err
+	}
+
+	deletedForms, err := forms.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	if deletedForms > 0 {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM workspace_attachments WHERE task_id = ?", viewID); err != nil {
+			return false, err
+		}
+	}
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM workspace_view WHERE workspace_id = ? AND table_id = ? AND id = ?", workspaceID, tableID, viewID)
+	if err != nil {
+		return false, err
+	}
+
+	if err := tx.Commit(); err != nil {
 		return false, err
 	}
 
@@ -5042,9 +5113,6 @@ type LinkedItem struct {
 // sql.ErrNoRows when the table, field or task is not there, and
 // model.ErrLinkTargetMissing when a row to link is not in the linked table.
 func (w *workspaceRepository) ChangeTaskLinks(ctx context.Context, workspaceID, tableID, taskID, field string, add, remove []string) (*map[string]interface{}, error) {
-	add = slices.Compact(slices.Sorted(slices.Values(add)))
-	remove = slices.Compact(slices.Sorted(slices.Values(remove)))
-
 	// Read committed, so that once the task is locked every read sees what
 	// an earlier save to the same task wrote, rather than the snapshot taken
 	// before it was locked.
@@ -5054,6 +5122,24 @@ func (w *workspaceRepository) ChangeTaskLinks(ctx context.Context, workspaceID, 
 	}
 
 	defer tx.Rollback()
+
+	result, err := w.changeTaskLinksTx(ctx, tx, workspaceID, tableID, taskID, field, add, remove)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// changeTaskLinksTx is ChangeTaskLinks inside the caller's transaction, which
+// must be read committed for the reason ChangeTaskLinks gives.
+func (w *workspaceRepository) changeTaskLinksTx(ctx context.Context, tx *sql.Tx, workspaceID, tableID, taskID, field string, add, remove []string) (map[string]interface{}, error) {
+	add = slices.Compact(slices.Sorted(slices.Values(add)))
+	remove = slices.Compact(slices.Sorted(slices.Values(remove)))
 
 	var taskTable string
 	if err := tx.QueryRowContext(ctx, `SELECT name FROM workspace_tables
@@ -5219,11 +5305,7 @@ func (w *workspaceRepository) ChangeTaskLinks(ctx context.Context, workspaceID, 
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return &map[string]interface{}{
+	return map[string]interface{}{
 		"newLinkedItems":            links,
 		"secondLinkedItemsToAdd":    reverseAdded,
 		"secondLinkedItemsToDelete": reverseRemoved,

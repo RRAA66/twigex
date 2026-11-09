@@ -405,6 +405,25 @@ func (b *S3FileBackend) RemoveFile(ctx context.Context, filePath string) error {
 	return b.client.RemoveObject(ctx, b.bucket, filePath, minio.RemoveObjectOptions{})
 }
 
+func (b *S3FileBackend) ListFiles(ctx context.Context, dir string) ([]FileInfo, error) {
+	if dir == "" || strings.Contains(dir, "..") {
+		return nil, errors.New("invalid path")
+	}
+
+	opts := minio.ListObjectsOptions{Prefix: strings.TrimSuffix(dir, "/") + "/", Recursive: true}
+
+	var files []FileInfo
+	for object := range b.client.ListObjects(ctx, b.bucket, opts) {
+		if object.Err != nil {
+			return nil, object.Err
+		}
+
+		files = append(files, FileInfo{Path: object.Key, ModTime: object.LastModified})
+	}
+
+	return files, nil
+}
+
 func (b *S3FileBackend) ServeFile(
 	filePath string,
 	w http.ResponseWriter,
