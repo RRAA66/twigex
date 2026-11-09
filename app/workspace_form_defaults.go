@@ -77,8 +77,6 @@ func (a *App) presetFormValues(ctx context.Context, form *model.WorkspaceFormWit
 	return nil
 }
 
-// prepareBuilderForm adds what the builder shows beside the saved form: the
-// names of linked defaults and the tables a master link may name.
 func (a *App) prepareBuilderForm(ctx context.Context, user model.User, form *model.WorkspaceFormWithFields) *model.AppError {
 	a.nameFormDefaults(ctx, user, form.WorkspaceID, form.Fields)
 
