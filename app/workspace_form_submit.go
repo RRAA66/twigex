@@ -339,8 +339,6 @@ func (a *App) attachFormFiles(ctx context.Context, form *model.WorkspaceFormWith
 	return nil
 }
 
-// GetFormSubmissions lists a page of who submitted a form within filter,
-// newest first, with the row each made as the grid would show it now.
 func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, formID string, filter model.FormSubmissionsFilter, page int, user model.User) (*model.FormSubmissionsPage, *model.AppError) {
 	if page < 1 {
 		page = 1
