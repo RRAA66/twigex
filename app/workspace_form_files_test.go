@@ -248,6 +248,27 @@ func TestSubmitFormRequiresARequiredFileField(t *testing.T) {
 	}
 }
 
+func TestSubmitFormSkipsARequiredFileFieldItsConditionHides(t *testing.T) {
+	docs := fileField("docs", true)
+	docs.VisibilityRule = &model.VisibilityRule{TriggerField: "kind", Operator: "equals", Value: "claim"}
+	a, ws, _ := submitApp(textField("name", false), textField("kind", false), docs)
+	useLocalProjectFiles(t, a)
+
+	_, appErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"}, model.FormValue{Name: "kind", Value: "question"})
+	if appErr != nil {
+		t.Fatalf("hidden file field: %v", appErr)
+	}
+
+	_, appErr = submit(a, submitter, model.FormValue{Name: "name", Value: "Order"}, model.FormValue{Name: "kind", Value: "claim"})
+	if appErr == nil || appErr.Status != http.StatusBadRequest {
+		t.Fatalf("shown file field: want 400, got %v", appErr)
+	}
+
+	if len(ws.created) != 1 {
+		t.Errorf("created %d rows, want 1", len(ws.created))
+	}
+}
+
 func TestSubmitFormRefusesAFileSomeoneElseUploaded(t *testing.T) {
 	a, ws, _ := submitApp(fileField("docs", false))
 	root := useLocalProjectFiles(t, a)
