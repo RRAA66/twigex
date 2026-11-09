@@ -23,6 +23,15 @@ const formService = {
         return axios.delete(`/workspaces/${workspaceId}/table/${tableId}/forms/${formId}`);
     },
 
+    getSubmissions(workspaceId, tableId, formId, page) {
+        return axios.get(
+            `/workspaces/${workspaceId}/table/${tableId}/forms/${formId}/submissions`,
+            {
+                params: { page },
+            },
+        );
+    },
+
     getPublicForm(token) {
         return axios.get(`/public/forms/${token}`);
     },

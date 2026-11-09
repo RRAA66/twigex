@@ -20,6 +20,7 @@ vi.mock("@/services/formService", () => ({
         getForm: vi.fn(),
         createForm: vi.fn(),
         updateForm: vi.fn(),
+        getSubmissions: vi.fn(),
         getPublicForm: vi.fn(),
     },
 }));
@@ -232,6 +233,35 @@ describe("FormView", () => {
             expect(formService.getPublicForm).toHaveBeenCalledWith("tok");
             expect(w.text()).toContain("Tell us");
             expect(w.find("button[type='submit']").exists()).toBe(true);
+            w.unmount();
+        });
+
+        it("lists who submitted it and the answers in its row", async () => {
+            formService.getSubmissions.mockResolvedValue({
+                data: {
+                    items: [
+                        {
+                            id: "s1",
+                            task_id: "task-1",
+                            submitted_by: "u1",
+                            submitted_at: 1700000000,
+                            submitter_info: { id: "u1", name: "Ann", lastname: "Lee", photo: "" },
+                            row: { id: "task-1", name: "Repair the roof" },
+                        },
+                    ],
+                    total: 1,
+                },
+            });
+            const { w } = await mountAt("/p/w1/form/t1/view/f1");
+
+            await tab(w, "Submissions").trigger("click");
+            await flushPromises();
+
+            expect(formService.getSubmissions).toHaveBeenCalledWith("w1", "t1", "f1", 1);
+            expect(w.text()).toContain("Ann Lee");
+            expect(w.text()).toContain("Title");
+            expect(w.text()).toContain("Repair the roof");
+            expect(w.text()).not.toContain("task-1");
             w.unmount();
         });
 

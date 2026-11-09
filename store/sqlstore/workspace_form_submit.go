@@ -146,12 +146,20 @@ func insertFormTaskTx(ctx context.Context, tx *sql.Tx, tableName string, task mo
 // hold: out of range, an incorrect date, an incorrect value, too long.
 var rejectedValueErrors = []uint16{1264, 1292, 1366, 1406}
 
-func (w *workspaceRepository) GetFormSubmissions(ctx context.Context, formID string) ([]model.WorkspaceFormSubmission, error) {
+func (w *workspaceRepository) CountFormSubmissions(ctx context.Context, formID string) (int, error) {
+	var count int
+	err := w.Db.QueryRowContext(ctx, `SELECT COUNT(*) FROM workspace_form_submissions WHERE form_id = ?`, formID).Scan(&count)
+
+	return count, err
+}
+
+func (w *workspaceRepository) GetFormSubmissions(ctx context.Context, formID string, limit, offset int) ([]model.WorkspaceFormSubmission, error) {
 	rows, err := w.Db.QueryContext(ctx, `
 		SELECT id, form_id, task_id, COALESCE(submitted_by, ''), submitted_at
 		FROM workspace_form_submissions
 		WHERE form_id = ?
-		ORDER BY submitted_at DESC`, formID)
+		ORDER BY submitted_at DESC, id DESC
+		LIMIT ? OFFSET ?`, formID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

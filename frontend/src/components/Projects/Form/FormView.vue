@@ -106,6 +106,13 @@ SPDX-License-Identifier: AGPL-3.0-only
                 <FormFill :token="formData.public_token" />
             </div>
         </div>
+        <FormViewSubmissions
+            v-else
+            :workspace-id="formData.workspace_id"
+            :table-id="formData.table_id"
+            :form-id="formData.id"
+            :fields="formFields"
+        />
 
         <FormViewShareDialog
             v-if="formData.public_token"
@@ -139,8 +146,9 @@ import FormFill from "@/components/Projects/Form/FormFill.vue";
 import FormViewBuild from "@/components/Projects/Form/FormViewBuild.vue";
 import FormViewNameDialog from "@/components/Projects/Form/FormViewNameDialog.vue";
 import FormViewShareDialog from "@/components/Projects/Form/FormViewShareDialog.vue";
+import FormViewSubmissions from "@/components/Projects/Form/FormViewSubmissions.vue";
 
-const TABS = ["build", "preview"];
+const TABS = ["build", "preview", "submissions"];
 
 const route = useRoute();
 const rolesStore = useWorkspaceRolesStore();

@@ -18,7 +18,10 @@ import (
 	"github.com/twigex/twigex/tlog"
 )
 
-const maxLinkedItemsPage = 50
+const (
+	maxLinkedItemsPage  = 50
+	submissionsPageSize = 50
+)
 
 // GetPublicForm serves a form by its link, with what its pickers offer and
 // whether the user may submit it.
@@ -269,35 +272,71 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 	return task.ID, nil
 }
 
-// GetFormSubmissions lists who submitted a form and which row each made.
-// Rows are table data, so it asks for reading the table as well as what
-// reading the form asks for.
-func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, formID string, user model.User) ([]model.WorkspaceFormSubmission, *model.AppError) {
+// GetFormSubmissions lists a page of who submitted a form, newest first,
+// with the row each made as the grid would show it now. Rows are table data,
+// so it asks for reading the table as well as what reading the form asks for.
+func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, formID string, page int, user model.User) (*model.FormSubmissionsPage, *model.AppError) {
 	if !a.Server.License.HasForms() {
 		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
+	}
+
+	if page < 1 {
+		page = 1
 	}
 
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceView) ||
-		!a.canReadTable(ctx, user, workspaceID, tableID) {
-		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionUpdateWorkspaceView); appErr != nil {
+		return nil, appErr
 	}
 
 	if _, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
 		return nil, appErr
 	}
 
-	submissions, err := a.Store.Workspace.GetFormSubmissions(ctx, formID)
+	failed := model.NewAppError("workspace.form_submissions_failed", http.StatusInternalServerError)
+
+	submissions, err := a.Store.Workspace.GetFormSubmissions(ctx, formID, submissionsPageSize, (page-1)*submissionsPageSize)
 	if err != nil {
 		tlog.Errorw("Failed to retrieve form submissions",
 			"form_id", formID,
 			"error", err,
 		)
-		return nil, model.NewAppError("workspace.form_submissions_failed", http.StatusInternalServerError)
+		return nil, failed
 	}
 
+	total, err := a.Store.Workspace.CountFormSubmissions(ctx, formID)
+	if err != nil {
+		tlog.Errorw("Failed to count form submissions",
+			"form_id", formID,
+			"error", err,
+		)
+		return nil, failed
+	}
+
+	result := &model.FormSubmissionsPage{Items: submissions, Total: total}
+
+	if err := a.nameSubmitters(result.Items); err != nil {
+		tlog.Errorw("Failed to retrieve form submitters",
+			"form_id", formID,
+			"error", err,
+		)
+		return nil, failed
+	}
+
+	if err := a.attachSubmissionRows(ctx, result.Items, workspaceID, tableID, user); err != nil {
+		tlog.Errorw("Failed to retrieve the rows of form submissions",
+			"form_id", formID,
+			"error", err,
+		)
+		return nil, failed
+	}
+
+	return result, nil
+}
+
+func (a *App) nameSubmitters(submissions []model.WorkspaceFormSubmission) error {
 	var submitterIDs []string
 	for _, s := range submissions {
 		if s.SubmittedBy != "" && !slices.Contains(submitterIDs, s.SubmittedBy) {
@@ -307,11 +346,7 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 
 	users, err := a.Store.User.GetByIDs(submitterIDs)
 	if err != nil {
-		tlog.Errorw("Failed to retrieve form submitters",
-			"form_id", formID,
-			"error", err,
-		)
-		return nil, model.NewAppError("workspace.form_submissions_failed", http.StatusInternalServerError)
+		return err
 	}
 
 	submitters := make(map[string]model.FormMember, len(users))
@@ -325,7 +360,54 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 		}
 	}
 
-	return submissions, nil
+	return nil
+}
+
+// attachSubmissionRows reads the submissions' rows as the grid reads its
+// page: only those the user may see, their links, options and files filled
+// in.
+func (a *App) attachSubmissionRows(ctx context.Context, submissions []model.WorkspaceFormSubmission, workspaceID, tableID string, user model.User) error {
+	if len(submissions) == 0 {
+		return nil
+	}
+
+	tableName, err := a.Store.Workspace.GetTableName(tableID)
+	if err != nil {
+		return err
+	}
+
+	colTypes, err := a.Store.Workspace.GetTableColumnTypes(tableName)
+	if err != nil {
+		return err
+	}
+
+	taskIDs := make([]string, 0, len(submissions))
+	for _, s := range submissions {
+		taskIDs = append(taskIDs, s.TaskID)
+	}
+
+	rows, err := a.Store.Workspace.GetTasksByIDs(ctx, tableName, taskIDs, a.assignedOnlyFilter(user, workspaceID, tableID))
+	if err != nil {
+		return err
+	}
+
+	headers := a.buildTableHeaders(tableID, colTypes, false, true)
+	a.hydrateLinkedAndSingleSelect(ctx, rows, headers)
+	a.restrictLinkedItems(ctx, rows, headers, user, workspaceID)
+	a.hydrateFileAttachments(ctx, rows, headers, tableID)
+
+	byID := make(map[string]map[string]any, len(rows))
+	for _, row := range rows {
+		if id, _ := row["id"].(string); id != "" {
+			byID[id] = row
+		}
+	}
+
+	for i, s := range submissions {
+		submissions[i].Row = byID[s.TaskID]
+	}
+
+	return nil
 }
 
 // getFormByToken opens a form to whoever would see its view in the grid: a
