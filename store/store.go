@@ -705,6 +705,7 @@ type WorkspaceStore interface {
 	GetForm(ctx context.Context, formID string) (*model.WorkspaceFormWithFields, error)
 	UpdateForm(ctx context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error
 	DeleteForm(ctx context.Context, formID string) error
+	SetFormImage(ctx context.Context, formID, kind string, image *model.WorkspaceAttachment, replacedID string) error
 	GetFormByToken(ctx context.Context, token string) (*model.WorkspaceFormWithFields, error)
 	GetLinkableTables(ctx context.Context, workspaceID, excludeTableID string) ([]model.FormLinkTable, error)
 	CreateFormTask(ctx context.Context, workspaceID, tableID string, task model.FormTask, submission model.WorkspaceFormSubmission) (map[string]any, error)

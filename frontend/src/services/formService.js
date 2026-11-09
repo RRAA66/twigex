@@ -3,6 +3,8 @@
 
 import axios from "./api";
 
+const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+
 const formService = {
     createForm(workspaceId, tableId, form, fields) {
         return axios.post(`/workspaces/${workspaceId}/table/${tableId}/forms`, { form, fields });
@@ -40,6 +42,32 @@ const formService = {
 
     submitPublicForm(token, fields, honeypot) {
         return axios.post(`/public/forms/${token}/submit`, { fields, honeypot });
+    },
+
+    uploadPublicFormFiles(token, files) {
+        const data = new FormData();
+
+        for (const file of files) data.append("files", file);
+
+        return axios.post(`/public/forms/${token}/files`, data, MULTIPART);
+    },
+
+    setFormImage(workspaceId, tableId, formId, kind, file) {
+        const data = new FormData();
+
+        data.append("file", file);
+
+        return axios.post(
+            `/workspaces/${workspaceId}/table/${tableId}/forms/${formId}/images/${kind}`,
+            data,
+            MULTIPART,
+        );
+    },
+
+    removeFormImage(workspaceId, tableId, formId, kind) {
+        return axios.delete(
+            `/workspaces/${workspaceId}/table/${tableId}/forms/${formId}/images/${kind}`,
+        );
     },
 };
 

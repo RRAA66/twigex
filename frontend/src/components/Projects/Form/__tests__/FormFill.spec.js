@@ -14,7 +14,7 @@ vi.mock("@/js/websocket", () => ({
 }));
 
 vi.mock("@/services/formService", () => ({
-    default: { getPublicForm: vi.fn(), submitPublicForm: vi.fn() },
+    default: { getPublicForm: vi.fn(), submitPublicForm: vi.fn(), uploadPublicFormFiles: vi.fn() },
 }));
 
 const form = {
@@ -72,7 +72,7 @@ describe("FormFill", () => {
 
         const labels = w.findAll("label.mb-1").map((l) => l.text().replace(/\s+/g, " "));
 
-        expect(labels).toEqual(["Title *", "Budget", "Done", "Due", "Owner"]);
+        expect(labels).toEqual(["Title *", "Budget", "Done", "Due", "Owner", "Files"]);
         expect(w.find("input[type='number']").exists()).toBe(true);
         expect(w.find("input[type='checkbox']").exists()).toBe(true);
         expect(w.text()).toContain("Pick a date");
@@ -123,6 +123,54 @@ describe("FormFill", () => {
         await flushPromises();
 
         expect(w.find("[role='alert']").text()).toBe("The due date is before the start date.");
+        w.unmount();
+    });
+
+    it("uploads files for a file field and sends their ids", async () => {
+        formService.uploadPublicFormFiles.mockResolvedValue({
+            data: [{ id: "file1", name: "report.pdf", size: 3, type: "application/pdf" }],
+        });
+        formService.submitPublicForm.mockResolvedValue({ data: {} });
+        const w = await mountFill();
+        const picked = new File(["pdf"], "report.pdf", { type: "application/pdf" });
+        const input = w.find("input[type='file']");
+
+        Object.defineProperty(input.element, "files", { value: [picked] });
+        await input.trigger("change");
+        await flushPromises();
+
+        expect(formService.uploadPublicFormFiles).toHaveBeenCalledWith("tok", [picked]);
+        expect(w.text()).toContain("report.pdf");
+
+        await w.find("input[type='text']:not([tabindex])").setValue("Task");
+        await w.find("form").trigger("submit");
+        await flushPromises();
+
+        const [, sent] = formService.submitPublicForm.mock.calls[0];
+
+        expect(sent).toContainEqual({ name: "files", value: "file1" });
+        w.unmount();
+    });
+
+    it("shows the form's cover at its position and its logo", async () => {
+        formService.getPublicForm.mockResolvedValue({
+            data: {
+                ...form,
+                workspace_id: "w1",
+                cover_image: "c1",
+                cover_position: 20,
+                logo: "l1",
+            },
+        });
+        const w = await mountFill();
+
+        const cover = w.find("img[alt='Form cover image']");
+        const logo = w.find("img[alt='Form logo']");
+
+        expect(cover.attributes("src")).toBe("/api/workspaces/w1/file/c1");
+        expect(cover.attributes("style")).toContain("50% 20%");
+        expect(logo.attributes("src")).toBe("/api/workspaces/w1/file/l1");
+        expect(w.text()).not.toContain("Reposition");
         w.unmount();
     });
 

@@ -2463,5 +2463,19 @@
     "projects.form_view.error.copy_failed": "Neizdevās nokopēt saiti.",
     "projects.form_view.public.no_access": "Jums nav piekļuves šai veidlapai. Lūdziet tās darbvietas dalībniekam jūs pievienot.",
     "projects.form_view.public.not_found": "Šī veidlapa neeksistē vai vairs nav atvērta.",
-    "projects.form_view.public.read_only": "Jūs varat skatīt šo veidlapu, taču jums nav atļauts pievienot ierakstus šai tabulai."
+    "projects.form_view.public.read_only": "Jūs varat skatīt šo veidlapu, taču jums nav atļauts pievienot ierakstus šai tabulai.",
+    "projects.form_view.action.add_files": "Pievienot failus",
+    "projects.form_view.action.remove_file": "Noņemt {name}",
+    "projects.form_view.action.upload_image": "Augšupielādēt",
+    "projects.form_view.action.replace_image": "Aizstāt",
+    "projects.form_view.action.reposition": "Mainīt novietojumu",
+    "projects.form_view.action.reposition_done": "Gatavs",
+    "projects.form_view.error.too_many_files": "Laukam var pievienot ne vairāk kā {max} failus. Pārējie netika pievienoti.",
+    "projects.form_view.cover_position": "Vāka attēla novietojums",
+    "projects.form_view.cover_position_hint": "Lai pārvietotu attēlu, izmantojiet bulttaustiņus uz augšu un uz leju, un nospiediet Enter vai Escape, lai pabeigtu.",
+    "projects.form_view.settings.cover_image": "Vāka attēls",
+    "projects.form_view.settings.logo": "Logotips",
+    "projects.form_view.settings.images_after_save": "Saglabājiet veidlapu, lai pievienotu vāka attēlu un logotipu.",
+    "projects.form_view.image_alt.cover": "Veidlapas vāka attēls",
+    "projects.form_view.image_alt.logo": "Veidlapas logotips"
 }

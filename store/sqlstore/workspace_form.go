@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/twigex/twigex/model"
 )
@@ -93,6 +94,7 @@ func (w *workspaceRepository) getFormWhere(ctx context.Context, where, arg strin
 }
 
 // UpdateForm replaces the form's fields and keeps its view's name in step.
+// Its images are left as they are: SetFormImage changes them.
 func (w *workspaceRepository) UpdateForm(ctx context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error {
 	tx, err := w.Db.BeginTx(ctx, nil)
 	if err != nil {
@@ -103,10 +105,10 @@ func (w *workspaceRepository) UpdateForm(ctx context.Context, form model.Workspa
 
 	_, err = tx.ExecContext(ctx, `
 		UPDATE workspace_forms
-		SET name = ?, title = ?, description = ?, cover_image = ?, cover_position = ?, logo = ?, accent_color = ?,
+		SET name = ?, title = ?, description = ?, cover_position = ?, accent_color = ?,
 		    active = ?, updated_at = ?
 		WHERE id = ?`,
-		form.Name, form.Title, form.Description, form.CoverImage, form.CoverPosition, form.Logo, form.AccentColor,
+		form.Name, form.Title, form.Description, form.CoverPosition, form.AccentColor,
 		form.Active, form.UpdatedAt, form.ID,
 	)
 	if err != nil {
@@ -145,7 +147,59 @@ func (w *workspaceRepository) DeleteForm(ctx context.Context, formID string) err
 		return err
 	}
 
+	if _, err := tx.ExecContext(ctx, `DELETE FROM workspace_attachments WHERE task_id = ?`, formID); err != nil {
+		return err
+	}
+
 	return tx.Commit()
+}
+
+// SetFormImage stores a form's cover or logo as an attachment of the form
+// and drops the one it replaces, or only drops it when image is nil.
+func (w *workspaceRepository) SetFormImage(ctx context.Context, formID, kind string, image *model.WorkspaceAttachment, replacedID string) error {
+	column, err := formImageColumn(kind)
+	if err != nil {
+		return err
+	}
+
+	tx, err := w.Db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback()
+
+	var imageID sql.NullString
+	if image != nil {
+		if err := insertAttachmentTx(ctx, tx, *image); err != nil {
+			return err
+		}
+
+		imageID = sql.NullString{String: image.ID, Valid: true}
+	}
+
+	if _, err := tx.ExecContext(ctx, `UPDATE workspace_forms SET `+column+` = ? WHERE id = ?`, imageID, formID); err != nil {
+		return err
+	}
+
+	if replacedID != "" {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM workspace_attachments WHERE id = ? AND task_id = ?`, replacedID, formID); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func formImageColumn(kind string) (string, error) {
+	switch kind {
+	case model.FormImageCover:
+		return "cover_image", nil
+	case model.FormImageLogo:
+		return "logo", nil
+	}
+
+	return "", fmt.Errorf("unknown form image %q", kind)
 }
 
 func createFormFieldsTx(ctx context.Context, tx *sql.Tx, formID string, fields []model.WorkspaceFormField) error {
