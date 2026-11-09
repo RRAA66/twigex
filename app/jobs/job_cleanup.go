@@ -17,8 +17,6 @@ const (
 	cleanupInterval = time.Hour
 )
 
-// PendingFileSweeper removes the files uploaded to forms that were never
-// submitted.
 type PendingFileSweeper interface {
 	SweepPendingFormFiles(ctx context.Context) error
 }
