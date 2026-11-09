@@ -1978,5 +1978,21 @@
   {
     "id": "workspace.form_submissions_failed",
     "translation": "Пішінге жіберілген жауаптарды жүктеу сәтсіз аяқталды. Қайталап көріңіз."
+  },
+  {
+    "id": "workspace.form_file_too_large",
+    "translation": "Бұл файл тым үлкен."
+  },
+  {
+    "id": "workspace.form_file_type_not_allowed",
+    "translation": "Бұл түрдегі файлдарды пішінге жүктеуге болмайды."
+  },
+  {
+    "id": "workspace.form_file_missing",
+    "translation": "Жүктелген файл табылмады. Оны қайта жүктеңіз."
+  },
+  {
+    "id": "workspace.form_image_type_not_allowed",
+    "translation": "JPEG, PNG, GIF немесе WebP суретін пайдаланыңыз."
   }
 ]

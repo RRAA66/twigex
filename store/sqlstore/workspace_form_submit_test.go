@@ -17,7 +17,7 @@ import (
 func setupFormSubmit(t *testing.T) *workspaceRepository {
 	t.Helper()
 	w := setupTaskLinks(t)
-	cleanTables(t, "workspace_form_submissions", "workspace_form_fields", "workspace_forms", "workspace_view")
+	cleanTables(t, "workspace_form_submissions", "workspace_form_fields", "workspace_forms", "workspace_view", "workspace_attachments")
 
 	mustExec(t, `INSERT INTO workspace_forms (id, workspace_id, table_id, name, public_token, active, created_by, created_at, updated_at)
 		VALUES ('form-1', 'ws', 't-a', 'Intake', 'token-1', 1, 'u1', 1, 1),
@@ -68,10 +68,32 @@ func TestCreateFormTaskWritesTheRowLinksAndSubmission(t *testing.T) {
 	}
 }
 
+func TestCreateFormTaskAttachesItsFiles(t *testing.T) {
+	w := setupFormSubmit(t)
+
+	task, submission := formTask(nil)
+	task.Attachments = []model.WorkspaceAttachment{{
+		ID: "file-1", WorkspaceID: "ws", TableID: "t-a", FieldID: "f-docs", TaskID: task.ID, UserID: "u1",
+		Name: "report.pdf", Size: 8, MimeType: "application/pdf", CreatedAt: 100, UpdatedAt: 100,
+	}}
+	if _, err := w.CreateFormTask(context.Background(), "ws", "t-a", task, submission); err != nil {
+		t.Fatalf("CreateFormTask: %v", err)
+	}
+
+	got, err := w.GetAttachment("file-1", "ws")
+	if err != nil {
+		t.Fatalf("GetAttachment: %v", err)
+	}
+	if got == nil || got.TaskID != "new-1" || got.FieldID != "f-docs" || got.UserID != "u1" || got.StorageID != "" {
+		t.Errorf("attachment %+v, want new-1's file by u1 on local disk", got)
+	}
+}
+
 func TestCreateFormTaskWritesNothingWhenALinkFails(t *testing.T) {
 	w := setupFormSubmit(t)
 
 	task, submission := formTask(map[string][]string{"related": {"b1", "missing"}})
+	task.Attachments = []model.WorkspaceAttachment{{ID: "file-1", WorkspaceID: "ws", TableID: "t-a", TaskID: task.ID, Name: "a.pdf"}}
 	_, err := w.CreateFormTask(context.Background(), "ws", "t-a", task, submission)
 	if !errors.Is(err, model.ErrLinkTargetMissing) {
 		t.Fatalf("CreateFormTask = %v, want ErrLinkTargetMissing", err)
@@ -82,6 +104,9 @@ func TestCreateFormTaskWritesNothingWhenALinkFails(t *testing.T) {
 	}
 	if n := countRows(t, testDB, "SELECT COUNT(*) FROM workspace_form_submissions"); n != 0 {
 		t.Errorf("kept %d submission records, want none", n)
+	}
+	if n := countRows(t, testDB, "SELECT COUNT(*) FROM workspace_attachments"); n != 0 {
+		t.Errorf("kept %d attachments, want none", n)
 	}
 }
 
@@ -141,7 +166,7 @@ func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 	mustExec(t, `INSERT INTO workspace_form_submissions (id, form_id, task_id, submitted_by, submitted_at)
 		VALUES ('s1', 'form-1', 'a1', 'u1', 1), ('s2', 'form-1', 'a2', NULL, 2), ('s3', 'form-2', 'a2', 'u1', 3)`)
 
-	got, err := w.GetFormSubmissions(context.Background(), "form-1", 10, 0)
+	got, err := w.GetFormSubmissions(context.Background(), "form-1", model.FormSubmissionsFilter{}, 10, 0)
 	if err != nil {
 		t.Fatalf("GetFormSubmissions: %v", err)
 	}
@@ -149,7 +174,7 @@ func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 		t.Errorf("got %+v, want s2 then s1", got)
 	}
 
-	next, err := w.GetFormSubmissions(context.Background(), "form-1", 1, 1)
+	next, err := w.GetFormSubmissions(context.Background(), "form-1", model.FormSubmissionsFilter{}, 1, 1)
 	if err != nil {
 		t.Fatalf("GetFormSubmissions from 1: %v", err)
 	}
@@ -157,7 +182,45 @@ func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 		t.Errorf("page from 1 = %+v, want s1 alone", next)
 	}
 
-	if count, err := w.CountFormSubmissions(context.Background(), "form-1"); err != nil || count != 2 {
+	if count, err := w.CountFormSubmissions(context.Background(), "form-1", model.FormSubmissionsFilter{}); err != nil || count != 2 {
 		t.Errorf("count = %d, %v; want 2", count, err)
+	}
+}
+
+func TestGetFormSubmissionsWithinDates(t *testing.T) {
+	w := setupFormSubmit(t)
+	ctx := context.Background()
+
+	mustExec(t, `INSERT INTO workspace_form_submissions (id, form_id, task_id, submitted_by, submitted_at)
+		VALUES ('s1', 'form-1', 'a1', 'u1', 100), ('s2', 'form-1', 'a2', 'u1', 200), ('s3', 'form-1', 'a3', 'u1', 300)`)
+
+	for _, tc := range []struct {
+		name   string
+		filter model.FormSubmissionsFilter
+		want   []string
+	}{
+		{"from a time on", model.FormSubmissionsFilter{From: 200}, []string{"s3", "s2"}},
+		{"before a time", model.FormSubmissionsFilter{To: 300}, []string{"s2", "s1"}},
+		{"between", model.FormSubmissionsFilter{From: 150, To: 250}, []string{"s2"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := w.GetFormSubmissions(ctx, "form-1", tc.filter, 10, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var ids []string
+			for _, s := range got {
+				ids = append(ids, s.ID)
+			}
+
+			if !slices.Equal(ids, tc.want) {
+				t.Errorf("submissions %v, want %v", ids, tc.want)
+			}
+
+			if count, err := w.CountFormSubmissions(ctx, "form-1", tc.filter); err != nil || count != len(tc.want) {
+				t.Errorf("count = %d, %v; want %d", count, err, len(tc.want))
+			}
+		})
 	}
 }

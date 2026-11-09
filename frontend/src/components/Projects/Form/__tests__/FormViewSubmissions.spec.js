@@ -9,6 +9,7 @@ import FormViewSubmissions from "@/components/Projects/Form/FormViewSubmissions.
 import formService from "@/services/formService";
 import workspaceService from "@/services/workspaceService";
 import { onProjectChange } from "@/js/websocket";
+import { useUserStore } from "@/store/user";
 
 const openTask = vi.fn();
 
@@ -62,6 +63,7 @@ describe("FormViewSubmissions", () => {
 
     beforeEach(() => {
         setActivePinia(createPinia());
+        useUserStore().setUser({ id: "me", timezone: { manualTimezone: "UTC" } });
         vi.clearAllMocks();
     });
 
@@ -143,7 +145,50 @@ describe("FormViewSubmissions", () => {
         w.findComponent({ name: "DataTable" }).vm.$emit("update:currentPage", 2);
         await flushPromises();
 
-        expect(formService.getSubmissions).toHaveBeenLastCalledWith("w1", "t1", "f1", 2);
+        expect(formService.getSubmissions).toHaveBeenLastCalledWith("w1", "t1", "f1", { page: 2 });
+    });
+
+    it("lists only the submissions sent on the days picked", async () => {
+        respond([]);
+        w = await mountList();
+
+        const [from, to] = w.findAllComponents({ name: "DatePickerField" });
+
+        from.vm.$emit("update:modelValue", "2026-11-03");
+        to.vm.$emit("update:modelValue", "2026-11-04");
+        await flushPromises();
+
+        expect(formService.getSubmissions).toHaveBeenLastCalledWith("w1", "t1", "f1", {
+            page: 1,
+            from: Date.UTC(2026, 10, 3) / 1000,
+            to: Date.UTC(2026, 10, 5) / 1000,
+        });
+    });
+
+    it("downloads the submissions of the days picked as a CSV", async () => {
+        respond([]);
+        w = await mountList();
+
+        w.findComponent({ name: "DatePickerField" }).vm.$emit("update:modelValue", "2026-11-03");
+        await flushPromises();
+
+        const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+        await w
+            .findAll("button")
+            .find((b) => b.text() === "Export CSV")
+            .trigger("click");
+
+        const href = new URL(click.mock.contexts[0].href);
+
+        expect(href.pathname).toBe("/api/workspaces/w1/table/t1/forms/f1/submissions/export");
+        expect(href.searchParams.get("from")).toBe(String(Date.UTC(2026, 10, 3) / 1000));
+        expect(href.searchParams.get("tz")).toBe("UTC");
+        expect(JSON.parse(href.searchParams.get("labels"))).toEqual({
+            submitted_by: "Submitted by",
+            submitted_at: "Date",
+        });
+        click.mockRestore();
     });
 
     it("reloads when a row of its table changes", async () => {
