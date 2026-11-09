@@ -176,6 +176,7 @@ func TestTaskWritesRejectNonMembers(t *testing.T) {
 	_, checks["UpdateWorkspaceTask"] = a.UpdateWorkspaceTask(ctx, "ws-a", "t-a", "task-1", "name", "mine", outsider, "")
 	_, checks["DeleteWorkspaceTask"] = a.DeleteWorkspaceTask(ctx, "ws-a", "t-a", "task-1", outsider)
 	_, checks["UpdateWorkspaceTable"] = a.UpdateWorkspaceTable(ctx, "ws-a", "t-a", "renamed", outsider)
+	checks["UpdateTableIcon"] = a.UpdateTableIcon(ctx, "ws-a", "t-a", "StarIcon", outsider)
 	_, checks["CreateView"] = a.CreateView(ctx, "ws-a", "t-a", "", "mine", "kanban", true, outsider, "", "")
 	for name, appErr := range checks {
 		if appErr == nil || appErr.Status != http.StatusForbidden {

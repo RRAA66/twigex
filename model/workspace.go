@@ -141,11 +141,22 @@ type WorkspaceMember struct {
 	UserInfo         User              `json:"user_info"`
 }
 
+var TableIcons = map[string]bool{
+	"DocumentIcon": true, "TableCellsIcon": true, "ChartBarIcon": true, "CalendarIcon": true,
+	"ListBulletIcon": true, "ClipboardDocumentListIcon": true, "CircleStackIcon": true,
+	"ServerIcon": true, "BookOpenIcon": true, "SparklesIcon": true, "Squares2X2Icon": true,
+	"RectangleStackIcon": true, "QueueListIcon": true, "PresentationChartBarIcon": true,
+	"NumberedListIcon": true, "FlagIcon": true, "StarIcon": true, "BoltIcon": true,
+	"UserCircleIcon": true, "MapPinIcon": true, "GlobeAltIcon": true, "PhotoIcon": true,
+	"TagIcon": true, "FireIcon": true, "HomeIcon": true,
+}
+
 type WorkspaceTable struct {
 	ID                string                   `json:"id"`
 	WorkspaceID       string                   `json:"workspace_id"`
 	Name              string                   `json:"name"`
 	DisplayName       sql.NullString           `json:"display_name"`
+	Icon              string                   `json:"icon,omitempty"`
 	ParentTableID     string                   `json:"parent_table_id"`
 	Linked            bool                     `json:"linked"`
 	SingleSelect      bool                     `json:"single_select"`

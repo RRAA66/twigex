@@ -2419,11 +2419,17 @@ onBeforeUnmount(stopReconnect);
 // asked for beside the page and the rows are shown without waiting for it.
 const countLoad = useLatestRequest();
 
-async function loadCount(request) {
+let countedRequest = null;
+
+async function loadCount(request, { keepShown = false } = {}) {
     const req = countLoad.start();
 
-    totalRows.value = null;
-    rootTotalRows.value = null;
+    countedRequest = request;
+    if (!keepShown) {
+        totalRows.value = null;
+        rootTotalRows.value = null;
+    }
+
     try {
         const { data } = await workspaceService.getFilteredTableData(
             { ...request, count_only: true },
@@ -3104,6 +3110,23 @@ watch(
         }
     },
 );
+
+const RECOUNT_DELAY_MS = 300;
+let recountTimer = null;
+
+watch(
+    () => workspaceStore.getGridCountToken,
+    () => {
+        if (props.isDialog || !countedRequest) return;
+        clearTimeout(recountTimer);
+        recountTimer = setTimeout(
+            () => loadCount(countedRequest, { keepShown: true }),
+            RECOUNT_DELAY_MS,
+        );
+    },
+);
+
+onBeforeUnmount(() => clearTimeout(recountTimer));
 
 // filterActive watcher intentionally removed. In the paginated system,
 // bumpGridReloadToken → fetchPage(1) already handles data reload when
