@@ -1577,6 +1577,7 @@
     "projects.create_role.view_types.kanban": "Kanban",
     "projects.create_role.view_types.calendar": "Kalendarz",
     "projects.create_role.view_types.gantt": "Gantt",
+    "projects.create_role.view_types.form": "Formularz",
     "projects.create_role.per_table.table_header": "Tabela",
     "projects.create_role.per_table.select_all": "Zaznacz wszystko",
     "projects.create_role.per_table.no_tables": "Brak tabel w tym obszarze roboczym",

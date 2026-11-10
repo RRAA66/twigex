@@ -771,10 +771,13 @@ type WorkspaceFormSubmission struct {
 }
 
 // FormSubmissionsFilter keeps the submissions sent from From until before To,
-// in unix seconds; zero leaves that end open.
+// in unix seconds; zero leaves that end open. When Access narrows the table
+// named TableName, it keeps only those whose row the user may see there.
 type FormSubmissionsFilter struct {
-	From int64
-	To   int64
+	From      int64
+	To        int64
+	TableName string
+	Access    SQLFilter
 }
 
 type FormSubmissionsPage struct {

@@ -62,13 +62,16 @@ func (a *App) PrepareFormSubmissionsExport(ctx context.Context, workspaceID, tab
 		filter.To = time.Now().Unix() + 1
 	}
 
+	filter.TableName = tableName
+	filter.Access = a.assignedOnlyFilter(user, workspaceID, tableID)
+
 	export := &FormSubmissionsExport{
 		TaskExport: a.newTaskExport(user, timezone, clock),
 		form:       form,
 		table:      taskExportTable{table: model.WorkspaceTable{ID: tableID, Name: tableName}, headers: byName, list: headers},
 		filter:     filter,
 		user:       user,
-		access:     a.assignedOnlyFilter(user, workspaceID, tableID),
+		access:     filter.Access,
 		labels:     []string{labelOr(labels, "submitted_by", "Submitted by"), labelOr(labels, "submitted_at", "Submitted at")},
 	}
 
@@ -107,8 +110,8 @@ func (e *FormSubmissionsExport) FileName() string {
 	return firstNonEmpty(e.form.Name, "Form") + " " + time.Now().In(e.loc).Format("2006-01-02") + ".csv"
 }
 
-// A row the user may not see, or that was deleted, keeps its submitter and date
-// with its answers left empty, as the submissions list shows it.
+// A deleted row keeps its submitter and date with its answers left empty, as
+// the submissions list shows it.
 func (e *FormSubmissionsExport) WriteCSV(ctx context.Context, w io.Writer, flush func()) error {
 	if _, err := io.WriteString(w, "\xEF\xBB\xBF"); err != nil {
 		return err
