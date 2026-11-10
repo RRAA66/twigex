@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -146,20 +147,71 @@ func insertFormTaskTx(ctx context.Context, tx *sql.Tx, tableName string, task mo
 // hold: out of range, an incorrect date, an incorrect value, too long.
 var rejectedValueErrors = []uint16{1264, 1292, 1366, 1406}
 
-func (w *workspaceRepository) CountFormSubmissions(ctx context.Context, formID string) (int, error) {
+func (w *workspaceRepository) submissionsWhere(ctx context.Context, formID string, filter model.FormSubmissionsFilter) (string, []any, error) {
+	where := "s.form_id = ?"
+	args := []any{formID}
+
+	if filter.Access.SQL != "" {
+		table, err := quoteIdent(filter.TableName)
+		if err != nil {
+			return "", nil, err
+		}
+
+		collation, err := w.rowIDCollation(ctx, filter.TableName)
+		if err != nil {
+			return "", nil, err
+		}
+
+		where += " AND EXISTS (SELECT 1 FROM " + table + " AS main WHERE main.id = s.task_id COLLATE " + collation + " AND " + filter.Access.SQL + ")"
+		args = append(args, filter.Access.Args...)
+	}
+
+	return where, args, nil
+}
+
+// A row table takes the database's collation and the submissions table its
+// charset's default, which differ on some servers. Comparing in the row
+// table's collation keeps its primary key usable.
+func (w *workspaceRepository) rowIDCollation(ctx context.Context, tableName string) (string, error) {
+	var collation string
+	err := w.Db.QueryRowContext(ctx, `
+		SELECT COLLATION_NAME FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'id'`, tableName).Scan(&collation)
+	if err != nil {
+		return "", err
+	}
+
+	if !identifierPattern.MatchString(collation) {
+		return "", fmt.Errorf("unexpected collation %q", collation)
+	}
+
+	return collation, nil
+}
+
+func (w *workspaceRepository) CountFormSubmissions(ctx context.Context, formID string, filter model.FormSubmissionsFilter) (int, error) {
+	where, args, err := w.submissionsWhere(ctx, formID, filter)
+	if err != nil {
+		return 0, err
+	}
+
 	var count int
-	err := w.Db.QueryRowContext(ctx, `SELECT COUNT(*) FROM workspace_form_submissions WHERE form_id = ?`, formID).Scan(&count)
+	err = w.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM workspace_form_submissions AS s WHERE "+where, args...).Scan(&count)
 
 	return count, err
 }
 
-func (w *workspaceRepository) GetFormSubmissions(ctx context.Context, formID string, limit, offset int) ([]model.WorkspaceFormSubmission, error) {
+func (w *workspaceRepository) GetFormSubmissions(ctx context.Context, formID string, filter model.FormSubmissionsFilter, limit, offset int) ([]model.WorkspaceFormSubmission, error) {
+	where, args, err := w.submissionsWhere(ctx, formID, filter)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := w.Db.QueryContext(ctx, `
-		SELECT id, form_id, task_id, COALESCE(submitted_by, ''), submitted_at
-		FROM workspace_form_submissions
-		WHERE form_id = ?
-		ORDER BY submitted_at DESC, id DESC
-		LIMIT ? OFFSET ?`, formID, limit, offset)
+		SELECT s.id, s.form_id, s.task_id, COALESCE(s.submitted_by, ''), s.submitted_at
+		FROM workspace_form_submissions AS s
+		WHERE `+where+`
+		ORDER BY s.submitted_at DESC, s.id DESC
+		LIMIT ? OFFSET ?`, append(args, limit, offset)...)
 	if err != nil {
 		return nil, err
 	}
