@@ -637,6 +637,10 @@ const viewTypeOptions = [
         value: "gantt",
         label: t.value("projects.create_role.view_types.gantt"),
     },
+    {
+        value: "form",
+        label: t.value("projects.create_role.view_types.form"),
+    },
 ];
 
 function hasViewPerm(type) {
@@ -975,7 +979,13 @@ onMounted(async () => {
             return;
         }
     } else {
-        permissions.value = ["views_grid", "views_kanban", "views_calendar", "views_gantt"];
+        permissions.value = [
+            "views_grid",
+            "views_kanban",
+            "views_calendar",
+            "views_gantt",
+            "views_form",
+        ];
     }
 
     loaded.value = true;
