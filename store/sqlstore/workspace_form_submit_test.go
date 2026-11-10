@@ -165,7 +165,7 @@ func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 	mustExec(t, `INSERT INTO workspace_form_submissions (id, form_id, task_id, submitted_by, submitted_at)
 		VALUES ('s1', 'form-1', 'a1', 'u1', 1), ('s2', 'form-1', 'a2', NULL, 2), ('s3', 'form-2', 'a2', 'u1', 3)`)
 
-	got, err := w.GetFormSubmissions(context.Background(), "form-1", 10, 0)
+	got, err := w.GetFormSubmissions(context.Background(), "form-1", model.FormSubmissionsFilter{}, 10, 0)
 	if err != nil {
 		t.Fatalf("GetFormSubmissions: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 		t.Errorf("got %+v, want s2 then s1", got)
 	}
 
-	next, err := w.GetFormSubmissions(context.Background(), "form-1", 1, 1)
+	next, err := w.GetFormSubmissions(context.Background(), "form-1", model.FormSubmissionsFilter{}, 1, 1)
 	if err != nil {
 		t.Fatalf("GetFormSubmissions from 1: %v", err)
 	}
@@ -181,7 +181,30 @@ func TestGetFormSubmissionsNewestFirst(t *testing.T) {
 		t.Errorf("page from 1 = %+v, want s1 alone", next)
 	}
 
-	if count, err := w.CountFormSubmissions(context.Background(), "form-1"); err != nil || count != 2 {
+	if count, err := w.CountFormSubmissions(context.Background(), "form-1", model.FormSubmissionsFilter{}); err != nil || count != 2 {
 		t.Errorf("count = %d, %v; want 2", count, err)
+	}
+}
+
+func TestGetFormSubmissionsLeavesOutRowsTheAccessHides(t *testing.T) {
+	w := setupFormSubmit(t)
+	ctx := context.Background()
+
+	mustExec(t, "UPDATE zz_links_a SET assignee = 'u1' WHERE id = 'a1'")
+	mustExec(t, `INSERT INTO workspace_form_submissions (id, form_id, task_id, submitted_by, submitted_at)
+		VALUES ('s1', 'form-1', 'a1', 'u1', 1), ('s2', 'form-1', 'a2', 'u2', 2)`)
+
+	filter := model.FormSubmissionsFilter{TableName: "zz_links_a", Access: model.SQLFilter{SQL: "`assignee` = ?", Args: []any{"u1"}}}
+
+	got, err := w.GetFormSubmissions(ctx, "form-1", filter, 10, 0)
+	if err != nil {
+		t.Fatalf("GetFormSubmissions: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != "s1" {
+		t.Errorf("got %+v, want s1 alone", got)
+	}
+
+	if count, err := w.CountFormSubmissions(ctx, "form-1", filter); err != nil || count != 1 {
+		t.Errorf("count = %d, %v; want 1", count, err)
 	}
 }

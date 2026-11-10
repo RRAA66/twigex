@@ -1577,6 +1577,7 @@
     "projects.create_role.view_types.kanban": "Канбан",
     "projects.create_role.view_types.calendar": "Күнтізбе",
     "projects.create_role.view_types.gantt": "Гантт",
+    "projects.create_role.view_types.form": "Форма",
     "projects.create_role.per_table.table_header": "Кесте",
     "projects.create_role.per_table.select_all": "Барлығын таңдау",
     "projects.create_role.per_table.no_tables": "Бұл жұмыс кеңістігінде кестелер жоқ",
