@@ -19,8 +19,6 @@ SPDX-License-Identifier: AGPL-3.0-only
                 size="small"
                 variant="secondary"
                 :prepend-icon="PhotoIcon"
-                :is-loading="loading"
-                :is-disabled="disabled"
                 @click="input.click()"
             >
                 {{
@@ -31,13 +29,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     )
                 }}
             </BaseButton>
-            <BaseButton
-                v-if="src"
-                size="small"
-                variant="secondary"
-                :is-disabled="loading"
-                @click="emit('remove')"
-            >
+            <BaseButton v-if="src" size="small" variant="secondary" @click="emit('remove')">
                 {{ t("common.button.remove") }}
             </BaseButton>
         </div>
@@ -63,8 +55,6 @@ defineProps({
     alt: { type: String, required: true },
     src: { type: String, default: "" },
     contain: { type: Boolean, default: false },
-    loading: { type: Boolean, default: false },
-    disabled: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["pick", "remove"]);

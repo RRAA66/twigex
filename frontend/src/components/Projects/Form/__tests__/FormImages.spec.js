@@ -1,18 +1,11 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { nextTick, reactive } from "vue";
-import { flushPromises, mount } from "@vue/test-utils";
-import { createPinia, setActivePinia } from "pinia";
+import { afterEach, describe, expect, it } from "vitest";
+import { nextTick } from "vue";
+import { mount } from "@vue/test-utils";
 import FormCoverImage from "@/components/Projects/Form/FormCoverImage.vue";
 import FormViewSettings from "@/components/Projects/Form/FormViewSettings.vue";
-import formService from "@/services/formService";
-import { useAlertStore } from "@/store/alerts";
-
-vi.mock("@/services/formService", () => ({
-    default: { setFormImage: vi.fn(), removeFormImage: vi.fn() },
-}));
 
 function pickFile(input, file) {
     Object.defineProperty(input.element, "files", { value: [file], configurable: true });
@@ -106,106 +99,33 @@ describe("FormCoverImage with the keyboard", () => {
 });
 
 describe("FormViewSettings images", () => {
-    let form;
+    const form = { id: "", workspace_id: "w1", table_id: "t1", cover_image: "", logo: "" };
 
-    // Applies each update as the builder does, to a new form object.
-    function mountSettings() {
-        const w = mount(FormViewSettings, {
-            props: {
-                form,
-                onUpdate: (patch) => w.setProps({ form: { ...w.props("form"), ...patch } }),
-            },
-        });
-
-        return w;
-    }
-
-    beforeEach(() => {
-        vi.clearAllMocks();
-        setActivePinia(createPinia());
-        form = reactive({
-            id: "f1",
-            workspace_id: "w1",
-            table_id: "t1",
-            cover_image: "",
-            logo: "",
-        });
-    });
-
-    it("uploads a cover and shows it", async () => {
-        formService.setFormImage.mockResolvedValue({ data: { cover_image: "c1", logo: "" } });
-        const w = mountSettings();
+    it("hands a picked image to the builder and shows the one it is given", async () => {
+        const w = mount(FormViewSettings, { props: { form, coverSrc: "blob:cover" } });
         const file = new File(["png"], "a.png", { type: "image/png" });
 
         await pickFile(w.find("input[aria-label='Cover image']"), file);
-        await flushPromises();
 
-        expect(formService.setFormImage).toHaveBeenCalledWith("w1", "t1", "f1", "cover", file);
-        expect(w.emitted("update")).toEqual([[{ cover_image: "c1" }]]);
-        expect(w.find("img[alt='Form cover image']").attributes("src")).toBe(
-            "/api/workspaces/w1/file/c1",
-        );
+        expect(w.emitted("pick-image")).toEqual([["cover", file]]);
+        expect(w.find("img[alt='Form cover image']").attributes("src")).toBe("blob:cover");
     });
 
-    it("removes the logo", async () => {
-        form.logo = "l1";
-        formService.removeFormImage.mockResolvedValue({ data: { cover_image: "", logo: "" } });
-        const w = mountSettings();
+    it("lets a new form pick its images and asks for the removal of a shown one", async () => {
+        const w = mount(FormViewSettings, { props: { form, logoSrc: "blob:logo" } });
 
-        const remove = w.findAll("button").find((b) => b.text() === "Remove");
-
-        await remove.trigger("click");
-        await flushPromises();
-
-        expect(formService.removeFormImage).toHaveBeenCalledWith("w1", "t1", "f1", "logo");
-        expect(w.emitted("update")).toEqual([[{ logo: "" }]]);
-    });
-
-    it("drops the stored image when another form was opened meanwhile", async () => {
-        let answer;
-
-        formService.setFormImage.mockReturnValue(
-            new Promise((resolve) => {
-                answer = resolve;
-            }),
-        );
-        const w = mountSettings();
-
-        await pickFile(w.find("input[aria-label='Cover image']"), new File(["png"], "a.png"));
-        await w.setProps({ form: { ...form, id: "f2", cover_image: "" } });
-        answer({ data: { cover_image: "c1", logo: "" } });
-        await flushPromises();
-
-        expect(w.emitted("update")).toBeUndefined();
-        expect(w.props("form").cover_image).toBe("");
-    });
-
-    it("shows the server's refusal and keeps the old image", async () => {
-        form.cover_image = "c0";
-        formService.setFormImage.mockRejectedValue({
-            response: { status: 400, data: { error: "Use a JPEG, PNG, GIF or WebP image." } },
-        });
-        const w = mountSettings();
-        const alertStore = useAlertStore();
-        const showError = vi.spyOn(alertStore, "showError");
-
-        await pickFile(w.find("input[aria-label='Cover image']"), new File(["x"], "a.svg"));
-        await flushPromises();
-
-        expect(showError).toHaveBeenCalledWith("Use a JPEG, PNG, GIF or WebP image.");
-        expect(w.emitted("update")).toBeUndefined();
-    });
-
-    it("asks for the form to be saved before images are added", () => {
-        form.id = "";
-        const w = mountSettings();
-
-        expect(w.text()).toContain("Save the form to add a cover image and a logo.");
         expect(
             w
                 .findAll("button")
-                .filter((b) => b.text() === "Upload")
-                .every((b) => b.attributes("disabled") !== undefined),
+                .filter((b) => b.text() === "Upload" || b.text() === "Replace")
+                .every((b) => b.attributes("disabled") === undefined),
         ).toBe(true);
+
+        await w
+            .findAll("button")
+            .find((b) => b.text() === "Remove")
+            .trigger("click");
+
+        expect(w.emitted("remove-image")).toEqual([["logo"]]);
     });
 });

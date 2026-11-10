@@ -10,16 +10,16 @@ SPDX-License-Identifier: AGPL-3.0-only
                 :style="{ borderTopColor: form.accent_color }"
             >
                 <FormCoverImage
-                    v-if="form.cover_image"
+                    v-if="coverSrc"
                     :position="form.cover_position"
-                    :src="formImageUrl(form.workspace_id, form.cover_image)"
+                    :src="coverSrc"
                     repositionable
                     @update:position="emit('change-settings', { cover_position: $event })"
                 />
                 <div class="space-y-2 p-6">
                     <img
-                        v-if="form.logo"
-                        :src="formImageUrl(form.workspace_id, form.logo)"
+                        v-if="logoSrc"
+                        :src="logoSrc"
                         :alt="t('projects.form_view.image_alt.logo')"
                         class="h-12 w-auto max-w-48 object-contain"
                     />
@@ -64,14 +64,21 @@ SPDX-License-Identifier: AGPL-3.0-only
             </draggable>
         </div>
 
-        <FormViewSettings :form="form" @update="emit('change-settings', $event)" />
+        <FormViewSettings
+            :form="form"
+            :cover-src="coverSrc"
+            :logo-src="logoSrc"
+            @update="emit('change-settings', $event)"
+            @pick-image="(kind, file) => emit('pick-image', kind, file)"
+            @remove-image="emit('remove-image', $event)"
+        />
     </div>
 </template>
 
 <script setup>
 import draggable from "vuedraggable";
 import { t } from "@/i18n/index.js";
-import { formImageUrl, headerLabel } from "@/utils/projects/forms";
+import { headerLabel } from "@/utils/projects/forms";
 import FormCoverImage from "@/components/Projects/Form/FormCoverImage.vue";
 import FormViewFieldRow from "@/components/Projects/Form/FormViewFieldRow.vue";
 import FormViewSettings from "@/components/Projects/Form/FormViewSettings.vue";
@@ -93,9 +100,23 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    coverSrc: {
+        type: String,
+        default: "",
+    },
+    logoSrc: {
+        type: String,
+        default: "",
+    },
 });
 
-const emit = defineEmits(["change-settings", "change-field", "reorder"]);
+const emit = defineEmits([
+    "change-settings",
+    "change-field",
+    "reorder",
+    "pick-image",
+    "remove-image",
+]);
 
 function fieldName(field) {
     return headerLabel(

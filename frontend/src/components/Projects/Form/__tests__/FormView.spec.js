@@ -22,6 +22,8 @@ vi.mock("@/services/formService", () => ({
         updateForm: vi.fn(),
         getSubmissions: vi.fn(),
         getPublicForm: vi.fn(),
+        setFormImage: vi.fn(),
+        removeFormImage: vi.fn(),
     },
 }));
 vi.mock("@/services/workspaceService", () => ({
@@ -41,6 +43,15 @@ const nav = {
 };
 
 const viewPermissions = ["create_workspace_view", "update_workspace_view"];
+
+const cover = new File(["png"], "a.png", { type: "image/png" });
+
+async function pickImage(w, label, file) {
+    const input = w.find(`input[aria-label='${label}']`);
+
+    Object.defineProperty(input.element, "files", { value: [file], configurable: true });
+    await input.trigger("change");
+}
 
 async function mountAt(path, { licensed = true, user = { permissions: viewPermissions } } = {}) {
     const pinia = createPinia();
@@ -75,6 +86,8 @@ function button(w, label) {
 describe("FormView", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.spyOn(URL, "createObjectURL").mockImplementation((file) => `blob:${file.name}`);
+        vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
         vi.stubGlobal(
             "ResizeObserver",
             class {
@@ -149,6 +162,25 @@ describe("FormView", () => {
         w.unmount();
     });
 
+    it("creates a form, then sends the cover picked before it was saved", async () => {
+        formService.createForm.mockResolvedValue({ data: { id: "f9", name: "Intake" } });
+        formService.setFormImage.mockResolvedValue({ data: { cover_image: "c1", logo: "" } });
+        const { w } = await mountAt("/p/w1/form/t1");
+
+        await pickImage(w, "Cover image", cover);
+        expect(w.find("img[alt='Form cover image']").attributes("src")).toBe("blob:a.png");
+
+        await button(w, "Save").trigger("click");
+        w.findComponent(FormViewNameDialog).vm.$emit("confirm", "Intake");
+        await flushPromises();
+
+        expect(formService.setFormImage).toHaveBeenCalledWith("w1", "t1", "f9", "cover", cover);
+        expect(w.find("img[alt='Form cover image']").attributes("src")).toBe(
+            "/api/workspaces/w1/file/c1",
+        );
+        w.unmount();
+    });
+
     it("updates a saved form with the edited title", async () => {
         formService.getForm.mockResolvedValue({ data: { id: "f1", name: "Intake", fields: [] } });
         formService.updateForm.mockResolvedValue({ data: { id: "f1", name: "Intake" } });
@@ -216,23 +248,97 @@ describe("FormView", () => {
             formService.getForm.mockResolvedValue({ data: saved });
         });
 
-        it("previews the form as its link serves it", async () => {
+        it("previews the look being built over the form its link serves", async () => {
             formService.getPublicForm.mockResolvedValue({
                 data: {
                     ...saved,
-                    title: "Tell us",
+                    title: "Saved title",
                     can_submit: true,
                     fields: [{ ...saved.fields[0], field_type: "text" }],
                 },
             });
             const { w } = await mountAt("/p/w1/form/t1/view/f1");
 
+            await w.find("input[type=text]").setValue("Tell us");
+            await pickImage(w, "Cover image", cover);
             await tab(w, "Preview").trigger("click");
             await flushPromises();
 
             expect(formService.getPublicForm).toHaveBeenCalledWith("tok");
             expect(w.text()).toContain("Tell us");
+            expect(w.text()).not.toContain("Saved title");
+            expect(w.find("img[src='blob:a.png']").exists()).toBe(true);
             expect(w.find("button[type='submit']").exists()).toBe(true);
+            expect(formService.setFormImage).not.toHaveBeenCalled();
+            w.unmount();
+        });
+
+        it("sends a picked cover and a removed logo only on Update", async () => {
+            formService.getForm.mockResolvedValue({ data: { ...saved, logo: "l1" } });
+            formService.updateForm.mockResolvedValue({ data: { ...saved, logo: "l1" } });
+            formService.setFormImage.mockResolvedValue({ data: { cover_image: "c1", logo: "l1" } });
+            formService.removeFormImage.mockResolvedValue({
+                data: { cover_image: "c1", logo: "" },
+            });
+            const { w } = await mountAt("/p/w1/form/t1/view/f1");
+
+            await pickImage(w, "Cover image", cover);
+            await w
+                .findAll("button")
+                .filter((b) => b.text() === "Remove")
+                .at(-1)
+                .trigger("click");
+            expect(formService.setFormImage).not.toHaveBeenCalled();
+            expect(formService.removeFormImage).not.toHaveBeenCalled();
+
+            await button(w, "Update").trigger("click");
+            await flushPromises();
+
+            expect(formService.setFormImage).toHaveBeenCalledWith("w1", "t1", "f1", "cover", cover);
+            expect(formService.removeFormImage).toHaveBeenCalledWith("w1", "t1", "f1", "logo");
+            expect(w.find("img[alt='Form cover image']").attributes("src")).toBe(
+                "/api/workspaces/w1/file/c1",
+            );
+            expect(w.find("img[alt='Form logo']").exists()).toBe(false);
+            w.unmount();
+        });
+
+        it("keeps an image that could not be stored and says the form itself was saved", async () => {
+            formService.updateForm.mockResolvedValue({ data: saved });
+            formService.setFormImage.mockRejectedValueOnce({
+                response: { status: 400, data: { error: "Use a JPEG, PNG, GIF or WebP image." } },
+            });
+            const { w } = await mountAt("/p/w1/form/t1/view/f1");
+            const alerts = useAlertStore();
+            const showError = vi.spyOn(alerts, "showError");
+            const showSuccess = vi.spyOn(alerts, "showSuccess");
+
+            await pickImage(w, "Cover image", cover);
+            await button(w, "Update").trigger("click");
+            await flushPromises();
+
+            expect(showError).toHaveBeenCalledWith(
+                "The form was saved, but its images were not: Use a JPEG, PNG, GIF or WebP image.",
+            );
+            expect(showSuccess).not.toHaveBeenCalled();
+            expect(w.find("img[alt='Form cover image']").attributes("src")).toBe("blob:a.png");
+
+            formService.setFormImage.mockResolvedValue({ data: { cover_image: "c1", logo: "" } });
+            await button(w, "Update").trigger("click");
+            await flushPromises();
+
+            expect(formService.setFormImage).toHaveBeenCalledTimes(2);
+            w.unmount();
+        });
+
+        it("refuses a file that is not an image as soon as it is picked", async () => {
+            const { w } = await mountAt("/p/w1/form/t1/view/f1");
+            const showError = vi.spyOn(useAlertStore(), "showError");
+
+            await pickImage(w, "Logo", new File(["<svg/>"], "a.svg", { type: "image/svg+xml" }));
+
+            expect(showError).toHaveBeenCalledWith("Use a JPEG, PNG, GIF or WebP image.");
+            expect(w.find("img[alt='Form logo']").exists()).toBe(false);
             w.unmount();
         });
 

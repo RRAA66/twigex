@@ -5,6 +5,7 @@ import { computed, ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { t } from "@/i18n/index.js";
 import formService from "@/services/formService";
+import { useFormImages } from "@/composables/projects/useFormImages";
 import { useAlertStore } from "@/store/alerts";
 import { useSettingsStore } from "@/store/settings";
 import { useWorkspaceStore } from "@/store/workspaces";
@@ -30,6 +31,7 @@ export function useFormBuilder() {
     const status = ref("loading");
     const saving = ref(false);
     const conditionsChecked = ref(false);
+    const images = useFormImages(formData);
 
     // Flagged only once a save was tried, so a condition being set up is not
     // marked as wrong.
@@ -65,6 +67,7 @@ export function useFormBuilder() {
         formData.value = emptyFormData(id, tid);
         formFields.value = [];
         conditionsChecked.value = false;
+        images.discard();
 
         if (!settingsStore.getLicenseFeature("forms")) {
             status.value = "unlicensed";
@@ -131,6 +134,24 @@ export function useFormBuilder() {
         );
     }
 
+    // The form is already saved when this runs, so a failure says only the
+    // images were not.
+    async function saveImages() {
+        try {
+            await images.save(formData.value, (stored) => updateSettings(stored));
+
+            return true;
+        } catch (error) {
+            alertStore.showError(
+                t.value("projects.form_view.error.images_not_saved", {
+                    reason: extractErrorMessage(error),
+                }),
+            );
+
+            return false;
+        }
+    }
+
     async function updateForm() {
         if (!checkConditions()) return;
 
@@ -146,7 +167,8 @@ export function useFormBuilder() {
 
             formData.value = normalizeFormData(data, route.params.id, route.params.tid);
             renameViewTab(data.id, data.name);
-            alertStore.showSuccess(t.value("projects.form_view.success.saved"));
+            if (await saveImages())
+                alertStore.showSuccess(t.value("projects.form_view.success.saved"));
         } catch (error) {
             alertStore.showError(extractErrorMessage(error));
         } finally {
@@ -167,7 +189,8 @@ export function useFormBuilder() {
             );
 
             formData.value = normalizeFormData(data, route.params.id, route.params.tid);
-            alertStore.showSuccess(t.value("projects.form_view.success.saved"));
+            if (await saveImages())
+                alertStore.showSuccess(t.value("projects.form_view.success.saved"));
             await router.replace({
                 name: "form-view",
                 params: { id: route.params.id, tid: route.params.tid, fid: data.id },
@@ -210,5 +233,8 @@ export function useFormBuilder() {
         reorderFields,
         updateForm,
         createForm,
+        imageSrc: images.src,
+        pickImage: images.pick,
+        removeImage: images.remove,
     };
 }

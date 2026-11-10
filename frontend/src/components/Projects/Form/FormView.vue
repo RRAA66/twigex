@@ -90,16 +90,20 @@ SPDX-License-Identifier: AGPL-3.0-only
             :fields="formFields"
             :headers="headers"
             :incomplete-fields="incompleteFields"
+            :cover-src="imageSrc('cover')"
+            :logo-src="imageSrc('logo')"
             @change-settings="updateSettings"
             @change-field="updateField"
             @reorder="reorderFields"
+            @pick-image="pickImage"
+            @remove-image="removeImage"
         />
         <div
             v-else-if="activeTab === 'preview'"
             class="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-6"
         >
             <div class="mx-auto max-w-2xl">
-                <FormFill :token="formData.public_token" preview />
+                <FormFill :token="formData.public_token" :draft="previewDraft" preview />
             </div>
         </div>
         <FormViewSubmissions
@@ -162,7 +166,21 @@ const {
     reorderFields,
     updateForm,
     createForm,
+    imageSrc,
+    pickImage,
+    removeImage,
 } = useFormBuilder();
+
+// Preview reads the saved form, so the look being built is laid over it.
+const previewDraft = computed(() => ({
+    title: formData.value.title,
+    description: formData.value.description,
+    accent_color: formData.value.accent_color,
+    cover_position: formData.value.cover_position,
+    success_message: formData.value.success_message,
+    cover_src: imageSrc("cover"),
+    logo_src: imageSrc("logo"),
+}));
 
 // The server also lets a role that manages this table's views build its
 // forms, which only a per-table role can grant.

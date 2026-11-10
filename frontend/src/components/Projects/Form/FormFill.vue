@@ -22,7 +22,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         <CheckCircleIcon class="h-12 w-12 text-green-500" aria-hidden="true" />
         <h2 class="text-xl font-bold text-gray-900">{{ t("projects.form_view.success.title") }}</h2>
         <p class="max-w-md whitespace-pre-line text-sm text-gray-500">
-            {{ form.success_message || t("projects.form_view.success.body") }}
+            {{ shown.success_message || t("projects.form_view.success.body") }}
         </p>
         <p v-if="preview" class="text-xs text-gray-400">
             {{ t("projects.form_view.preview_not_saved") }}
@@ -38,15 +38,11 @@ SPDX-License-Identifier: AGPL-3.0-only
     <form
         v-else
         class="w-full overflow-hidden rounded-lg border-t-4 bg-white shadow-sm ring-1 ring-gray-200"
-        :style="{ borderTopColor: form.accent_color || DEFAULT_ACCENT_COLOR }"
+        :style="{ borderTopColor: shown.accent_color || DEFAULT_ACCENT_COLOR }"
         novalidate
         @submit.prevent="submit"
     >
-        <FormCoverImage
-            v-if="form.cover_image"
-            :src="formImageUrl(form.workspace_id, form.cover_image)"
-            :position="form.cover_position"
-        />
+        <FormCoverImage v-if="coverSrc" :src="coverSrc" :position="shown.cover_position" />
         <div class="space-y-2 px-6 pt-8 sm:px-10">
             <p
                 v-if="configChanged"
@@ -63,16 +59,16 @@ SPDX-License-Identifier: AGPL-3.0-only
                 {{ t("projects.form_view.public.read_only") }}
             </p>
             <img
-                v-if="form.logo"
-                :src="formImageUrl(form.workspace_id, form.logo)"
+                v-if="logoSrc"
+                :src="logoSrc"
                 :alt="t('projects.form_view.image_alt.logo')"
                 class="h-12 w-auto max-w-48 object-contain"
             />
             <h1 class="text-2xl font-bold text-gray-900">
-                {{ form.title || form.name || t("projects.form_view.untitled_form") }}
+                {{ shown.title || shown.name || t("projects.form_view.untitled_form") }}
             </h1>
-            <p v-if="form.description" class="whitespace-pre-line text-sm text-gray-500">
-                {{ form.description }}
+            <p v-if="shown.description" class="whitespace-pre-line text-sm text-gray-500">
+                {{ shown.description }}
             </p>
         </div>
 
@@ -111,7 +107,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 type="submit"
                 class="mt-6 w-full"
                 color="text-white hover:opacity-90"
-                :style="{ backgroundColor: form.accent_color || DEFAULT_ACCENT_COLOR }"
+                :style="{ backgroundColor: shown.accent_color || DEFAULT_ACCENT_COLOR }"
                 :is-loading="submitting"
             >
                 {{ t("projects.form_view.action.submit") }}
@@ -147,6 +143,8 @@ const props = defineProps({
     // stays where it is.
     followRedirect: { type: Boolean, default: false },
     preview: { type: Boolean, default: false },
+    // The builder's unsaved look, with its images as cover_src and logo_src.
+    draft: { type: Object, default: null },
 });
 
 const {
@@ -167,6 +165,18 @@ const {
 } = usePublicForm(() => props.token, { live: props.live, preview: props.preview });
 
 const honeypotId = useId();
+
+const shown = computed(() => ({ ...form.value, ...props.draft }));
+
+const coverSrc = computed(() =>
+    props.draft
+        ? props.draft.cover_src
+        : formImageUrl(form.value.workspace_id, form.value.cover_image),
+);
+
+const logoSrc = computed(() =>
+    props.draft ? props.draft.logo_src : formImageUrl(form.value.workspace_id, form.value.logo),
+);
 
 const statusIcon = computed(
     () =>

@@ -2528,11 +2528,13 @@
     "projects.form_view.action.reposition": "Mainīt novietojumu",
     "projects.form_view.action.reposition_done": "Gatavs",
     "projects.form_view.error.too_many_files": "Laukam var pievienot ne vairāk kā {max} failus. Pārējie netika pievienoti.",
+    "projects.form_view.error.image_type": "Izmantojiet JPEG, PNG, GIF vai WebP attēlu.",
+    "projects.form_view.error.image_too_large": "Izmantojiet attēlu, kas nav lielāks par 5 MB.",
+    "projects.form_view.error.images_not_saved": "Veidlapa ir saglabāta, bet tās attēli nav: {reason}",
     "projects.form_view.cover_position": "Vāka attēla novietojums",
     "projects.form_view.cover_position_hint": "Lai pārvietotu attēlu, izmantojiet bulttaustiņus uz augšu un uz leju, un nospiediet Enter vai Escape, lai pabeigtu.",
     "projects.form_view.settings.cover_image": "Vāka attēls",
     "projects.form_view.settings.logo": "Logotips",
-    "projects.form_view.settings.images_after_save": "Saglabājiet veidlapu, lai pievienotu vāka attēlu un logotipu.",
     "projects.form_view.image_alt.cover": "Veidlapas vāka attēls",
     "projects.form_view.image_alt.logo": "Veidlapas logotips"
 }
