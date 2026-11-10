@@ -1577,6 +1577,7 @@
     "projects.create_role.view_types.kanban": "Kanban",
     "projects.create_role.view_types.calendar": "Kalendārs",
     "projects.create_role.view_types.gantt": "Gantt",
+    "projects.create_role.view_types.form": "Veidlapa",
     "projects.create_role.per_table.table_header": "Tabula",
     "projects.create_role.per_table.select_all": "Atlasīt visu",
     "projects.create_role.per_table.no_tables": "Šajā darba vidē nav tabulu",
