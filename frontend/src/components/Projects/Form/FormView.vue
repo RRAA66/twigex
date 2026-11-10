@@ -34,9 +34,9 @@ SPDX-License-Identifier: AGPL-3.0-only
             <span class="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
                 {{ formData.name || t("projects.form_view.new_form") }}
             </span>
-            <nav v-if="formData.id" class="flex gap-x-1" :aria-label="t('projects.form_view.tabs')">
+            <nav class="flex gap-x-1" :aria-label="t('projects.form_view.tabs')">
                 <button
-                    v-for="tab in TABS"
+                    v-for="tab in tabs"
                     :key="tab"
                     type="button"
                     :aria-current="activeTab === tab ? 'page' : undefined"
@@ -103,7 +103,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             class="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-6"
         >
             <div class="mx-auto max-w-2xl">
-                <FormFill :token="formData.public_token" :draft="previewDraft" preview />
+                <FormFill :draft="previewForm" preview />
             </div>
         </div>
         <FormViewSubmissions
@@ -148,8 +148,6 @@ import FormViewNameDialog from "@/components/Projects/Form/FormViewNameDialog.vu
 import FormViewShareDialog from "@/components/Projects/Form/FormViewShareDialog.vue";
 import FormViewSubmissions from "@/components/Projects/Form/FormViewSubmissions.vue";
 
-const TABS = ["build", "preview", "submissions"];
-
 const route = useRoute();
 const rolesStore = useWorkspaceRolesStore();
 const {
@@ -171,13 +169,17 @@ const {
     removeImage,
 } = useFormBuilder();
 
-// Preview reads the saved form, so the look being built is laid over it.
-const previewDraft = computed(() => ({
-    title: formData.value.title,
-    description: formData.value.description,
-    accent_color: formData.value.accent_color,
-    cover_position: formData.value.cover_position,
-    success_message: formData.value.success_message,
+// A new form has no submissions to list yet.
+const tabs = computed(() =>
+    formData.value.id ? ["build", "preview", "submissions"] : ["build", "preview"],
+);
+
+// Preview draws the form as it is being built, saved or not, as its link will
+// serve it once saved.
+const previewForm = computed(() => ({
+    ...formData.value,
+    fields: formFields.value,
+    can_submit: true,
     cover_src: imageSrc("cover"),
     logo_src: imageSrc("logo"),
 }));

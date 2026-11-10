@@ -14,6 +14,7 @@ import {
     fillableFormFields,
     formFieldType,
     formImageUrl,
+    formLinkTables,
     formSubmitFields,
     headerLabel,
     incompleteConditionFields,
@@ -490,5 +491,22 @@ describe("calculations on a form", () => {
             { name: "qty", value: "3" },
         ]);
         expect(missingRequiredFields(fields, {})).toEqual([]);
+    });
+});
+
+describe("formLinkTables", () => {
+    it("lists the tables a master link may name, as the server does", () => {
+        const tables = [
+            { id: "t1", name: "own" },
+            { id: "t2", name: "tbl_2", display_name: { String: "Clients", Valid: true } },
+            { id: "t3", name: "tbl_3" },
+            { id: "opts", name: "o", single_select: true },
+            { id: "link", name: "l", parent_table_id: "t2" },
+        ];
+
+        expect(formLinkTables(tables, "t1")).toEqual([
+            { id: "t2", name: "tbl_2", display_name: "Clients" },
+            { id: "t3", name: "tbl_3", display_name: "" },
+        ]);
     });
 });

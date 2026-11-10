@@ -69,6 +69,33 @@ describe("useFormBuilder", () => {
         workspaceService.getWorkspaceNav.mockResolvedValue({ data: nav });
     });
 
+    it("offers a new form's master links the tables the grid offers", async () => {
+        workspaceService.getWorkspaceNav.mockResolvedValue({
+            data: {
+                tables: [
+                    ...nav.tables,
+                    { id: "t2", name: "tbl_2", display_name: { String: "Clients", Valid: true } },
+                    { id: "opts", name: "tbl_opts", single_select: true },
+                    { id: "link", name: "tbl_link", parent_table_id: "t2" },
+                ],
+            },
+        });
+        const { builder } = await mountBuilder("/p/w1/form/t1");
+
+        expect(builder.formData.value.link_tables).toEqual([
+            { id: "t2", name: "tbl_2", display_name: "Clients" },
+        ]);
+    });
+
+    it("keeps the server's master-link tables for a saved form", async () => {
+        formService.getForm.mockResolvedValue({
+            data: { id: "f1", name: "Intake", fields: [], link_tables: [{ id: "t9", name: "x" }] },
+        });
+        const { builder } = await mountBuilder("/p/w1/form/t1/view/f1");
+
+        expect(builder.formData.value.link_tables).toEqual([{ id: "t9", name: "x" }]);
+    });
+
     it("opens the created form's own route", async () => {
         formService.createForm.mockResolvedValue({ data: { id: "f9", name: "Intake" } });
         const { builder, router } = await mountBuilder("/p/w1/form/t1");

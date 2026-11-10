@@ -107,6 +107,21 @@ describe("FormView", () => {
         w.unmount();
     });
 
+    it("previews a new form before it is saved, with nothing to list yet", async () => {
+        const { w } = await mountAt("/p/w1/form/t1");
+        const tabs = w.findAll("nav button").map((b) => b.text());
+
+        expect(tabs).toEqual(["Build", "Preview"]);
+
+        await w.findAll("nav button")[1].trigger("click");
+        await flushPromises();
+
+        expect(formService.getPublicForm).not.toHaveBeenCalled();
+        expect(w.text()).toContain("Untitled form");
+        expect(w.find("button[type='submit']").exists()).toBe(true);
+        w.unmount();
+    });
+
     it("lists the table's fields for a new form", async () => {
         const { w } = await mountAt("/p/w1/form/t1");
 
@@ -248,15 +263,7 @@ describe("FormView", () => {
             formService.getForm.mockResolvedValue({ data: saved });
         });
 
-        it("previews the look being built over the form its link serves", async () => {
-            formService.getPublicForm.mockResolvedValue({
-                data: {
-                    ...saved,
-                    title: "Saved title",
-                    can_submit: true,
-                    fields: [{ ...saved.fields[0], field_type: "text" }],
-                },
-            });
+        it("previews the form as it is being built without loading the saved one", async () => {
             const { w } = await mountAt("/p/w1/form/t1/view/f1");
 
             await w.find("input[type=text]").setValue("Tell us");
@@ -264,9 +271,9 @@ describe("FormView", () => {
             await tab(w, "Preview").trigger("click");
             await flushPromises();
 
-            expect(formService.getPublicForm).toHaveBeenCalledWith("tok");
+            expect(formService.getPublicForm).not.toHaveBeenCalled();
             expect(w.text()).toContain("Tell us");
-            expect(w.text()).not.toContain("Saved title");
+            expect(w.text()).toContain("Title");
             expect(w.find("img[src='blob:a.png']").exists()).toBe(true);
             expect(w.find("button[type='submit']").exists()).toBe(true);
             expect(formService.setFormImage).not.toHaveBeenCalled();

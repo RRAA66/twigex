@@ -61,7 +61,8 @@ defineOptions({ inheritAttrs: false });
 const props = defineProps({
     id: { type: String, required: true },
     modelValue: { type: Array, default: null },
-    token: { type: String, required: true },
+    // Without one, as in the builder's preview, files stay on the screen.
+    token: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:modelValue"]);
@@ -72,6 +73,8 @@ const input = ref(null);
 const uploading = ref(false);
 
 const files = computed(() => props.modelValue || []);
+
+let keptFiles = 0;
 
 async function pick(event) {
     const all = [...event.target.files];
@@ -85,6 +88,14 @@ async function pick(event) {
     }
 
     if (picked.length === 0) return;
+
+    if (!props.token) {
+        const kept = picked.map((f) => ({ id: `kept-${++keptFiles}`, name: f.name, size: f.size }));
+
+        emit("update:modelValue", [...files.value, ...kept]);
+
+        return;
+    }
 
     uploading.value = true;
     try {

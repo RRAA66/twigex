@@ -22,7 +22,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         <CheckCircleIcon class="h-12 w-12 text-green-500" aria-hidden="true" />
         <h2 class="text-xl font-bold text-gray-900">{{ t("projects.form_view.success.title") }}</h2>
         <p class="max-w-md whitespace-pre-line text-sm text-gray-500">
-            {{ shown.success_message || t("projects.form_view.success.body") }}
+            {{ form.success_message || t("projects.form_view.success.body") }}
         </p>
         <p v-if="preview" class="text-xs text-gray-400">
             {{ t("projects.form_view.preview_not_saved") }}
@@ -38,11 +38,11 @@ SPDX-License-Identifier: AGPL-3.0-only
     <form
         v-else
         class="w-full overflow-hidden rounded-lg border-t-4 bg-white shadow-sm ring-1 ring-gray-200"
-        :style="{ borderTopColor: shown.accent_color || DEFAULT_ACCENT_COLOR }"
+        :style="{ borderTopColor: form.accent_color || DEFAULT_ACCENT_COLOR }"
         novalidate
         @submit.prevent="submit"
     >
-        <FormCoverImage v-if="coverSrc" :src="coverSrc" :position="shown.cover_position" />
+        <FormCoverImage v-if="coverSrc" :src="coverSrc" :position="form.cover_position" />
         <div class="space-y-2 px-6 pt-8 sm:px-10">
             <p
                 v-if="configChanged"
@@ -65,10 +65,10 @@ SPDX-License-Identifier: AGPL-3.0-only
                 class="h-12 w-auto max-w-48 object-contain"
             />
             <h1 class="text-2xl font-bold text-gray-900">
-                {{ shown.title || shown.name || t("projects.form_view.untitled_form") }}
+                {{ form.title || form.name || t("projects.form_view.untitled_form") }}
             </h1>
-            <p v-if="shown.description" class="whitespace-pre-line text-sm text-gray-500">
-                {{ shown.description }}
+            <p v-if="form.description" class="whitespace-pre-line text-sm text-gray-500">
+                {{ form.description }}
             </p>
         </div>
 
@@ -91,6 +91,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     v-model="values[field.header_name]"
                     :field="field"
                     :token="token"
+                    :rows-loader="rowsLoaders[field.header_name] || null"
                     :workspace-id="form.workspace_id"
                     :answers="values"
                     :link-tables="form.link_tables"
@@ -107,7 +108,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 type="submit"
                 class="mt-6 w-full"
                 color="text-white hover:opacity-90"
-                :style="{ backgroundColor: shown.accent_color || DEFAULT_ACCENT_COLOR }"
+                :style="{ backgroundColor: form.accent_color || DEFAULT_ACCENT_COLOR }"
                 :is-loading="submitting"
             >
                 {{ t("projects.form_view.action.submit") }}
@@ -130,20 +131,22 @@ import {
 } from "@heroicons/vue/24/outline";
 import { t } from "@/i18n/index.js";
 import { usePublicForm } from "@/composables/projects/usePublicForm";
-import { DEFAULT_ACCENT_COLOR, formImageUrl } from "@/utils/projects/forms";
+import { formRowsLoader } from "@/composables/projects/formRowsLoader";
+import { DEFAULT_ACCENT_COLOR, formImageUrl, linkedTableId } from "@/utils/projects/forms";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseSpinner from "@/components/BaseSpinner.vue";
 import FormCoverImage from "@/components/Projects/Form/FormCoverImage.vue";
 import FormFieldInput from "@/components/Projects/Form/FormFieldInput.vue";
 
 const props = defineProps({
-    token: { type: String, required: true },
+    token: { type: String, default: "" },
     live: { type: Boolean, default: false },
     // Opens the form's next page once it is sent; the builder's preview
     // stays where it is.
     followRedirect: { type: Boolean, default: false },
     preview: { type: Boolean, default: false },
-    // The builder's unsaved look, with its images as cover_src and logo_src.
+    // The form being built, drawn instead of the token's, with its images as
+    // cover_src and logo_src.
     draft: { type: Object, default: null },
 });
 
@@ -162,20 +165,35 @@ const {
     load,
     submit,
     startOver,
-} = usePublicForm(() => props.token, { live: props.live, preview: props.preview });
+} = usePublicForm(() => props.token, {
+    live: props.live,
+    preview: props.preview,
+    draft: () => props.draft,
+});
 
 const honeypotId = useId();
 
-const shown = computed(() => ({ ...form.value, ...props.draft }));
-
-const coverSrc = computed(() =>
-    props.draft
-        ? props.draft.cover_src
-        : formImageUrl(form.value.workspace_id, form.value.cover_image),
+const coverSrc = computed(
+    () => form.value.cover_src ?? formImageUrl(form.value.workspace_id, form.value.cover_image),
 );
 
-const logoSrc = computed(() =>
-    props.draft ? props.draft.logo_src : formImageUrl(form.value.workspace_id, form.value.logo),
+const logoSrc = computed(
+    () => form.value.logo_src ?? formImageUrl(form.value.workspace_id, form.value.logo),
+);
+
+// A form being built has no link to search rows through, so its pickers
+// search the way the builder's own inputs do.
+const rowsLoaders = computed(() =>
+    props.draft
+        ? Object.fromEntries(
+              (form.value.fields || [])
+                  .filter((f) => f.linked_id)
+                  .map((f) => [
+                      f.header_name,
+                      formRowsLoader(form.value.workspace_id, linkedTableId(f)),
+                  ]),
+          )
+        : {},
 );
 
 const statusIcon = computed(

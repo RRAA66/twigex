@@ -12,6 +12,7 @@ import { useWorkspaceStore } from "@/store/workspaces";
 import { extractErrorMessage } from "@/utils/errors";
 import {
     emptyFormData,
+    formLinkTables,
     incompleteConditionFields,
     normalizeFormData,
     mergeFormFields,
@@ -41,11 +42,15 @@ export function useFormBuilder() {
 
     let loadRequest = 0;
 
-    async function loadHeaders() {
+    async function loadTable() {
         const { data } = await workspaceStore.fetchWorkspaceNav(route.params.id);
-        const table = workspaceTables(data).find((tbl) => tbl.id === route.params.tid);
+        const tables = workspaceTables(data);
+        const table = tables.find((tbl) => tbl.id === route.params.tid);
 
-        return table?.headers || [];
+        return {
+            headers: table?.headers || [],
+            linkTables: formLinkTables(tables, route.params.tid),
+        };
     }
 
     async function loadSavedFields() {
@@ -77,14 +82,18 @@ export function useFormBuilder() {
 
         status.value = "loading";
         try {
-            const tableHeaders = await loadHeaders();
+            const table = await loadTable();
             const saved = await loadSavedFields();
 
             if (request !== loadRequest) return;
 
-            headers.value = tableHeaders;
-            if (saved.form) formData.value = normalizeFormData(saved.form, id, tid);
-            formFields.value = mergeFormFields(tableHeaders, saved.fields, t.value);
+            headers.value = table.headers;
+            // A saved form brings the server's list; a new one starts from the
+            // same tables the grid offers.
+            formData.value = saved.form
+                ? normalizeFormData(saved.form, id, tid)
+                : { ...formData.value, link_tables: table.linkTables };
+            formFields.value = mergeFormFields(table.headers, saved.fields, t.value);
             status.value = "ready";
         } catch (error) {
             if (request !== loadRequest) return;

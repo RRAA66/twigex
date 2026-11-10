@@ -80,6 +80,14 @@ describe("usePublicForm", () => {
         expect(state.fields.value.map((f) => f.header_name)).toEqual(["name", "status"]);
     });
 
+    it("draws a form being built without loading one", async () => {
+        const { state } = await setup({ preview: true, draft: () => form });
+
+        expect(formService.getPublicForm).not.toHaveBeenCalled();
+        expect(state.status.value).toBe("ready");
+        expect(state.fields.value.map((f) => f.header_name)).toEqual(["name", "status"]);
+    });
+
     it.each([
         [401, "login"],
         [403, "forbidden"],

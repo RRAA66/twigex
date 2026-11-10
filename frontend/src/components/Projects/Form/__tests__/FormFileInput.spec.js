@@ -41,6 +41,18 @@ describe("FormFileInput", () => {
         expect(w.emitted("update:modelValue")).toEqual([[[earlier, uploaded]]]);
     });
 
+    it("keeps the files on the screen without a link to upload through", async () => {
+        const w = mount(FormFileInput, { props: { id: "docs", modelValue: null } });
+
+        await pickFiles(w.find("input[type='file']"), [new File(["pdf"], "a.pdf")]);
+        await flushPromises();
+
+        expect(formService.uploadPublicFormFiles).not.toHaveBeenCalled();
+        expect(w.emitted("update:modelValue")).toEqual([
+            [[expect.objectContaining({ name: "a.pdf", size: 3 })]],
+        ]);
+    });
+
     it("takes a file back off the field", async () => {
         const w = mountInput([uploaded, { id: "file2", name: "b.pdf" }]);
 

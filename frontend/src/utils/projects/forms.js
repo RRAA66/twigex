@@ -123,6 +123,14 @@ export function formFieldType(field) {
     return "text";
 }
 
+// The tables a master link may name, filtered as the server lists them for a
+// saved form: no option tables, link tables or the form's own table.
+export function formLinkTables(tables, tableId) {
+    return tables
+        .filter((t) => !t.single_select && !t.parent_table_id && t.id !== tableId)
+        .map((t) => ({ id: t.id, name: t.name, display_name: t.display_name?.String || "" }));
+}
+
 // The table whose rows a link field's picker lists, as the server checks it.
 export function linkedTableId(field) {
     if (field.single_select) return field.linked_id || "";

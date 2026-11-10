@@ -24,8 +24,9 @@ const STATUS_BY_HTTP = {
 
 // live opens the app's websocket and closes it on unmount, so only a page
 // outside the app shell, which has no connection of its own, may pass it.
-// preview checks the answers but sends nothing.
-export function usePublicForm(token, { live = false, preview = false } = {}) {
+// preview checks the answers but sends nothing. draft draws a form being
+// built instead of loading token's.
+export function usePublicForm(token, { live = false, preview = false, draft = null } = {}) {
     const alertStore = useAlertStore();
 
     const status = ref("loading");
@@ -48,14 +49,26 @@ export function usePublicForm(token, { live = false, preview = false } = {}) {
         loadError.value = extractErrorMessage(error);
     }
 
+    function show(data) {
+        form.value = data;
+        values.value = defaultAnswers(fillableFormFields(data.fields));
+        status.value = "ready";
+    }
+
     async function load() {
+        const built = toValue(draft);
+
+        if (built) {
+            show(built);
+
+            return;
+        }
+
         status.value = "loading";
         try {
             const { data } = await formService.getPublicForm(toValue(token));
 
-            form.value = data;
-            values.value = defaultAnswers(fillableFormFields(data.fields));
-            status.value = "ready";
+            show(data);
         } catch (error) {
             failLoad(error);
         }
