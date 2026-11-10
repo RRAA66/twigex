@@ -440,6 +440,20 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 
 	failed := model.NewAppError("workspace.form_submissions_failed", http.StatusInternalServerError)
 
+	tableName, err := a.Store.Workspace.GetTableName(tableID)
+	if err != nil {
+		tlog.Errorw("Failed to retrieve the table of form submissions",
+			"form_id", formID,
+			"error", err,
+		)
+		return nil, failed
+	}
+
+	// The grid leaves out rows an assigned-only user may not see, so their
+	// submissions are left out too rather than shown without their answers.
+	filter.TableName = tableName
+	filter.Access = a.assignedOnlyFilter(user, workspaceID, tableID)
+
 	submissions, err := a.Store.Workspace.GetFormSubmissions(ctx, formID, filter, submissionsPageSize, (page-1)*submissionsPageSize)
 	if err != nil {
 		tlog.Errorw("Failed to retrieve form submissions",
