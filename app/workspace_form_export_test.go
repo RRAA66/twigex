@@ -63,6 +63,18 @@ func TestExportFormSubmissionsEndsWhenItStarts(t *testing.T) {
 	}
 }
 
+func TestExportFormSubmissionsLeavesOutRowsAnAssignedOnlyUserDoesNotSee(t *testing.T) {
+	a, ws, _ := submitApp()
+	a.WorkspaceRoles = assignedOnlyRoles{tables: map[string]bool{tbl1: true}}
+
+	exportCSV(t, a, model.FormSubmissionsFilter{})
+
+	access := ws.submissionsFilter.Access
+	if ws.submissionsFilter.TableName != "tbl_"+tbl1 || len(access.Args) != 1 || access.Args[0] != workspaceAdmin.ID {
+		t.Errorf("read with %+v, want the user's own tasks", ws.submissionsFilter)
+	}
+}
+
 func TestExportFormSubmissionsRefusesAMemberWhoCannotChangeViews(t *testing.T) {
 	a, ws, _ := submitApp()
 	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
