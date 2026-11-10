@@ -701,6 +701,13 @@ type WorkspaceFormSubmission struct {
 	Row map[string]any `json:"row,omitempty"`
 }
 
+// FormSubmissionsFilter keeps, when Access narrows the table named TableName,
+// only the submissions whose row the user may see there.
+type FormSubmissionsFilter struct {
+	TableName string
+	Access    SQLFilter
+}
+
 type FormSubmissionsPage struct {
 	Items []WorkspaceFormSubmission `json:"items"`
 	Total int                       `json:"total"`

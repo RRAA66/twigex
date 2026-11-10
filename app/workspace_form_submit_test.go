@@ -21,21 +21,22 @@ import (
 
 type fakeFormSubmitStore struct {
 	*fakeFormStore
-	tableWorkspace map[string]string
-	options        []string
-	members        []string
-	createErr      error
-	tableGone      bool
-	created        []model.FormTask
-	recorded       []model.WorkspaceFormSubmission
-	submissions    []model.WorkspaceFormSubmission
-	rows           []map[string]any
-	linkedRows     int
-	linkedLimit    int
-	linkedOffset   int
-	linkedAccess   model.SQLFilter
-	privateView    bool
-	viewShares     []string
+	tableWorkspace    map[string]string
+	options           []string
+	members           []string
+	createErr         error
+	tableGone         bool
+	created           []model.FormTask
+	recorded          []model.WorkspaceFormSubmission
+	submissions       []model.WorkspaceFormSubmission
+	rows              []map[string]any
+	linkedRows        int
+	linkedLimit       int
+	linkedOffset      int
+	linkedAccess      model.SQLFilter
+	submissionsFilter model.FormSubmissionsFilter
+	privateView       bool
+	viewShares        []string
 }
 
 func (f *fakeFormSubmitStore) GetViewVisibility(context.Context, string) (bool, string, error) {
@@ -118,13 +119,14 @@ func (f *fakeFormSubmitStore) CreateFormTask(_ context.Context, _, _ string, tas
 	return map[string]any{"id": task.ID}, nil
 }
 
-func (f *fakeFormSubmitStore) GetFormSubmissions(_ context.Context, _ string, limit, offset int) ([]model.WorkspaceFormSubmission, error) {
+func (f *fakeFormSubmitStore) GetFormSubmissions(_ context.Context, _ string, filter model.FormSubmissionsFilter, limit, offset int) ([]model.WorkspaceFormSubmission, error) {
+	f.submissionsFilter = filter
 	page := f.submissions[min(offset, len(f.submissions)):]
 
 	return slices.Clone(page[:min(limit, len(page))]), nil
 }
 
-func (f *fakeFormSubmitStore) CountFormSubmissions(context.Context, string) (int, error) {
+func (f *fakeFormSubmitStore) CountFormSubmissions(context.Context, string, model.FormSubmissionsFilter) (int, error) {
 	return len(f.submissions), nil
 }
 
@@ -577,6 +579,20 @@ func TestFormSubmissionsNamesTheSubmitters(t *testing.T) {
 	if submissions[0].SubmitterInfo == nil || submissions[0].SubmitterInfo.Name != "Anna" ||
 		submissions[2].SubmitterInfo == nil || submissions[2].SubmitterInfo.Name != "Sam" {
 		t.Errorf("submissions %+v, want each submitter named", submissions)
+	}
+}
+
+func TestFormSubmissionsLeaveOutRowsAnAssignedOnlyUserDoesNotSee(t *testing.T) {
+	a, ws, _ := submitApp()
+	a.WorkspaceRoles = assignedOnlyRoles{tables: map[string]bool{tbl1: true}}
+
+	if _, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, workspaceAdmin); appErr != nil {
+		t.Fatalf("GetFormSubmissions: %v", appErr)
+	}
+
+	access := ws.submissionsFilter.Access
+	if ws.submissionsFilter.TableName != "tbl_"+tbl1 || len(access.Args) != 1 || access.Args[0] != workspaceAdmin.ID {
+		t.Errorf("filtered by %+v, want the user's own tasks", ws.submissionsFilter)
 	}
 }
 
