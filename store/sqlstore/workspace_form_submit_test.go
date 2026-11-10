@@ -223,3 +223,26 @@ func TestGetFormSubmissionsWithinDates(t *testing.T) {
 		})
 	}
 }
+
+func TestGetFormSubmissionsLeavesOutRowsTheAccessHides(t *testing.T) {
+	w := setupFormSubmit(t)
+	ctx := context.Background()
+
+	mustExec(t, "UPDATE zz_links_a SET assignee = 'u1' WHERE id = 'a1'")
+	mustExec(t, `INSERT INTO workspace_form_submissions (id, form_id, task_id, submitted_by, submitted_at)
+		VALUES ('s1', 'form-1', 'a1', 'u1', 1), ('s2', 'form-1', 'a2', 'u2', 2)`)
+
+	filter := model.FormSubmissionsFilter{TableName: "zz_links_a", Access: model.SQLFilter{SQL: "`assignee` = ?", Args: []any{"u1"}}}
+
+	got, err := w.GetFormSubmissions(ctx, "form-1", filter, 10, 0)
+	if err != nil {
+		t.Fatalf("GetFormSubmissions: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != "s1" {
+		t.Errorf("got %+v, want s1 alone", got)
+	}
+
+	if count, err := w.CountFormSubmissions(ctx, "form-1", filter); err != nil || count != 1 {
+		t.Errorf("count = %d, %v; want 1", count, err)
+	}
+}

@@ -1577,6 +1577,7 @@
     "projects.create_role.view_types.kanban": "Kanban",
     "projects.create_role.view_types.calendar": "Calendar",
     "projects.create_role.view_types.gantt": "Gantt",
+    "projects.create_role.view_types.form": "Form",
     "projects.create_role.per_table.table_header": "Table",
     "projects.create_role.per_table.select_all": "Select all",
     "projects.create_role.per_table.no_tables": "No tables in this workspace",
