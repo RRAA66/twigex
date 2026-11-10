@@ -582,6 +582,20 @@ func TestFormSubmissionsNamesTheSubmitters(t *testing.T) {
 	}
 }
 
+func TestFormSubmissionsLeaveOutRowsAnAssignedOnlyUserDoesNotSee(t *testing.T) {
+	a, ws, _ := submitApp()
+	a.WorkspaceRoles = assignedOnlyRoles{tables: map[string]bool{tbl1: true}}
+
+	if _, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{From: 5}, 1, workspaceAdmin); appErr != nil {
+		t.Fatalf("GetFormSubmissions: %v", appErr)
+	}
+
+	access := ws.submissionsFilter.Access
+	if ws.submissionsFilter.From != 5 || ws.submissionsFilter.TableName != "tbl_"+tbl1 || len(access.Args) != 1 || access.Args[0] != workspaceAdmin.ID {
+		t.Errorf("filtered by %+v, want the user's own tasks", ws.submissionsFilter)
+	}
+}
+
 func TestFormSubmissionsCarryTheRowsTheUserMaySee(t *testing.T) {
 	a, ws, _ := submitApp()
 	ws.submissions = []model.WorkspaceFormSubmission{
