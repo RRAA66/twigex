@@ -2448,6 +2448,7 @@
     "projects.form_view.placeholder.number": "0",
     "projects.form_view.placeholder.decimal": "0.00",
     "projects.form_view.placeholder.url": "https://",
+    "projects.form_view.placeholder.no_color": "No color chosen",
     "projects.form_view.tabs": "Form sections",
     "projects.form_view.action.submit_another": "Submit another response",
     "projects.form_view.share.desc": "Members of this workspace can fill out the form with this link.",

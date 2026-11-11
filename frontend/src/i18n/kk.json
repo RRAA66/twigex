@@ -2448,6 +2448,7 @@
     "projects.form_view.placeholder.number": "0",
     "projects.form_view.placeholder.decimal": "0.00",
     "projects.form_view.placeholder.url": "https://",
+    "projects.form_view.placeholder.no_color": "Түс таңдалмаған",
     "projects.form_view.tabs": "Форма бөлімдері",
     "projects.form_view.action.submit_another": "Тағы бір жауап жіберу",
     "projects.form_view.share.desc": "Осы жұмыс кеңістігінің мүшелері форманы осы сілтеме арқылы толтыра алады.",

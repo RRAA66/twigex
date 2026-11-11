@@ -114,4 +114,19 @@ describe("FormFieldInput", () => {
 
         expect(w.find("button").classes()).toContain("ring-red-600");
     });
+
+    it("shows an unset colour as not chosen and sends no colour", () => {
+        mountField({ header_name: "color" });
+
+        expect(w.text()).toContain("No color chosen");
+        expect(w.emitted("update:modelValue")).toBeUndefined();
+    });
+
+    it("clears a chosen colour", async () => {
+        mountField({ header_name: "color" }, { modelValue: "#ff0000" });
+
+        await w.find("button").trigger("click");
+
+        expect(w.emitted("update:modelValue")).toEqual([[""]]);
+    });
 });
