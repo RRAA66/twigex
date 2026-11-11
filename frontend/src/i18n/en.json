@@ -2501,6 +2501,7 @@
     "projects.form_view.submissions.files": "one {count} file | other {count} files",
     "projects.form_view.submissions.hidden_item": "Hidden",
     "projects.form_view.submissions.row_unavailable": "Row deleted or not visible to you",
+    "projects.form_view.placeholder.no_color": "No color chosen",
     "projects.form_view.tabs": "Form sections",
     "projects.form_view.action.submit_another": "Submit another response",
     "projects.form_view.share.desc": "Members of this workspace can fill out the form with this link.",
