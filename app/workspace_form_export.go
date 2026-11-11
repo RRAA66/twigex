@@ -23,7 +23,6 @@ type FormSubmissionsExport struct {
 	fields []model.WorkspaceHeaders
 	filter model.FormSubmissionsFilter
 	user   model.User
-	access model.SQLFilter
 	labels []string
 }
 
@@ -71,7 +70,6 @@ func (a *App) PrepareFormSubmissionsExport(ctx context.Context, workspaceID, tab
 		table:      taskExportTable{table: model.WorkspaceTable{ID: tableID, Name: tableName}, headers: byName, list: headers},
 		filter:     filter,
 		user:       user,
-		access:     filter.Access,
 		labels:     []string{labelOr(labels, "submitted_by", "Submitted by"), labelOr(labels, "submitted_at", "Submitted at")},
 	}
 
@@ -196,7 +194,7 @@ func (e *FormSubmissionsExport) readRows(ctx context.Context, submissions []mode
 		taskIDs = append(taskIDs, s.TaskID)
 	}
 
-	rows, err := e.a.Store.Workspace.GetTasksByIDs(ctx, e.table.table.Name, taskIDs, e.access)
+	rows, err := e.a.Store.Workspace.GetTasksByIDs(ctx, e.table.table.Name, taskIDs, e.filter.Access)
 	if err != nil {
 		return nil, exportLookups{}, fmt.Errorf("read submitted rows: %w", err)
 	}
