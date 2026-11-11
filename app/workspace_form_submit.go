@@ -357,6 +357,7 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	if err != nil {
 		tlog.Errorw("Failed to retrieve the table of form submissions",
 			"form_id", formID,
+			"table_id", tableID,
 			"error", err,
 		)
 		return nil, failed
