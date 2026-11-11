@@ -367,6 +367,13 @@ describe("conditionTriggers", () => {
             "reason",
         ]);
     });
+
+    it("leaves out a calculation, which is never answered", () => {
+        const name = { header_name: "name", visible: true };
+        const total = { header_name: "total", visible: true, field_type: "calculations" };
+
+        expect(conditionTriggers([name, total], name)).toEqual([]);
+    });
 });
 
 describe("conditionValueWidget", () => {

@@ -155,6 +155,8 @@ export function useFormBuilder() {
     async function updateForm() {
         if (!checkConditions()) return;
 
+        const request = loadRequest;
+
         saving.value = true;
         try {
             const { data } = await formService.updateForm(
@@ -165,8 +167,14 @@ export function useFormBuilder() {
                 payloadFields(),
             );
 
-            formData.value = normalizeFormData(data, route.params.id, route.params.tid);
             renameViewTab(data.id, data.name);
+            if (request !== loadRequest) {
+                alertStore.showSuccess(t.value("projects.form_view.success.saved"));
+
+                return;
+            }
+
+            formData.value = normalizeFormData(data, route.params.id, route.params.tid);
             if (await saveImages())
                 alertStore.showSuccess(t.value("projects.form_view.success.saved"));
         } catch (error) {
@@ -179,6 +187,8 @@ export function useFormBuilder() {
     async function createForm(name) {
         if (!checkConditions()) return false;
 
+        const request = loadRequest;
+
         saving.value = true;
         try {
             const { data } = await formService.createForm(
@@ -187,6 +197,12 @@ export function useFormBuilder() {
                 { ...formData.value, id: "", name },
                 payloadFields(),
             );
+
+            if (request !== loadRequest) {
+                alertStore.showSuccess(t.value("projects.form_view.success.saved"));
+
+                return true;
+            }
 
             formData.value = normalizeFormData(data, route.params.id, route.params.tid);
             if (await saveImages())

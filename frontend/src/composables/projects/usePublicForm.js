@@ -42,6 +42,9 @@ export function usePublicForm(token, { live = false, preview = false } = {}) {
 
     const fillable = computed(() => fillableFormFields(form.value?.fields));
     const fields = computed(() => shownFormFields(fillable.value, values.value));
+    const answers = computed(() =>
+        Object.fromEntries(fields.value.map((f) => [f.header_name, values.value[f.header_name]])),
+    );
 
     function failLoad(error) {
         status.value = STATUS_BY_HTTP[error?.response?.status] || "failed";
@@ -162,6 +165,7 @@ export function usePublicForm(token, { live = false, preview = false } = {}) {
         form,
         fields,
         values,
+        answers,
         honeypot,
         fieldErrors,
         submitError,

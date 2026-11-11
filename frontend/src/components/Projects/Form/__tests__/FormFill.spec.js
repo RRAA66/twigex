@@ -64,6 +64,41 @@ describe("FormFill", () => {
         formService.getPublicForm.mockResolvedValue({ data: form });
     });
 
+    it("leaves an answer hidden by a condition out of a calculation", async () => {
+        formService.getPublicForm.mockResolvedValue({
+            data: {
+                ...form,
+                fields: [
+                    { header_name: "kind", label: "Kind", field_type: "text", visible: true },
+                    {
+                        header_name: "extra",
+                        label: "Extra",
+                        field_type: "number",
+                        visible: true,
+                        visibility_rule: { trigger_field: "kind", operator: "is_empty", value: "" },
+                    },
+                    {
+                        header_name: "total",
+                        label: "Total",
+                        field_type: "calculations",
+                        visible: true,
+                        formula: { name: "SUM", args: [{ type: "field", value: "extra" }] },
+                    },
+                ],
+            },
+        });
+        const w = await mountFill();
+        const total = () => w.find("[aria-readonly='true']").text();
+
+        await w.find("input[type='number']").setValue("5");
+
+        expect(total()).toBe("5");
+
+        await w.find("fieldset input[type='text']").setValue("paid");
+
+        expect(total()).not.toBe("5");
+    });
+
     it("shows the form's fields in order, with a hidden honeypot", async () => {
         const w = await mountFill();
 

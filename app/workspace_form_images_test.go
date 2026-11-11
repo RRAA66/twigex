@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -303,6 +304,15 @@ func TestDeletingAFormAsAViewRemovesItsImages(t *testing.T) {
 type fakeFormImageReaders struct {
 	*fakeFormImageStore
 	privateView bool
+	formErr     error
+}
+
+func (f *fakeFormImageReaders) GetForm(ctx context.Context, formID string) (*model.WorkspaceFormWithFields, error) {
+	if f.formErr != nil {
+		return nil, f.formErr
+	}
+
+	return f.fakeFormImageStore.GetForm(ctx, formID)
 }
 
 func (f *fakeFormImageReaders) IsMember(_, userID string) (bool, error) {
@@ -363,5 +373,22 @@ func TestFormImagesAreShownToWhoeverMayOpenTheForm(t *testing.T) {
 	readers.privateView = true
 	if _, appErr := a.GetWorkspaceAttachment(context.Background(), cover.CoverImage, wsID, model.User{ID: "grouped"}); appErr == nil {
 		t.Error("cover of a form in a private view was shown to a member it is not shared with")
+	}
+}
+
+func TestFormImageIsRefusedWhenItsFormCannotBeRead(t *testing.T) {
+	a, ws, _ := imageApp(t)
+
+	cover, appErr := setImage(t, a, model.FormImageCover, "a.png", pngHeader)
+	if appErr != nil {
+		t.Fatalf("SetFormImage: %v", appErr)
+	}
+
+	a.Store.Workspace = &fakeFormImageReaders{fakeFormImageStore: ws, formErr: errors.New("connection lost")}
+	a.WorkspaceRoles = assignedOnlyRoles{tables: map[string]bool{tbl1: true}}
+
+	_, appErr = a.GetWorkspaceAttachment(context.Background(), cover.CoverImage, wsID, model.User{ID: "assigned"})
+	if appErr == nil || appErr.Status != http.StatusInternalServerError {
+		t.Errorf("want 500, got %v", appErr)
 	}
 }

@@ -69,7 +69,7 @@ func (a *App) presetFormValues(ctx context.Context, form *model.WorkspaceFormWit
 			continue
 		}
 
-		if appErr := a.setFormValue(ctx, form.WorkspaceID, f, f.DefaultValue, linkTables, task); appErr != nil {
+		if appErr := a.setFormDefault(ctx, form.WorkspaceID, f, linkTables, task); appErr != nil {
 			return appErr
 		}
 	}
@@ -85,6 +85,66 @@ func (a *App) prepareBuilderForm(ctx context.Context, user model.User, form *mod
 		return appErr
 	}
 	form.LinkTables = tables
+
+	return nil
+}
+
+// A default the submitter cannot see or change is left out once it no
+// longer holds, such as a deleted option or row or a member who left, so
+// the form keeps taking submissions until an editor saves it again.
+func (a *App) setFormDefault(ctx context.Context, workspaceID string, f model.WorkspaceFormField, linkTables map[string]bool, task *model.FormTask) *model.AppError {
+	appErr := a.setFormValue(ctx, workspaceID, f, f.DefaultValue, linkTables, task)
+	if appErr != nil && appErr.Status == http.StatusBadRequest {
+		tlog.Warnw("Left out a form default that no longer holds",
+			"field", f.HeaderName,
+			"error", appErr.ID,
+		)
+		return nil
+	}
+
+	if appErr != nil || len(task.Links[f.HeaderName]) == 0 {
+		return appErr
+	}
+
+	return a.keepExistingDefaultLinks(ctx, f, task)
+}
+
+func (a *App) keepExistingDefaultLinks(ctx context.Context, f model.WorkspaceFormField, task *model.FormTask) *model.AppError {
+	ids := task.Links[f.HeaderName]
+
+	tableName, err := a.Store.Workspace.GetTableName(pickedTable(f))
+	var rows []map[string]any
+	if err == nil {
+		rows, err = a.Store.Workspace.GetLinkedRecordsLite(ctx, tableName, "", ids, len(ids), 0, model.SQLFilter{})
+	}
+
+	if err != nil {
+		tlog.Errorw("Failed to check a form default's linked rows",
+			"field", f.HeaderName,
+			"error", err,
+		)
+		return model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
+	}
+
+	found := make(map[string]bool, len(rows))
+	for _, row := range rows {
+		id, _ := row["id"].(string)
+		found[id] = true
+	}
+
+	kept := slices.DeleteFunc(slices.Clone(ids), func(id string) bool { return !found[id] })
+
+	if len(kept) < len(ids) {
+		tlog.Warnw("Left out a form default's deleted rows", "field", f.HeaderName)
+	}
+
+	if len(kept) == 0 {
+		delete(task.Links, f.HeaderName)
+		return nil
+	}
+
+	task.Links[f.HeaderName] = kept
+
 	return nil
 }
 
