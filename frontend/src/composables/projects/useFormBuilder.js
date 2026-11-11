@@ -109,6 +109,8 @@ export function useFormBuilder() {
     }
 
     async function updateForm() {
+        const request = loadRequest;
+
         saving.value = true;
         try {
             const { data } = await formService.updateForm(
@@ -119,8 +121,11 @@ export function useFormBuilder() {
                 payloadFields(),
             );
 
-            formData.value = normalizeFormData(data, route.params.id, route.params.tid);
             renameViewTab(data.id, data.name);
+            if (request === loadRequest) {
+                formData.value = normalizeFormData(data, route.params.id, route.params.tid);
+            }
+
             alertStore.showSuccess(t.value("projects.form_view.success.saved"));
         } catch (error) {
             alertStore.showError(extractErrorMessage(error));
@@ -130,6 +135,8 @@ export function useFormBuilder() {
     }
 
     async function createForm(name) {
+        const request = loadRequest;
+
         saving.value = true;
         try {
             const { data } = await formService.createForm(
@@ -139,8 +146,10 @@ export function useFormBuilder() {
                 payloadFields(),
             );
 
-            formData.value = normalizeFormData(data, route.params.id, route.params.tid);
             alertStore.showSuccess(t.value("projects.form_view.success.saved"));
+            if (request !== loadRequest) return true;
+
+            formData.value = normalizeFormData(data, route.params.id, route.params.tid);
             await router.replace({
                 name: "form-view",
                 params: { id: route.params.id, tid: route.params.tid, fid: data.id },

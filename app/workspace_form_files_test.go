@@ -275,6 +275,27 @@ func TestSubmitFormRefusesAnUnknownFile(t *testing.T) {
 	}
 }
 
+func TestSubmitFormRefusesOneFileInTwoFields(t *testing.T) {
+	a, ws, _ := submitApp(fileField("docs", false), fileField("scans", false))
+	root := useLocalProjectFiles(t, a)
+
+	uploaded := uploadToForm(t, a, submitter, "report.pdf", "%PDF-1.4")
+
+	_, appErr := submit(a, submitter,
+		model.FormValue{Name: "docs", Value: uploaded.ID},
+		model.FormValue{Name: "scans", Value: uploaded.ID},
+	)
+	if appErr == nil || appErr.Status != http.StatusBadRequest {
+		t.Fatalf("want 400, got %v", appErr)
+	}
+	if len(ws.created) != 0 {
+		t.Errorf("created %d rows, want none", len(ws.created))
+	}
+	if content := readFile(t, filepath.Join(root, "form-uploads", "form-1", uploaded.ID+".pdf")); content != "%PDF-1.4" {
+		t.Errorf("pending file holds %q", content)
+	}
+}
+
 // Files are moved before the row's transaction; when it fails they go back
 // to the pending area, so the same submission can be sent again.
 func TestSubmitFormReturnsFilesWhenTheRowIsNotWritten(t *testing.T) {
