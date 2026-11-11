@@ -2513,6 +2513,7 @@
     "projects.form_view.submissions.files": "one {count} plik | few {count} pliki | many {count} plików | other {count} pliku",
     "projects.form_view.submissions.hidden_item": "Ukryty",
     "projects.form_view.submissions.row_unavailable": "Wiersz usunięty lub niewidoczny dla Ciebie",
+    "projects.form_view.placeholder.no_color": "Nie wybrano koloru",
     "projects.form_view.tabs": "Sekcje formularza",
     "projects.form_view.action.continue": "Kontynuuj",
     "projects.form_view.action.submit_another": "Wyślij kolejną odpowiedź",

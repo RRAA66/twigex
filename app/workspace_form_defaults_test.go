@@ -74,6 +74,46 @@ func TestSubmitFormAnswersAMasterLinkDefaultOnATableTheSubmitterDoesNotSee(t *te
 	}
 }
 
+func TestSubmitFormLeavesOutADefaultThatNoLongerHolds(t *testing.T) {
+	cases := map[string]model.WorkspaceFormField{
+		"deleted option":     {HeaderName: "status", LinkedID: "status-options", SingleSelect: true, DefaultValue: "opt-gone"},
+		"member who left":    {HeaderName: "assignee", FieldType: "assignee", Visible: true, ReadOnly: true, Required: true, DefaultValue: "user-gone"},
+		"deleted table":      {HeaderName: "source", FieldType: "master link", DefaultValue: "table-gone"},
+		"deleted linked row": {HeaderName: "client", LinkedID: tbl2, DefaultValue: "row-gone"},
+	}
+
+	for name, stale := range cases {
+		t.Run(name, func(t *testing.T) {
+			a, ws, _ := submitApp(textField("name", true), stale)
+
+			_, appErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"})
+			if appErr != nil {
+				t.Fatalf("SubmitForm: %v", appErr)
+			}
+
+			task := ws.created[0]
+			if _, ok := task.Values[stale.HeaderName]; ok || len(task.Links[stale.HeaderName]) != 0 {
+				t.Errorf("row has %v / %v for %s, want it left out", task.Values, task.Links, stale.HeaderName)
+			}
+		})
+	}
+}
+
+func TestSubmitFormKeepsADefaultsRowsThatStillExist(t *testing.T) {
+	client := model.WorkspaceFormField{HeaderName: "client", LinkedID: tbl2, DefaultValue: "row-1,row-gone"}
+	a, ws, _ := submitApp(textField("name", true), client)
+	ws.linkedRows = 1
+
+	_, appErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"})
+	if appErr != nil {
+		t.Fatalf("SubmitForm: %v", appErr)
+	}
+
+	if got := ws.created[0].Links["client"]; len(got) != 1 || got[0] != "row-1" {
+		t.Errorf("client links %v, want only row-1", got)
+	}
+}
+
 func TestSubmitFormTakesAnAnswerOverAVisibleDefault(t *testing.T) {
 	note := model.WorkspaceFormField{HeaderName: "description", FieldType: "text", Visible: true, DefaultValue: "Website"}
 	a, ws, _ := submitApp(textField("name", true), note)
