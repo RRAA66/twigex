@@ -271,6 +271,7 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		}
 	}
 
+	sentFiles := map[string]bool{}
 	for _, v := range request.Fields {
 		if _, ok := fileFields[v.Name]; !ok {
 			continue
@@ -279,6 +280,14 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		ids, ok := formFileIDs(v.Value)
 		if !ok {
 			return "", model.NewAppError("request.invalid", http.StatusBadRequest)
+		}
+
+		for _, id := range ids {
+			if sentFiles[id] {
+				return "", model.NewAppError("request.invalid", http.StatusBadRequest)
+			}
+
+			sentFiles[id] = true
 		}
 
 		fileIDs[v.Name] = ids
@@ -713,7 +722,7 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 			task.Values[name] = 1
 		}
 
-	case value == nil || value == "":
+	case value == nil || isText && strings.TrimSpace(text) == "":
 		return nil
 
 	case field.FieldType == "number" || field.FieldType == "decimal":
