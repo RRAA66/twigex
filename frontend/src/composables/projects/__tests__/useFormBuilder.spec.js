@@ -157,6 +157,44 @@ describe("useFormBuilder", () => {
         expect(builder.status.value).toBe("ready");
     });
 
+    it("keeps the newly opened form when an earlier update answers after the switch", async () => {
+        const saved = deferred();
+
+        formService.getForm
+            .mockResolvedValueOnce({ data: { id: "f1", name: "First", fields: [] } })
+            .mockResolvedValueOnce({ data: { id: "f2", name: "Second", fields: [] } });
+        formService.updateForm.mockReturnValue(saved.promise);
+        const { builder, router } = await mountBuilder("/p/w1/form/t1/view/f1");
+
+        const update = builder.updateForm();
+
+        await router.push("/p/w1/form/t1/view/f2");
+        await flushPromises();
+        saved.resolve({ data: { id: "f1", name: "First" } });
+        await update;
+
+        expect(builder.formData.value).toMatchObject({ id: "f2", name: "Second" });
+    });
+
+    it("stays on the opened form when a create answers after the switch", async () => {
+        const created = deferred();
+
+        formService.getForm.mockResolvedValue({ data: { id: "f2", name: "Second", fields: [] } });
+        formService.createForm.mockReturnValue(created.promise);
+        const { builder, router } = await mountBuilder("/p/w1/form/t1");
+
+        const create = builder.createForm("Intake");
+
+        await router.push("/p/w1/form/t1/view/f2");
+        await flushPromises();
+        created.resolve({ data: { id: "f9", name: "Intake" } });
+        await create;
+        await flushPromises();
+
+        expect(router.currentRoute.value.params.fid).toBe("f2");
+        expect(builder.formData.value).toMatchObject({ id: "f2", name: "Second" });
+    });
+
     it("reloads when the table changes under the same form route", async () => {
         formService.getForm.mockResolvedValue({ data: { id: "f1", name: "Intake", fields: [] } });
         const { router } = await mountBuilder("/p/w1/form/t1/view/f1");

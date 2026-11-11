@@ -338,14 +338,15 @@ function watches(fields, field, target) {
 }
 
 // The fields a condition on field can watch: the others shown on the form,
-// less file fields and those that already depend on field, which would loop.
+// less file fields and calculations, which are never answered, and those
+// that already depend on field, which would loop.
 export function conditionTriggers(fields, field) {
     return fields.filter(
         (f) =>
             f.header_name === field.visibility_rule?.trigger_field ||
             (f.header_name !== field.header_name &&
                 f.visible &&
-                formFieldType(f) !== "file" &&
+                !["file", "calculated"].includes(formFieldType(f)) &&
                 !watches(fields, f, field)),
     );
 }
