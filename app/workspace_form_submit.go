@@ -271,6 +271,7 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		}
 	}
 
+	sentFiles := map[string]bool{}
 	for _, v := range request.Fields {
 		if _, ok := fileFields[v.Name]; !ok {
 			continue
@@ -279,6 +280,14 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		ids, ok := formFileIDs(v.Value)
 		if !ok {
 			return "", model.NewAppError("request.invalid", http.StatusBadRequest)
+		}
+
+		for _, id := range ids {
+			if sentFiles[id] {
+				return "", model.NewAppError("request.invalid", http.StatusBadRequest)
+			}
+
+			sentFiles[id] = true
 		}
 
 		fileIDs[v.Name] = ids
@@ -290,12 +299,15 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 			continue
 		}
 
-		allowed := linkTables
 		if field.ReadOnly {
-			allowed = defaultLinkTables
+			if appErr := a.setFormDefault(ctx, form.WorkspaceID, field, defaultLinkTables, &task); appErr != nil {
+				return "", appErr
+			}
+
+			continue
 		}
 
-		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, value, allowed, &task); appErr != nil {
+		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, value, linkTables, &task); appErr != nil {
 			return "", appErr
 		}
 	}
@@ -305,7 +317,7 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 	}
 
 	for _, f := range fields {
-		if !f.Required {
+		if !f.Required || f.ReadOnly {
 			continue
 		}
 
@@ -713,7 +725,7 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 			task.Values[name] = 1
 		}
 
-	case value == nil || value == "":
+	case value == nil || isText && strings.TrimSpace(text) == "":
 		return nil
 
 	case field.FieldType == "number" || field.FieldType == "decimal":

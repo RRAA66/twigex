@@ -115,8 +115,13 @@ func (e *FormSubmissionsExport) WriteCSV(ctx context.Context, w io.Writer, flush
 		return err
 	}
 
+	header := make([]string, len(e.labels))
+	for i, label := range e.labels {
+		header[i] = inertCell(label)
+	}
+
 	out := csv.NewWriter(w)
-	if err := out.Write(e.labels); err != nil {
+	if err := out.Write(header); err != nil {
 		return err
 	}
 
