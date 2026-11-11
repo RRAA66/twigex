@@ -81,7 +81,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                     v-else-if="item.row"
                     :key="field.header_name"
                     :field="field"
-                    :value="item.row[field.header_name]"
+                    :value="answerOf(field, item.row)"
                 />
             </template>
         </DataTable>
@@ -101,7 +101,7 @@ import { useAlertStore } from "@/store/alerts";
 import { useUserStore } from "@/store/user";
 import { useWorkspaceStore } from "@/store/workspaces";
 import { extractErrorMessage } from "@/utils/errors";
-import { fillableFormFields, formFieldType } from "@/utils/projects/forms";
+import { calculatedAnswer, fillableFormFields, formFieldType } from "@/utils/projects/forms";
 import { tableDisplayNames } from "@/utils/projects/gridView";
 import BaseButton from "@/components/BaseButton.vue";
 import DataTable from "@/components/DataTable.vue";
@@ -155,6 +155,14 @@ const columns = computed(() => [
         hiddenBelow: index > 0 ? "md" : undefined,
     })),
 ]);
+
+// A calculation is never stored, so it is worked out from the row as the
+// form works it out from the answers.
+function answerOf(field, row) {
+    if (formFieldType(field) === "calculated") return calculatedAnswer(field, row);
+
+    return row[field.header_name];
+}
 
 function submitterName(submission) {
     const info = submission.submitter_info;

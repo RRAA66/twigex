@@ -74,8 +74,10 @@ func (a *App) PrepareFormSubmissionsExport(ctx context.Context, workspaceID, tab
 	}
 
 	for _, f := range form.Fields {
+		// A calculation is only worked out on screen, so the file leaves it
+		// out, as the task report's export does.
 		h, ok := byName[f.HeaderName]
-		if !f.Visible || !ok {
+		if !f.Visible || !ok || h.HeaderUsage == "calculations" {
 			continue
 		}
 
