@@ -299,12 +299,15 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 			continue
 		}
 
-		allowed := linkTables
 		if field.ReadOnly {
-			allowed = defaultLinkTables
+			if appErr := a.setFormDefault(ctx, form.WorkspaceID, field, defaultLinkTables, &task); appErr != nil {
+				return "", appErr
+			}
+
+			continue
 		}
 
-		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, value, allowed, &task); appErr != nil {
+		if appErr := a.setFormValue(ctx, form.WorkspaceID, field, value, linkTables, &task); appErr != nil {
 			return "", appErr
 		}
 	}
@@ -314,7 +317,7 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 	}
 
 	for _, f := range fields {
-		if !f.Required {
+		if !f.Required || f.ReadOnly {
 			continue
 		}
 
