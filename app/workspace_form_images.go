@@ -253,9 +253,9 @@ func (a *App) formImageChanged(ctx context.Context, workspaceID, tableID, formID
 	return updated, nil
 }
 
-func (a *App) formOfImage(ctx context.Context, attachment *model.WorkspaceAttachment) *model.WorkspaceFormWithFields {
+func (a *App) formOfImage(ctx context.Context, attachment *model.WorkspaceAttachment) (*model.WorkspaceFormWithFields, *model.AppError) {
 	if attachment.FieldID != formImageFieldID(model.FormImageCover) && attachment.FieldID != formImageFieldID(model.FormImageLogo) {
-		return nil
+		return nil, nil
 	}
 
 	form, err := a.Store.Workspace.GetForm(ctx, attachment.TaskID)
@@ -264,18 +264,18 @@ func (a *App) formOfImage(ctx context.Context, attachment *model.WorkspaceAttach
 			"file_id", attachment.ID,
 			"error", err,
 		)
-		return nil
+		return nil, model.NewAppError("workspace.form_get_failed", http.StatusInternalServerError)
 	}
 
 	if form == nil || form.WorkspaceID != attachment.WorkspaceID || form.TableID != attachment.TableID {
-		return nil
+		return nil, nil
 	}
 
 	if attachment.ID != form.CoverImage && attachment.ID != form.Logo {
-		return nil
+		return nil, nil
 	}
 
-	return form
+	return form, nil
 }
 
 func (a *App) requireFormOpen(ctx context.Context, user model.User, form *model.WorkspaceFormWithFields) *model.AppError {

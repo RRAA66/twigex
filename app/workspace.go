@@ -4690,7 +4690,12 @@ func (a *App) GetWorkspaceAttachment(ctx context.Context, fileID, workspaceID st
 	// A form's cover and logo are shown to whoever may open the form, which
 	// includes members through a group and members who see only their own
 	// tasks.
-	if form := a.formOfImage(ctx, attachment); form != nil {
+	form, appErr := a.formOfImage(ctx, attachment)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	if form != nil {
 		if appErr := a.requireFormOpen(ctx, user, form); appErr != nil {
 			return nil, appErr
 		}
