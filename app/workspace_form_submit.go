@@ -567,7 +567,7 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 			task.Values[name] = 1
 		}
 
-	case value == nil || value == "":
+	case value == nil || isText && strings.TrimSpace(text) == "":
 		return nil
 
 	case field.FieldType == "number" || field.FieldType == "decimal":
