@@ -16,6 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         <div class="relative" :class="label ? 'mt-2' : ''">
             <ListboxButton
                 ref="button"
+                :aria-invalid="error ? 'true' : undefined"
                 class="relative w-full cursor-default rounded-md bg-white py-1.5 pl-3 pr-10 text-left text-sm text-gray-900 shadow-sm ring-1 ring-inset focus:outline-none focus:ring-2 disabled:bg-gray-50 disabled:text-gray-400 sm:leading-6"
                 :class="
                     error
