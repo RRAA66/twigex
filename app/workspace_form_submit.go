@@ -206,11 +206,20 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		}
 	}
 
+	sentFiles := map[string]bool{}
 	for _, v := range request.Fields {
 		if _, ok := fileFields[v.Name]; ok {
 			ids, ok := formFileIDs(v.Value)
 			if !ok {
 				return "", model.NewAppError("request.invalid", http.StatusBadRequest)
+			}
+
+			for _, id := range ids {
+				if sentFiles[id] {
+					return "", model.NewAppError("request.invalid", http.StatusBadRequest)
+				}
+
+				sentFiles[id] = true
 			}
 
 			fileIDs[v.Name] = ids
