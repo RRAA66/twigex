@@ -8,6 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         <PopoverButton
             :id="id"
             ref="reference"
+            :aria-invalid="error ? 'true' : undefined"
             class="relative w-full cursor-default rounded-md bg-white py-1.5 pl-3 pr-16 text-left shadow-sm ring-1 ring-inset focus:outline-none focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
             :class="error ? 'ring-red-600' : 'ring-gray-300'"
         >
