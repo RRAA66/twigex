@@ -96,7 +96,7 @@ func (a *App) visibleLinkTables(user model.User, form *model.WorkspaceFormWithFi
 		visible[t.ID] = true
 	}
 
-	return slices.DeleteFunc(tables, func(t model.FormLinkTable) bool { return !visible[t.ID] })
+	return slices.DeleteFunc(slices.Clone(tables), func(t model.FormLinkTable) bool { return !visible[t.ID] })
 }
 
 func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search string, page, limit int, user *model.User) (*model.LinkedItemsResponse, *model.AppError) {
