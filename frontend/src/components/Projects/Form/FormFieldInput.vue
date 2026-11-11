@@ -56,16 +56,33 @@ SPDX-License-Identifier: AGPL-3.0-only
             :error="Boolean(error)"
             @update:model-value="update"
         />
-        <input
-            v-else-if="type === 'color'"
-            :id="id"
-            type="color"
-            :value="modelValue || '#000000'"
-            v-bind="aria"
-            class="h-9 w-16 cursor-pointer rounded-md border bg-white p-1"
-            :class="error ? 'border-red-600' : 'border-gray-300'"
-            @input="update($event.target.value)"
-        />
+        <div v-else-if="type === 'color'" class="flex items-center gap-x-2">
+            <input
+                :id="id"
+                type="color"
+                :value="modelValue || '#000000'"
+                v-bind="aria"
+                class="h-9 w-16 cursor-pointer rounded-md border bg-white p-1"
+                :class="[
+                    error ? 'border-red-600' : 'border-gray-300',
+                    { 'opacity-30': !modelValue },
+                ]"
+                @input="update($event.target.value)"
+            />
+            <span class="text-sm" :class="modelValue ? 'text-gray-900' : 'text-gray-400'">
+                {{
+                    modelValue || field.placeholder || t("projects.form_view.placeholder.no_color")
+                }}
+            </span>
+            <button
+                v-if="modelValue"
+                type="button"
+                class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                @click="update('')"
+            >
+                {{ t("common.button.clear") }}
+            </button>
+        </div>
         <FormLinkedPicker
             v-else-if="type === 'single-select' || type === 'link'"
             :id="id"

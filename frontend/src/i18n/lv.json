@@ -2512,6 +2512,7 @@
     "projects.form_view.submissions.files": "zero {count} failu | one {count} fails | other {count} faili",
     "projects.form_view.submissions.hidden_item": "Slēpts",
     "projects.form_view.submissions.row_unavailable": "Rinda dzēsta vai jums nav redzama",
+    "projects.form_view.placeholder.no_color": "Krāsa nav izvēlēta",
     "projects.form_view.tabs": "Veidlapas sadaļas",
     "projects.form_view.action.continue": "Turpināt",
     "projects.form_view.action.submit_another": "Iesniegt vēl vienu atbildi",
