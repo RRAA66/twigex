@@ -52,6 +52,29 @@ func TestExportFormSubmissionsWritesWhoSentEachAndWhen(t *testing.T) {
 	}
 }
 
+func TestExportFormSubmissionsKeepsAFormulaLabelInert(t *testing.T) {
+	a, _, _ := submitApp()
+
+	export, appErr := a.PrepareFormSubmissionsExport(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{}, "UTC", "24h", map[string]string{"submitted_by": "=HYPERLINK(\"http://x\")"}, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("PrepareFormSubmissionsExport: %v", appErr)
+	}
+
+	var out bytes.Buffer
+	if err := export.WriteCSV(context.Background(), &out, nil); err != nil {
+		t.Fatalf("WriteCSV: %v", err)
+	}
+
+	header, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(out.String(), "\xEF\xBB\xBF"))).Read()
+	if err != nil {
+		t.Fatalf("read CSV: %v", err)
+	}
+
+	if want := `'=HYPERLINK("http://x")`; header[0] != want {
+		t.Errorf("header %q, want %q", header[0], want)
+	}
+}
+
 func TestExportFormSubmissionsEndsWhenItStarts(t *testing.T) {
 	a, ws, _ := submitApp()
 	before := time.Now().Unix()

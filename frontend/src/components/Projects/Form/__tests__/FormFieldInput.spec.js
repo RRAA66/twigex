@@ -77,7 +77,7 @@ describe("FormFieldInput", () => {
             .map((id) => document.getElementById(id)?.textContent.trim());
 
         expect(labels).toContain("Agree *");
-        expect(button.classes()).toContain("ring-red-600");
+        expect(button.attributes("aria-invalid")).toBe("true");
         expect(w.text()).toContain("Required");
     });
 
@@ -130,6 +130,22 @@ describe("FormFieldInput", () => {
     it("shows the error on a date field", () => {
         mountField({ field_type: "date" }, { error: "Required" });
 
-        expect(w.find("button").classes()).toContain("ring-red-600");
+        expect(w.find("button").attributes("aria-invalid")).toBe("true");
+        expect(w.text()).toContain("Required");
+    });
+
+    it("shows an unset colour as not chosen and sends no colour", () => {
+        mountField({ header_name: "color" });
+
+        expect(w.text()).toContain("No color chosen");
+        expect(w.emitted("update:modelValue")).toBeUndefined();
+    });
+
+    it("clears a chosen colour", async () => {
+        mountField({ header_name: "color" }, { modelValue: "#ff0000" });
+
+        await w.find("button").trigger("click");
+
+        expect(w.emitted("update:modelValue")).toEqual([[""]]);
     });
 });
