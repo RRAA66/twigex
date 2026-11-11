@@ -106,7 +106,7 @@ func (a *App) visibleLinkTables(user model.User, form *model.WorkspaceFormWithFi
 		visible[t.ID] = true
 	}
 
-	return slices.DeleteFunc(tables, func(t model.FormLinkTable) bool { return !visible[t.ID] })
+	return slices.DeleteFunc(slices.Clone(tables), func(t model.FormLinkTable) bool { return !visible[t.ID] })
 }
 
 func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search string, page, limit int, user *model.User) (*model.LinkedItemsResponse, *model.AppError) {
@@ -444,6 +444,7 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	if err != nil {
 		tlog.Errorw("Failed to retrieve the table of form submissions",
 			"form_id", formID,
+			"table_id", tableID,
 			"error", err,
 		)
 		return nil, failed

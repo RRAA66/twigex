@@ -8,7 +8,8 @@ import { useAlertStore } from "@/store/alerts";
 import { formImageUrl } from "@/utils/projects/forms";
 
 const IMAGE_FIELDS = { cover: "cover_image", logo: "logo" };
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+// The server takes an image by its name's extension and these at most.
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 const MAX_IMAGE_BYTES = 5 << 20;
 
 // A picked or removed image waits in the browser until the form is saved, as
@@ -36,7 +37,12 @@ export function useFormImages(form) {
 
     // Refused here rather than on save, when the picker is long closed.
     function refusal(file) {
-        if (!IMAGE_TYPES.includes(file.type)) return t.value("projects.form_view.error.image_type");
+        const dot = file.name.lastIndexOf(".");
+        const extension = dot < 0 ? "" : file.name.slice(dot).toLowerCase();
+
+        if (!IMAGE_EXTENSIONS.includes(extension)) {
+            return t.value("projects.form_view.error.image_type");
+        }
 
         if (file.size > MAX_IMAGE_BYTES) return t.value("projects.form_view.error.image_too_large");
 
@@ -75,23 +81,31 @@ export function useFormImages(form) {
         pending.value = {};
     }
 
-    // onStored gets each image as it is stored. One that fails stays waiting,
-    // so the next save sends it again.
+    // An image that fails stays waiting so the next save sends it again, as
+    // does one picked anew while the one before it was being sent. A form
+    // opened meanwhile gets nothing of the one that was saved.
     async function save(saved, onStored) {
+        const { workspace_id: ws, table_id: table, id } = saved;
+
         for (const [kind, file] of Object.entries(pending.value)) {
-            const { workspace_id: ws, table_id: table, id } = saved;
             const { data } = file
                 ? await formService.setFormImage(ws, table, id, kind, file)
                 : await formService.removeFormImage(ws, table, id, kind);
+
+            if (toValue(form).id !== id) return;
+
+            if (pending.value[kind] === file) {
+                forget(kind);
+                unpend(kind);
+            }
+
             const field = IMAGE_FIELDS[kind];
 
-            forget(kind);
-            unpend(kind);
             onStored({ [field]: data[field] || "" });
         }
     }
 
     onScopeDispose(discard);
 
-    return { pending, pick, remove, src, discard, save };
+    return { pick, remove, src, discard, save };
 }
