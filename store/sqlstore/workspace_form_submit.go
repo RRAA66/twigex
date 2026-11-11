@@ -173,6 +173,10 @@ func (w *workspaceRepository) submissionsWhere(ctx context.Context, formID strin
 // charset's default, which differ on some servers. Comparing in the row
 // table's collation keeps its primary key usable.
 func (w *workspaceRepository) rowIDCollation(ctx context.Context, tableName string) (string, error) {
+	if known, ok := w.rowIDCollations.Load(tableName); ok {
+		return known.(string), nil
+	}
+
 	var collation string
 	err := w.Db.QueryRowContext(ctx, `
 		SELECT COLLATION_NAME FROM information_schema.COLUMNS
@@ -184,6 +188,8 @@ func (w *workspaceRepository) rowIDCollation(ctx context.Context, tableName stri
 	if !identifierPattern.MatchString(collation) {
 		return "", fmt.Errorf("unexpected collation %q", collation)
 	}
+
+	w.rowIDCollations.Store(tableName, collation)
 
 	return collation, nil
 }

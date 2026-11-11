@@ -17,6 +17,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/twigex/twigex/model"
@@ -24,6 +25,10 @@ import (
 
 type workspaceRepository struct {
 	Db *sql.DB
+
+	// rowIDCollations holds each row table's id collation by table name, as a
+	// table keeps the one it was created with.
+	rowIDCollations sync.Map
 }
 
 func NewWorkspaceRepository(Db *sql.DB) (*workspaceRepository, error) {
