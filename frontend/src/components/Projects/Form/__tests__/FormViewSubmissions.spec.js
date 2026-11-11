@@ -91,6 +91,27 @@ describe("FormViewSubmissions", () => {
         expect(w.text()).not.toContain("secret");
     });
 
+    it("works a calculation out from the row, as it is never stored", async () => {
+        respond([submission("1", { qty: "4", price: "12.5", total: null })]);
+        w = await mountList([
+            {
+                header_name: "total",
+                label: "Total",
+                field_type: "calculations",
+                visible: true,
+                formula: {
+                    name: "PRODUCT",
+                    args: [
+                        { type: "field", value: "qty" },
+                        { type: "field", value: "price" },
+                    ],
+                },
+            },
+        ]);
+
+        expect(w.find("tbody").text()).toContain("50");
+    });
+
     it("names the table a master link points to", async () => {
         workspaceService.getWorkspaceTables.mockResolvedValue({
             data: [{ id: "t9", name: "clients", display_name: { Valid: true, String: "Clients" } }],
