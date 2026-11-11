@@ -495,11 +495,11 @@ describe("calculations on a form", () => {
 });
 
 describe("formLinkTables", () => {
-    it("lists the tables a master link may name, as the server does", () => {
+    it("lists the tables a master link may name by name, as the server does", () => {
         const tables = [
             { id: "t1", name: "own" },
-            { id: "t2", name: "tbl_2", display_name: { String: "Clients", Valid: true } },
             { id: "t3", name: "tbl_3" },
+            { id: "t2", name: "tbl_2", display_name: { String: "Clients", Valid: true } },
             { id: "opts", name: "o", single_select: true },
             { id: "link", name: "l", parent_table_id: "t2" },
         ];

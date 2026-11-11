@@ -273,7 +273,7 @@ describe("FormView", () => {
 
             expect(formService.getPublicForm).not.toHaveBeenCalled();
             expect(w.text()).toContain("Tell us");
-            expect(w.text()).toContain("Title");
+            expect(w.findAll("form fieldset label").map((l) => l.text())).toContain("Title *");
             expect(w.find("img[src='blob:a.png']").exists()).toBe(true);
             expect(w.find("button[type='submit']").exists()).toBe(true);
             expect(formService.setFormImage).not.toHaveBeenCalled();
