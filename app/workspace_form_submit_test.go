@@ -238,6 +238,18 @@ func TestSubmitFormRequiredFieldMissing(t *testing.T) {
 	}
 }
 
+func TestSubmitFormRefusesOnlySpacesForARequiredField(t *testing.T) {
+	a, ws, _ := submitApp(textField("amount", true))
+
+	_, appErr := submit(a, submitter, model.FormValue{Name: "amount", Value: "   "})
+	if appErr == nil || appErr.Status != http.StatusBadRequest {
+		t.Fatalf("want 400, got %v", appErr)
+	}
+	if len(ws.created) != 0 {
+		t.Errorf("created %d rows, want none", len(ws.created))
+	}
+}
+
 func TestSubmitFormStoresTheRowWithItsSubmitter(t *testing.T) {
 	a, ws, _ := submitApp(textField("amount", true))
 
