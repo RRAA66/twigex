@@ -165,7 +165,7 @@ func (a *API) submitPublicForm(w http.ResponseWriter, r *http.Request) {
 
 	user, _ := a.app.GetCurrentUser(r)
 
-	taskID, appErr := a.app.SubmitForm(r.Context(), mux.Vars(r)["token"], body, user, a.app.ClientIP(r))
+	taskID, appErr := a.app.SubmitForm(r.Context(), mux.Vars(r)["token"], body, user)
 	if appErr != nil {
 		respondAppError(w, r, appErr)
 		return
