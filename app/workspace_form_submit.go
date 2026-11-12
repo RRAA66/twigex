@@ -271,6 +271,12 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 
 	a.publishTaskRow(ctx, "task_created", form.WorkspaceID, form.TableID, task.ID)
 
+	name, _ := task.Values["name"].(string)
+	assignee, _ := task.Values["assignee"].(string)
+	if appErr := a.announceTaskCreated(form.WorkspaceID, form.TableID, task.ID, name, assignee, *user); appErr != nil {
+		return "", appErr
+	}
+
 	return task.ID, nil
 }
 

@@ -129,6 +129,10 @@ func (f *fakeFormSubmitStore) GetFormSubmissions(context.Context, string) ([]mod
 	return f.submissions, nil
 }
 
+func (f *fakeFormSubmitStore) GetMainViewByTableID(string, string) (string, error) {
+	return "main-view", nil
+}
+
 func (f *fakeFormSubmitStore) GetTableWorkspaceID(_ context.Context, tableID string) (string, error) {
 	return f.tableWorkspace[tableID], nil
 }
@@ -156,6 +160,37 @@ func (f *fakeFormUserStore) GetByIDs(ids []string) ([]model.User, error) {
 	}
 
 	return found, nil
+}
+
+func (f *fakeFormUserStore) Get(id string) (*model.User, error) {
+	for _, u := range f.users {
+		if u.ID == id {
+			return &u, nil
+		}
+	}
+
+	return nil, nil
+}
+
+type fakeFormActivityStore struct {
+	store.ActivityStore
+	actions []string
+}
+
+func (f *fakeFormActivityStore) Create(userID, _, action, _, _, _ string) error {
+	f.actions = append(f.actions, userID+" "+action)
+	return nil
+}
+
+// Create fails, so no notification is pushed to a hub the tests do not have.
+type fakeFormNotificationStore struct {
+	store.NotificationStore
+	sent []string
+}
+
+func (f *fakeFormNotificationStore) Create(sender model.User, receiver, _, notificationType, _ string, _ map[string]any) (*model.NotificationMessage, error) {
+	f.sent = append(f.sent, sender.ID+" "+notificationType+" "+receiver)
+	return nil, errors.New("not pushed")
 }
 
 type fakeFormAuthCounter struct {
@@ -203,6 +238,9 @@ func submitApp(fields ...model.WorkspaceFormField) (*App, *fakeFormSubmitStore, 
 	a.Store.Workspace = ws
 	a.Store.User = users
 	a.Store.Auth = &fakeFormAuthCounter{counts: map[string]int64{}}
+	a.Store.Activity = &fakeFormActivityStore{}
+	a.Store.Notifications = &fakeFormNotificationStore{}
+	a.Store.Roles = fakeArchiveRoleStore{permissions: []string{model.ProjectSectionPermissions.PermissionViewProjects.Id}}
 	return a, ws, users
 }
 
@@ -345,6 +383,36 @@ func TestSubmitFormRateLimitIsPerUser(t *testing.T) {
 	other := &model.User{ID: "member-1", Role: model.SystemUserRoleId}
 	if _, appErr := submit(a, other, model.FormValue{Name: "name", Value: "Order"}); appErr != nil {
 		t.Fatalf("another user from the same address: want accepted, got %v", appErr)
+	}
+}
+
+func TestSubmitFormRecordsAndAnnouncesTheRowAsTheGridDoes(t *testing.T) {
+	assignee := model.WorkspaceFormField{HeaderName: "assignee", FieldType: "default_assignee", Visible: true}
+	a, _, _ := submitApp(textField("name", false), assignee)
+
+	_, appErr := submit(a, submitter,
+		model.FormValue{Name: "name", Value: "Order"},
+		model.FormValue{Name: "assignee", Value: "member-1"},
+	)
+	if appErr != nil {
+		t.Fatalf("SubmitForm: %v", appErr)
+	}
+
+	activity := a.Store.Activity.(*fakeFormActivityStore).actions
+	wantActivity := []string{"submitter " + model.ActivityTaskCreated, "submitter " + model.ActivityTaskAssigned}
+	if !slices.Equal(activity, wantActivity) {
+		t.Errorf("recorded %v, want %v", activity, wantActivity)
+	}
+
+	sent := a.Store.Notifications.(*fakeFormNotificationStore).sent
+	slices.Sort(sent)
+	wantSent := []string{
+		"submitter " + model.NOTIFICATION_PROJECT_TASK_ASSIGNED + " member-1",
+		"submitter " + model.NOTIFICATION_PROJECT_TASK_CREATED + " member-1",
+		"submitter " + model.NOTIFICATION_PROJECT_TASK_CREATED + " member-2",
+	}
+	if !slices.Equal(sent, wantSent) {
+		t.Errorf("notified %v, want %v", sent, wantSent)
 	}
 }
 
