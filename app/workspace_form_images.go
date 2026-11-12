@@ -294,6 +294,99 @@ func (a *App) requireFormOpen(ctx context.Context, user model.User, form *model.
 	return nil
 }
 
+// copyFormImages gives a form saved as new the images of the form it was
+// saved from. Only an image of a form on the same table that the user sees is
+// copied, so a client cannot have any other file copied.
+func (a *App) copyFormImages(ctx context.Context, user model.User, form model.WorkspaceForm, sources map[string]string) *model.AppError {
+	for _, kind := range []string{model.FormImageCover, model.FormImageLogo} {
+		source, appErr := a.formImageToCopy(ctx, user, form, sources[kind])
+		if appErr != nil {
+			return appErr
+		}
+
+		if source == nil {
+			continue
+		}
+
+		if err := a.copyFormImage(ctx, form, kind, *source); err != nil {
+			tlog.Errorw("Failed to copy a form image",
+				"form_id", form.ID,
+				"file_id", source.ID,
+				"error", err,
+			)
+			return model.NewAppError("workspace.form_create_failed", http.StatusInternalServerError)
+		}
+	}
+
+	return nil
+}
+
+func (a *App) formImageToCopy(ctx context.Context, user model.User, form model.WorkspaceForm, id string) (*model.WorkspaceAttachment, *model.AppError) {
+	if id == "" {
+		return nil, nil
+	}
+
+	attachment, err := a.Store.Workspace.GetAttachment(id, form.WorkspaceID)
+	if err != nil {
+		tlog.Errorw("Failed to retrieve a form image to copy",
+			"form_id", form.ID,
+			"file_id", id,
+			"error", err,
+		)
+		return nil, model.NewAppError("workspace.form_create_failed", http.StatusInternalServerError)
+	}
+
+	if attachment == nil || attachment.TableID != form.TableID {
+		return nil, nil
+	}
+
+	source, appErr := a.formOfImage(ctx, attachment)
+	if appErr != nil || source == nil {
+		return nil, appErr
+	}
+
+	if a.requireViewAccess(ctx, user.ID, source.ID) != nil {
+		return nil, nil
+	}
+
+	return attachment, nil
+}
+
+func (a *App) copyFormImage(ctx context.Context, form model.WorkspaceForm, kind string, source model.WorkspaceAttachment) error {
+	backend, sourcePath, err := a.projectFile(source.StorageID, attachmentPath(source))
+	if err != nil {
+		return err
+	}
+
+	content, err := backend.ReadFile(ctx, sourcePath)
+	if err != nil {
+		return err
+	}
+
+	defer content.Close()
+
+	now := time.Now().Unix()
+	image := source
+	image.ID = model.NewID()
+	image.FieldID = formImageFieldID(kind)
+	image.TaskID = form.ID
+	image.UserID = form.CreatedBy
+	image.Name = kind + filepath.Ext(source.Name)
+	image.CreatedAt = now
+	image.UpdatedAt = now
+
+	if err := a.writeProjectFile(ctx, image.StorageID, attachmentPath(image), content, image.Size); err != nil {
+		return err
+	}
+
+	if err := a.Store.Workspace.SetFormImage(ctx, form.ID, kind, &image, ""); err != nil {
+		a.removeFormImageFile(ctx, image)
+		return err
+	}
+
+	return nil
+}
+
 func formImageFieldID(kind string) string {
 	return "form_" + kind
 }

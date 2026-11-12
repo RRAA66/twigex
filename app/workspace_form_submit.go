@@ -178,7 +178,7 @@ func (a *App) GetPublicLinkedItems(ctx context.Context, token, tableID, search s
 
 // A filled honeypot is dropped without an error and answered with a made-up id,
 // so a bot cannot tell it was caught.
-func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSubmitRequest, user *model.User, clientIP string) (string, *model.AppError) {
+func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSubmitRequest, user *model.User) (string, *model.AppError) {
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
@@ -195,7 +195,7 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 		return model.NewID(), nil
 	}
 
-	allowed, err := a.formSubmitLimiter().Allow(clientIP, token)
+	allowed, err := a.formSubmitLimiter().Allow(user.ID, token)
 	if err != nil {
 		tlog.Errorw("Failed to check form submit rate limit", "error", err)
 		return "", model.NewAppError("workspace.form_submit_failed", http.StatusInternalServerError)
@@ -395,6 +395,12 @@ func (a *App) SubmitForm(ctx context.Context, token string, request model.FormSu
 
 	a.dropPendingFormFiles(ctx, form, task.Attachments)
 	a.publishTaskRow(ctx, "task_created", form.WorkspaceID, form.TableID, task.ID)
+
+	name, _ := task.Values["name"].(string)
+	assignee, _ := task.Values["assignee"].(string)
+	if appErr := a.announceTaskCreated(form.WorkspaceID, form.TableID, task.ID, name, assignee, *user); appErr != nil {
+		return "", appErr
+	}
 
 	return task.ID, nil
 }
