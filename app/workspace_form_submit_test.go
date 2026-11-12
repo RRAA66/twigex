@@ -207,7 +207,7 @@ func submitApp(fields ...model.WorkspaceFormField) (*App, *fakeFormSubmitStore, 
 }
 
 func submit(a *App, user *model.User, values ...model.FormValue) (string, *model.AppError) {
-	return a.SubmitForm(context.Background(), "token-1", model.FormSubmitRequest{Fields: values}, user, "10.0.0.1")
+	return a.SubmitForm(context.Background(), "token-1", model.FormSubmitRequest{Fields: values}, user)
 }
 
 func textField(name string, required bool) model.WorkspaceFormField {
@@ -311,7 +311,7 @@ func TestSubmitFormHoneypotIsSilentlyDropped(t *testing.T) {
 	a, ws, _ := submitApp(textField("name", false))
 
 	request := model.FormSubmitRequest{Fields: []model.FormValue{{Name: "name", Value: "Spam"}}, Honeypot: "http://spam.example"}
-	taskID, appErr := a.SubmitForm(context.Background(), "token-1", request, submitter, "10.0.0.1")
+	taskID, appErr := a.SubmitForm(context.Background(), "token-1", request, submitter)
 	if appErr != nil || taskID == "" {
 		t.Fatalf("want a silent drop answered like a submission, got %q, %v", taskID, appErr)
 	}
@@ -330,6 +330,21 @@ func TestSubmitFormIsRateLimited(t *testing.T) {
 
 	if appErr == nil || appErr.Status != http.StatusTooManyRequests {
 		t.Fatalf("want 429, got %v", appErr)
+	}
+}
+
+func TestSubmitFormRateLimitIsPerUser(t *testing.T) {
+	a, _, _ := submitApp(textField("name", false))
+
+	for range 20 {
+		if _, appErr := submit(a, submitter, model.FormValue{Name: "name", Value: "Order"}); appErr != nil {
+			t.Fatalf("SubmitForm: %v", appErr)
+		}
+	}
+
+	other := &model.User{ID: "member-1", Role: model.SystemUserRoleId}
+	if _, appErr := submit(a, other, model.FormValue{Name: "name", Value: "Order"}); appErr != nil {
+		t.Fatalf("another user from the same address: want accepted, got %v", appErr)
 	}
 }
 
