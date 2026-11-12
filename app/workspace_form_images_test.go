@@ -245,8 +245,7 @@ func TestRemoveFormImageDeletesItsFile(t *testing.T) {
 	}
 }
 
-// A form's image fields come from its builder only through SetFormImage: a
-// client cannot point them at someone else's attachment.
+// A client cannot point a form's image fields at someone else's attachment.
 func TestFormImagesAreNotTakenFromTheBuilder(t *testing.T) {
 	a, ws, _ := imageApp(t)
 
@@ -259,6 +258,64 @@ func TestFormImagesAreNotTakenFromTheBuilder(t *testing.T) {
 	stored := ws.forms[created.ID]
 	if stored.CoverImage != "" || stored.Logo != "" {
 		t.Errorf("stored cover %q and logo %q, want none", stored.CoverImage, stored.Logo)
+	}
+}
+
+func TestSaveAsNewCopiesTheFormsImages(t *testing.T) {
+	a, ws, root := imageApp(t)
+
+	if _, appErr := setImage(t, a, model.FormImageCover, "a.png", pngHeader); appErr != nil {
+		t.Fatalf("SetFormImage: %v", appErr)
+	}
+
+	source, appErr := setImage(t, a, model.FormImageLogo, "b.png", pngHeader+"logo")
+	if appErr != nil {
+		t.Fatalf("SetFormImage: %v", appErr)
+	}
+
+	created, appErr := a.CreateForm(context.Background(), wsID, tbl1,
+		model.WorkspaceForm{Name: "Copy", CoverImage: source.CoverImage, Logo: source.Logo}, nil, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("CreateForm: %v", appErr)
+	}
+
+	copies := map[string][2]string{
+		"cover": {source.CoverImage, created.CoverImage},
+		"logo":  {source.Logo, created.Logo},
+	}
+	for kind, ids := range copies {
+		original, copied := ids[0], ids[1]
+		if copied == "" || copied == original {
+			t.Errorf("%s is %q, want a copy of %q", kind, copied, original)
+			continue
+		}
+
+		attachment := ws.attachments[copied]
+		if attachment.TaskID != created.ID || attachment.TableID != tbl1 || attachment.FieldID != formImageFieldID(kind) {
+			t.Errorf("%s stored as %+v, want an image of %s", kind, attachment, created.ID)
+		}
+
+		want := readFile(t, filepath.Join(root, wsID, tbl1, "form-1", original+".png"))
+		if got := readFile(t, filepath.Join(root, wsID, tbl1, created.ID, copied+".png")); got != want {
+			t.Errorf("%s file holds %q, want %q", kind, got, want)
+		}
+	}
+}
+
+func TestSaveAsNewDoesNotCopyARowsFile(t *testing.T) {
+	a, ws, _ := imageApp(t)
+	ws.attachments["row-file"] = model.WorkspaceAttachment{
+		ID: "row-file", WorkspaceID: wsID, TableID: tbl1, TaskID: "row-1", FieldID: "field-docs", Name: "scan.png",
+	}
+
+	created, appErr := a.CreateForm(context.Background(), wsID, tbl1,
+		model.WorkspaceForm{Name: "Copy", CoverImage: "row-file"}, nil, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("CreateForm: %v", appErr)
+	}
+
+	if stored := ws.forms[created.ID]; stored.CoverImage != "" {
+		t.Errorf("stored cover %q, want none", stored.CoverImage)
 	}
 }
 
