@@ -181,7 +181,7 @@ func (a *API) uploadPublicFormFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	form, appErr := a.app.CheckFormUpload(r.Context(), mux.Vars(r)["token"], user, a.app.ClientIP(r))
+	form, appErr := a.app.CheckFormUpload(r.Context(), mux.Vars(r)["token"], user)
 	if appErr != nil {
 		respondAppError(w, r, appErr)
 		return

@@ -52,7 +52,7 @@ type pendingFormFile struct {
 // CheckFormUpload answers the form a user may upload files to through its
 // link. It is asked before the files are read, so a request that would be
 // refused is not made to send them.
-func (a *App) CheckFormUpload(ctx context.Context, token string, user *model.User, clientIP string) (*model.WorkspaceFormWithFields, *model.AppError) {
+func (a *App) CheckFormUpload(ctx context.Context, token string, user *model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
@@ -69,7 +69,7 @@ func (a *App) CheckFormUpload(ctx context.Context, token string, user *model.Use
 		return nil, model.NewAppError("request.invalid", http.StatusBadRequest)
 	}
 
-	allowed, err := a.formUploadLimiter().Allow(clientIP, token)
+	allowed, err := a.formUploadLimiter().Allow(user.ID, token)
 	if err != nil {
 		tlog.Errorw("Failed to check form upload rate limit", "error", err)
 		return nil, model.NewAppError("workspace.file_upload_failed", http.StatusInternalServerError)
