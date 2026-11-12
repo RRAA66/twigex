@@ -94,7 +94,7 @@ func fileField(name string, required bool) model.WorkspaceFormField {
 }
 
 func uploadFiles(a *App, user *model.User, files []*multipart.FileHeader) ([]model.ProjectFileMetadata, *model.AppError) {
-	form, appErr := a.CheckFormUpload(context.Background(), "token-1", user, "10.0.0.1")
+	form, appErr := a.CheckFormUpload(context.Background(), "token-1", user)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -147,9 +147,24 @@ func TestUploadFormFilesNeedsTheRightToCreateRows(t *testing.T) {
 	a, _, _ := submitApp(fileField("docs", false))
 	a.WorkspaceRoles = noCreateRoles{}
 
-	_, appErr := a.CheckFormUpload(context.Background(), "token-1", submitter, "10.0.0.1")
+	_, appErr := a.CheckFormUpload(context.Background(), "token-1", submitter)
 	if appErr == nil || appErr.Status != http.StatusForbidden {
 		t.Fatalf("want 403, got %v", appErr)
+	}
+}
+
+func TestUploadFormFilesRateLimitIsPerUser(t *testing.T) {
+	a, _, _ := submitApp(fileField("docs", false))
+
+	for range 30 {
+		if _, appErr := a.CheckFormUpload(context.Background(), "token-1", submitter); appErr != nil {
+			t.Fatalf("CheckFormUpload: %v", appErr)
+		}
+	}
+
+	other := &model.User{ID: "member-1", Role: model.SystemUserRoleId}
+	if _, appErr := a.CheckFormUpload(context.Background(), "token-1", other); appErr != nil {
+		t.Fatalf("another user from the same address: want accepted, got %v", appErr)
 	}
 }
 
