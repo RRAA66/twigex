@@ -50,6 +50,8 @@ func (a *App) CreateForm(ctx context.Context, workspaceID, tableID string, form 
 		return nil, model.NewAppError("workspace.view_already_exists", http.StatusConflict)
 	}
 
+	images := map[string]string{model.FormImageCover: form.CoverImage, model.FormImageLogo: form.Logo}
+
 	now := time.Now().Unix()
 	form.ID = model.NewID()
 	form.WorkspaceID = workspaceID
@@ -74,6 +76,10 @@ func (a *App) CreateForm(ctx context.Context, workspaceID, tableID string, form 
 			"error", err,
 		)
 		return nil, model.NewAppError("workspace.form_create_failed", http.StatusInternalServerError)
+	}
+
+	if appErr := a.copyFormImages(ctx, user, form, images); appErr != nil {
+		return nil, appErr
 	}
 
 	created, err := a.Store.Workspace.GetForm(ctx, form.ID)
