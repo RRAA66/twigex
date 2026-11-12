@@ -3652,6 +3652,16 @@ func (a *App) CreateWorkspaceTask(ctx context.Context, workspaceID string, table
 
 	a.publishTaskRow(ctx, "task_created", workspaceID, tableID, taskID)
 
+	if appErr := a.announceTaskCreated(workspaceID, tableID, taskID, name, fields.Assignee, user); appErr != nil {
+		return nil, appErr
+	}
+
+	return workspaceTask, nil
+}
+
+// announceTaskCreated notifies the workspace of a new row and records it, the
+// same for a row added in the grid as for one sent by a form.
+func (a *App) announceTaskCreated(workspaceID, tableID, taskID, name, assignee string, user model.User) *model.AppError {
 	mainViewID, err := a.Store.Workspace.GetMainViewByTableID(workspaceID, tableID)
 	if err != nil {
 		tlog.Errorw("Failed to get main view for notification",
@@ -3659,7 +3669,7 @@ func (a *App) CreateWorkspaceTask(ctx context.Context, workspaceID string, table
 			"table_id", tableID,
 			"error", err,
 		)
-		return nil, model.NewAppError("workspace.task_main_view_failed", http.StatusInternalServerError)
+		return model.NewAppError("workspace.task_main_view_failed", http.StatusInternalServerError)
 	}
 
 	a.createProjectNotification(workspaceID, user, model.NOTIFICATION_PROJECT_TASK_CREATED, map[string]interface{}{
@@ -3677,9 +3687,9 @@ func (a *App) CreateWorkspaceTask(ctx context.Context, workspaceID string, table
 		"viewID":      mainViewID,
 	})
 
-	if fields.Assignee != "" {
+	if assignee != "" {
 		a.createProjectNotification(workspaceID, user, model.NOTIFICATION_PROJECT_TASK_ASSIGNED, map[string]interface{}{
-			"userID":   fields.Assignee,
+			"userID":   assignee,
 			"taskName": name,
 			"tableID":  tableID,
 			"taskID":   taskID,
@@ -3688,7 +3698,7 @@ func (a *App) CreateWorkspaceTask(ctx context.Context, workspaceID string, table
 
 		a.RecordActivity(user.ID, model.AppProjects, model.ActivityTaskAssigned, tableID, taskID, map[string]any{
 			"workspaceID": workspaceID,
-			"AddedUser":   fields.Assignee,
+			"AddedUser":   assignee,
 			"taskName":    name,
 			"tableID":     tableID,
 			"taskID":      taskID,
@@ -3696,7 +3706,7 @@ func (a *App) CreateWorkspaceTask(ctx context.Context, workspaceID string, table
 		})
 	}
 
-	return workspaceTask, nil
+	return nil
 }
 
 // checkSingleSelect refuses a value for field unless field is one of the
