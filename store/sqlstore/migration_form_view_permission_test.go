@@ -17,7 +17,7 @@ func TestFormViewPermissionMigrationKeepsARolesOtherPermissions(t *testing.T) {
 		('zz-empty', 'zz-mig100', 'user', NULL),
 		('zz-custom', 'zz-mig100', 'sales', 'create_task')`)
 
-	sql, err := os.ReadFile("../../db/mysql/100_add_form_view_permission.up.sql")
+	sql, err := os.ReadFile("../../db/mysql/101_add_form_view_permission.up.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
