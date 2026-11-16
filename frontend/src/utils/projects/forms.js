@@ -159,11 +159,10 @@ export function formFieldLabel(field, translate) {
     );
 }
 
-// Keeps a whole number's digits and leading minus, dropping anything else.
-export function wholeNumberText(text) {
-    return String(text ?? "")
-        .replace(/[^\d-]/g, "")
-        .replace(/(?!^)-/g, "");
+// Whether text is a whole number, or the start of one, as it is typed: digits
+// after an optional leading minus.
+export function isWholeNumberText(text) {
+    return /^-?\d*$/.test(text);
 }
 
 // Number answers the server would refuse, with the message saying what each takes.
