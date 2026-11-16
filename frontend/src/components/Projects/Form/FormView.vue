@@ -11,12 +11,38 @@ SPDX-License-Identifier: AGPL-3.0-only
         <BaseSpinner size="lg" class="text-indigo-600" :label="t('common.label.loading')" />
     </div>
 
-    <div
-        v-else-if="status === 'forbidden'"
-        class="flex h-full w-full flex-col items-center justify-center gap-y-2 p-6 text-center"
-    >
-        <LockClosedIcon class="h-8 w-8 text-gray-400" aria-hidden="true" />
-        <p class="text-sm text-gray-500">{{ t("projects.form_view.no_access") }}</p>
+    <div v-else-if="status === 'forbidden'" class="flex h-full w-full flex-col overflow-hidden">
+        <div
+            :class="[
+                'flex shrink-0 flex-col items-center gap-y-2 p-6 text-center',
+                canSeeSubmissions ? 'border-b border-gray-200 bg-white' : 'flex-1 justify-center',
+            ]"
+        >
+            <LockClosedIcon class="h-8 w-8 text-gray-400" aria-hidden="true" />
+            <p class="text-sm text-gray-500">{{ t("projects.form_view.no_access") }}</p>
+            <p class="max-w-md text-sm text-gray-500">
+                {{
+                    canSeeSubmissions
+                        ? t("projects.form_view.viewer.fill_and_see")
+                        : t("projects.form_view.viewer.ask_for_link")
+                }}
+            </p>
+            <RouterLink
+                v-if="viewerToken"
+                :to="{ name: 'public-form', params: { token: viewerToken } }"
+                target="_blank"
+                class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+            >
+                {{ t("projects.form_view.viewer.fill_in") }}
+            </RouterLink>
+        </div>
+        <FormViewSubmissions
+            v-if="canSeeSubmissions"
+            :workspace-id="route.params.id"
+            :table-id="route.params.tid"
+            :form-id="route.params.fid"
+            @loaded="viewerToken = $event.public_token || ''"
+        />
     </div>
 
     <div
@@ -162,7 +188,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from "vue-router";
+import { onBeforeRouteLeave, onBeforeRouteUpdate, RouterLink, useRoute } from "vue-router";
 import { LockClosedIcon } from "@heroicons/vue/24/outline";
 import { LinkIcon } from "@heroicons/vue/20/solid";
 import { t } from "@/i18n/index.js";
@@ -213,6 +239,16 @@ const canUpdateForm = computed(
     () => rolesStore.hasPermissionToUpdateWorkspaceView || managesTableViews.value,
 );
 
+// Who may not build the form may still fill it in, and see what was sent
+// with a role that opens both forms and grids, as the server allows.
+const canSeeSubmissions = computed(
+    () =>
+        Boolean(route.params.fid) &&
+        rolesStore.hasPermission("views_form") &&
+        rolesStore.hasPermission("views_grid"),
+);
+
+const viewerToken = ref("");
 const dialogMode = ref(null);
 const activeTab = ref("build");
 const shareOpen = ref(false);

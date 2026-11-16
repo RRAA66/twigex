@@ -155,7 +155,31 @@ describe("FormView", () => {
         const { w } = await mountAt("/p/w1/form/t1/view/f1");
 
         expect(w.text()).toContain("You need permission to edit views");
+        expect(w.text()).toContain("ask whoever built it for its link");
+        expect(formService.getSubmissions).not.toHaveBeenCalled();
         expect(useAlertStore().show).toBeFalsy();
+        w.unmount();
+    });
+
+    it("shows a viewer of forms and grids the submissions and the link to fill in", async () => {
+        formService.getForm.mockRejectedValue({ response: { status: 403 } });
+        formService.getSubmissions.mockResolvedValue({
+            data: {
+                items: [],
+                total: 0,
+                public_token: "tok",
+                fields: [{ header_name: "budget", label: "Cost", visible: true }],
+            },
+        });
+
+        const { w } = await mountAt("/p/w1/form/t1/view/f1", {
+            user: { permissions: ["views_form", "views_grid"] },
+        });
+
+        expect(formService.getSubmissions).toHaveBeenCalledWith("w1", "t1", "f1", 1);
+        expect(w.text()).toContain("see below what was sent");
+        expect(w.text()).toContain("Cost");
+        expect(w.find("a[href='/forms/public/tok']").text()).toBe("Fill in the form");
         w.unmount();
     });
 
