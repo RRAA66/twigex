@@ -12,6 +12,17 @@ const IMAGE_FIELDS = { cover: "cover_image", logo: "logo" };
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 const MAX_IMAGE_BYTES = 5 << 20;
 
+// A file named as an image may not be one, which only loading it shows.
+function loadsAsImage(url) {
+    return new Promise((resolve) => {
+        const image = new Image();
+
+        image.onload = () => resolve(true);
+        image.onerror = () => resolve(false);
+        image.src = url;
+    });
+}
+
 // A picked or removed image waits in the browser until the form is saved, as
 // the form's other settings do, so the builder and its preview show it before
 // anyone filling the form does.
@@ -21,6 +32,15 @@ export function useFormImages(form) {
     // By kind: the picked file, or null for a removed image.
     const pending = ref({});
     const urls = {};
+    // By kind: counts picks and removals, so a pick still loading gives way
+    // to whatever came after it.
+    const turns = {};
+
+    function nextTurn(kind) {
+        turns[kind] = (turns[kind] || 0) + 1;
+
+        return turns[kind];
+    }
 
     function forget(kind) {
         if (urls[kind]) URL.revokeObjectURL(urls[kind]);
@@ -49,7 +69,7 @@ export function useFormImages(form) {
         return "";
     }
 
-    function pick(kind, file) {
+    async function pick(kind, file) {
         const reason = refusal(file);
 
         if (reason) {
@@ -58,12 +78,26 @@ export function useFormImages(form) {
             return;
         }
 
+        const turn = nextTurn(kind);
+        const url = URL.createObjectURL(file);
+        const loads = await loadsAsImage(url);
+
+        if (turns[kind] !== turn || !loads) {
+            URL.revokeObjectURL(url);
+            if (turns[kind] === turn) {
+                alertStore.showError(t.value("projects.form_view.error.image_unreadable"));
+            }
+
+            return;
+        }
+
         forget(kind);
-        urls[kind] = URL.createObjectURL(file);
+        urls[kind] = url;
         pending.value = { ...pending.value, [kind]: file };
     }
 
     function remove(kind) {
+        nextTurn(kind);
         forget(kind);
         pending.value = { ...pending.value, [kind]: null };
     }
@@ -77,6 +111,7 @@ export function useFormImages(form) {
     }
 
     function discard() {
+        Object.keys(IMAGE_FIELDS).forEach(nextTurn);
         Object.keys(urls).forEach(forget);
         pending.value = {};
     }

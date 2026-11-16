@@ -987,6 +987,9 @@ func TestSubmitFormSaysWhatANumberFieldTakes(t *testing.T) {
 		wantID    string
 	}{
 		{"number", "12.5", "workspace.form_submit_whole_number"},
+		{"number", "1,5", "workspace.form_submit_whole_number"},
+		{"number", "-1,5", "workspace.form_submit_whole_number"},
+		{"number", "1,5,6", "workspace.form_submit_number_invalid"},
 		{"number", "twelve", "workspace.form_submit_number_invalid"},
 		{"decimal", "twelve", "workspace.form_submit_number_invalid"},
 	}
