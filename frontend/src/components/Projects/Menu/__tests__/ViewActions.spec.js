@@ -73,6 +73,20 @@ describe("ViewActions", () => {
         expect(router.currentRoute.value.name).toBe("grid-view");
     });
 
+    it("says before deleting a form that the rows it added stay", async () => {
+        const { w } = await mountAt("/p/w1/form/t1/view/f1");
+
+        w.vm.remove({ id: "f1", view_type: "form" });
+        await w.vm.$nextTick();
+
+        expect(w.findComponent(ConfirmDialog).props("message")).toContain("stay in the table");
+
+        w.vm.remove({ id: "k1", view_type: "kanban" });
+        await w.vm.$nextTick();
+
+        expect(w.findComponent(ConfirmDialog).props("message")).not.toContain("stay in the table");
+    });
+
     it("deletes any other tab as a view", async () => {
         const { w } = await mountAt("/p/w1/form/t1/view/f1");
 

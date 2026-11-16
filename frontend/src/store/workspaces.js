@@ -93,6 +93,17 @@ export const useWorkspaceStore = defineStore("workspaces", {
     },
 
     getters: {
+        // The icon a loaded tree holds for a table, which setTableIcon keeps
+        // current; null when no loaded tree has the table.
+        getTableIcon: (state) => (workspaceId, tableId) => {
+            const workspace = state.workspaces.find((ws) => ws.id === workspaceId);
+            const node =
+                findTreeNode(state.workspaceFolders, tableId) ||
+                findTreeNode(workspace?.children || [], tableId) ||
+                workspace?.tables?.find((table) => table.id === tableId);
+
+            return node ? node.icon || "" : null;
+        },
         getTaskReportData() {
             return this.taskReportData;
         },
