@@ -117,7 +117,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         </p>
                         <div class="flex flex-wrap gap-4">
                             <label
-                                v-for="vt in viewTypeOptions"
+                                v-for="vt in shownViewTypeOptions"
                                 :key="vt.value"
                                 class="flex items-center gap-2 cursor-pointer"
                             >
@@ -595,6 +595,7 @@ import { useVuelidate } from "@vuelidate/core";
 import { required } from "@vuelidate/validators";
 import ErrorDialog from "@/components/Collimato/Dialogs/ErrorDialog.vue";
 import { useAlertStore } from "@/store/alerts";
+import { useSettingsStore } from "@/store/settings";
 import workspaceService from "@/services/workspaceService";
 import { extractErrorMessage } from "@/utils/errors";
 import { rolePermissionGroups } from "@/utils/projects/rolePermissions";
@@ -656,6 +657,11 @@ const viewTypeOptions = [
         label: t.value("projects.create_role.view_types.form"),
     },
 ];
+
+const settingsStore = useSettingsStore();
+const shownViewTypeOptions = computed(() =>
+    viewTypeOptions.filter((vt) => vt.value !== "form" || settingsStore.isFeatureEnabled("Forms")),
+);
 
 function hasViewPerm(type) {
     return permissions.value.includes("views_" + type);
