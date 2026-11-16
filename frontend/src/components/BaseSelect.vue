@@ -10,10 +10,10 @@ SPDX-License-Identifier: AGPL-3.0-only
         :disabled="disabled"
         @update:model-value="$emit('update:modelValue', $event)"
     >
-        <ListboxLabel v-if="label" class="block text-sm font-medium leading-6 text-gray-900">
-            {{ label }}
+        <ListboxLabel v-if="label" :class="labelClass">
+            <slot name="label">{{ label }}</slot>
         </ListboxLabel>
-        <div class="relative" :class="label ? 'mt-2' : ''">
+        <div class="relative">
             <ListboxButton
                 ref="button"
                 :aria-invalid="error ? 'true' : undefined"
@@ -115,6 +115,10 @@ const props = defineProps({
     label: {
         type: String,
         default: "",
+    },
+    labelClass: {
+        type: String,
+        default: "mb-2 block text-sm font-medium leading-6 text-gray-900",
     },
     placeholder: {
         type: String,
