@@ -1432,6 +1432,10 @@
     "translation": "A view with this name already exists."
   },
   {
+    "id": "workspace.view_form_type_invalid",
+    "translation": "Create a form from the Form view instead."
+  },
+  {
     "id": "workspace.single_select_update_failed",
     "translation": "Failed to update option name. Please try again."
   },
@@ -2010,5 +2014,9 @@
   {
     "id": "workspace.form_update_failed",
     "translation": "Failed to update form. Please try again."
+  },
+  {
+    "id": "workspace.form_changed",
+    "translation": "This form was changed by someone else. Reload to see the latest version."
   }
 ]
