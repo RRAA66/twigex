@@ -11,6 +11,18 @@ import (
 	"github.com/twigex/twigex/model"
 )
 
+func (a *API) initWorkspaceForms() {
+	if !*a.app.ConfigStore.Config.FeatureFlags.Forms {
+		return
+	}
+
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms", a.createForm).Methods("POST")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}", a.getForm).Methods("GET")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}", a.updateForm).Methods("PUT")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}", a.deleteForm).Methods("DELETE")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}/submissions", a.getFormSubmissions).Methods("GET")
+}
+
 func (a *API) createForm(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 

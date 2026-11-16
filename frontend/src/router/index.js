@@ -3,6 +3,8 @@
 
 import { createRouter, createWebHistory } from "vue-router";
 import { usePermissionsStore } from "@/store/permissions";
+import { useSettingsStore } from "@/store/settings";
+import configService from "@/services/configService";
 
 const sectionGuards = {
     files: "view_files",
@@ -78,6 +80,25 @@ import CreateRole from "@/components/Projects/Members/CreateRole.vue";
 import GanttView from "@/components/Projects/GanttView.vue";
 import CalendarView from "@/components/Projects/CalendarView.vue";
 import FormView from "@/components/Projects/Form/FormView.vue";
+
+// Form pages call endpoints that exist only with the Forms flag on; without
+// them a request falls through to index.html with a 200. Signing in does not
+// reload the config, so one without flags is fetched again.
+async function requireForms() {
+    const settingsStore = useSettingsStore();
+
+    if (!settingsStore.config?.FeatureFlags) {
+        try {
+            const { data } = await configService.config();
+
+            settingsStore.setConfig(data);
+        } catch {
+            return { name: "main" };
+        }
+    }
+
+    return settingsStore.isFeatureEnabled("Forms") || { name: "main" };
+}
 
 const routes = [
     {
@@ -747,6 +768,7 @@ const routes = [
                         meta: {
                             requireAuth: true,
                         },
+                        beforeEnter: requireForms,
                         component: FormView,
                     },
                     {
@@ -755,6 +777,7 @@ const routes = [
                         meta: {
                             requireAuth: true,
                         },
+                        beforeEnter: requireForms,
                         component: FormView,
                     },
                     {
