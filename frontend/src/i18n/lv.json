@@ -2427,6 +2427,8 @@
     "projects.form_view.viewer.fill_and_see": "Jūs joprojām varat aizpildīt šo veidlapu, izmantojot tās saiti, un tālāk redzēt, kas ar to ir iesniegts.",
     "projects.form_view.viewer.ask_for_link": "Jūs joprojām varat aizpildīt šo veidlapu: palūdziet tās saiti tās veidotājam.",
     "projects.form_view.viewer.fill_in": "Aizpildīt veidlapu",
+    "projects.form_view.viewer.no_fill": "Jūsu loma neļauj pievienot rindas šai tabulai, tāpēc jūs nevarat aizpildīt šo formu.",
+    "projects.form_view.viewer.see_only": "Zemāk varat redzēt, kas iesniegts ar šo formu, taču jūsu loma neļauj pievienot rindas, tāpēc jūs to nevarat aizpildīt.",
     "projects.form_view.not_found": "Šī veidlapa vairs nepastāv.",
     "projects.form_view.changed_elsewhere": "Šo veidlapu ir mainījis kāds cits. Pārlādējiet, lai redzētu jaunāko versiju.",
     "projects.form_view.action.reload": "Pārlādēt",
