@@ -177,6 +177,26 @@ func TestSetFormImageIsOpenToWhoManagesTheTablesViews(t *testing.T) {
 	}
 }
 
+func TestSetFormImageIgnoresATablesViewGrantOutsidePerTableMode(t *testing.T) {
+	a, ws, _ := imageApp(t)
+	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
+	a.WorkspaceRoles = tableGrantRoles{}
+
+	image := uploadedFiles(t, "file", map[string]string{"a.png": pngHeader})[0]
+	_, appErr := a.SetFormImage(context.Background(), wsID, tbl1, "form-1", model.FormImageCover, image, accessUser())
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Fatalf("want 403, got %v", appErr)
+	}
+
+	_, appErr = a.RemoveFormImage(context.Background(), wsID, tbl1, "form-1", model.FormImageCover, accessUser())
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Fatalf("remove: want 403, got %v", appErr)
+	}
+	if ws.writes != 0 {
+		t.Errorf("wrote %d times, want none", ws.writes)
+	}
+}
+
 func TestSetFormImageNeedsThePermissionToChangeViews(t *testing.T) {
 	a, ws, _ := imageApp(t)
 	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
