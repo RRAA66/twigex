@@ -61,6 +61,10 @@ func (a *App) PrepareFormSubmissionsExport(ctx context.Context, workspaceID, tab
 		filter.To = time.Now().Unix() + 1
 	}
 
+	if filter.From >= filter.To {
+		return nil, model.NewAppError("workspace.form_submissions_range_reversed", http.StatusBadRequest)
+	}
+
 	filter.TableName = tableName
 	filter.Access = a.assignedOnlyFilter(user, workspaceID, tableID)
 
@@ -82,10 +86,16 @@ func (a *App) PrepareFormSubmissionsExport(ctx context.Context, workspaceID, tab
 		}
 
 		export.fields = append(export.fields, h)
-		export.labels = append(export.labels, firstNonEmpty(f.Label, f.DisplayName, f.HeaderName))
+		export.labels = append(export.labels, exportFieldLabel(labels, f))
 	}
 
 	return export, nil
+}
+
+// exportFieldLabel takes a field's label as the user's page names it, which
+// translates a built-in field the form gives no label of its own.
+func exportFieldLabel(labels map[string]string, f model.WorkspaceFormField) string {
+	return labelOr(labels, "field:"+f.HeaderName, firstNonEmpty(f.Label, f.DisplayName, f.HeaderName))
 }
 
 func labelOr(labels map[string]string, key, fallback string) string {

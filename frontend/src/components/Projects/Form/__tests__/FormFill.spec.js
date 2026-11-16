@@ -90,7 +90,7 @@ describe("FormFill", () => {
         const w = await mountFill();
         const total = () => w.find("[aria-readonly='true']").text();
 
-        await w.find("input[type='number']").setValue("5");
+        await w.find("input[inputmode='numeric']").setValue("5");
 
         expect(total()).toBe("5");
 
@@ -109,7 +109,7 @@ describe("FormFill", () => {
         const labels = w.findAll("label.mb-1").map((l) => l.text().replace(/\s+/g, " "));
 
         expect(labels).toEqual(["Title *", "Budget", "Done", "Due", "Owner", "Files"]);
-        expect(w.find("input[type='number']").exists()).toBe(true);
+        expect(w.find("input[inputmode='numeric']").exists()).toBe(true);
         expect(w.find("input[type='checkbox']").exists()).toBe(true);
         expect(w.text()).toContain("Pick a date");
         expect(w.find("input[placeholder='Select person']").exists()).toBe(true);
@@ -129,6 +129,34 @@ describe("FormFill", () => {
 
         expect(formService.submitPublicForm).not.toHaveBeenCalled();
         expect(w.text()).toContain("This field is required");
+        w.unmount();
+    });
+
+    it("moves to the first field in error after a refused send", async () => {
+        const w = await mountFill();
+
+        await w.find("form").trigger("submit");
+        await flushPromises();
+
+        expect(document.activeElement).toBe(w.find("input[aria-invalid='true']").element);
+        expect(document.activeElement.id).toBe(w.findAll("label.mb-1")[0].attributes("for"));
+        w.unmount();
+    });
+
+    it("moves to the server's reason when it refused the answer", async () => {
+        formService.submitPublicForm.mockRejectedValue(new Error("Network Error"));
+        const w = await mountFill();
+
+        await w.find("input[type='text']:not([tabindex])").setValue("Task");
+        await w.find("form").trigger("submit");
+        await flushPromises();
+
+        const alert = w.find("[role='alert']");
+
+        expect(alert.text()).toBe(
+            "Could not reach the server. Check your connection and try again.",
+        );
+        expect(document.activeElement).toBe(alert.element);
         w.unmount();
     });
 
