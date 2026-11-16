@@ -6,7 +6,6 @@ package app
 import (
 	"context"
 	"net/http"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -119,16 +118,21 @@ func formApp(access fakeAccessWorkspaceStore, licensed bool) (*App, *fakeFormSto
 // table from everyone they resolve.
 type formRoles struct{ hiddenTable string }
 
-func (r formRoles) Resolve(interfaces.AccessInput) interfaces.WorkspaceAccess {
-	return formAccess(r)
+func (r formRoles) Resolve(in interfaces.AccessInput) interfaces.WorkspaceAccess {
+	return formAccess{hiddenTable: r.hiddenTable, in: in}
 }
 
-type formAccess struct{ hiddenTable string }
+type formAccess struct {
+	hiddenTable string
+	in          interfaces.AccessInput
+}
 
-func (formAccess) AssignedOnlyAll() bool                   { return false }
-func (formAccess) AssignedOnly(string) bool                { return false }
-func (formAccess) CanPerformRowAction(_, _, _ string) bool { return true }
-func (formAccess) TableHasPermission(_, _ string) bool     { return false }
+func (formAccess) AssignedOnlyAll() bool               { return false }
+func (formAccess) AssignedOnly(string) bool            { return false }
+func (formAccess) TableHasPermission(_, _ string) bool { return false }
+func (f formAccess) CanPerformRowAction(tableID, workspacePerm, tableAction string) bool {
+	return rolesAddUp(f.in, tableID, workspacePerm, tableAction)
+}
 func (f formAccess) VisibleTables(tables []model.WorkspaceTable) []model.WorkspaceTable {
 	var visible []model.WorkspaceTable
 	for _, t := range tables {
@@ -156,8 +160,8 @@ func perTableViewManager(tableID string) fakeAccessWorkspaceStore {
 	}
 }
 
-// tableGrantRoles answers table permissions as the enterprise roles do: from
-// the table permissions for per-table roles, and yes to anyone else.
+// tableGrantRoles answers table permissions as the enterprise roles do: a
+// member's workspace and per-table roles add up.
 type tableGrantRoles struct{}
 
 func (tableGrantRoles) Resolve(in interfaces.AccessInput) interfaces.WorkspaceAccess {
@@ -169,15 +173,8 @@ type tableGrantAccess struct {
 	in interfaces.AccessInput
 }
 
-func (g tableGrantAccess) TableHasPermission(tableID, action string) bool {
-	perTable := slices.ContainsFunc(g.in.Roles, func(r model.ProjectWorkspaceRole) bool { return r.PerTableMode })
-	if !perTable {
-		return true
-	}
-
-	return slices.ContainsFunc(g.in.TablePerms, func(p model.TablePermission) bool {
-		return p.TableID == tableID && p.Action == action
-	})
+func (g tableGrantAccess) CanPerformRowAction(tableID, workspacePerm, tableAction string) bool {
+	return rolesAddUp(g.in, tableID, workspacePerm, tableAction)
 }
 
 func TestCreateFormStoresItOnTheURLTable(t *testing.T) {
