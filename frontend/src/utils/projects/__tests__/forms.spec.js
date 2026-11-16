@@ -16,7 +16,7 @@ import {
     mergeFormFields,
     missingRequiredFields,
     normalizeFormData,
-    wholeNumberText,
+    isWholeNumberText,
 } from "../forms";
 
 describe("headerLabel", () => {
@@ -243,10 +243,13 @@ describe("formFieldLabel", () => {
     });
 });
 
-describe("wholeNumberText", () => {
-    it("keeps the digits and a leading minus", () => {
-        expect(wholeNumberText(" -1 2a-3")).toBe("-123");
-        expect(wholeNumberText(null)).toBe("");
+describe("isWholeNumberText", () => {
+    it.each(["", "-", "0", "15", "-15"])("takes %j", (text) => {
+        expect(isWholeNumberText(text)).toBe(true);
+    });
+
+    it.each(["1.5", "1,5", "1e3", " 15", "1-", "--1", "x"])("refuses %j", (text) => {
+        expect(isWholeNumberText(text)).toBe(false);
     });
 });
 
