@@ -9,8 +9,8 @@ SPDX-License-Identifier: AGPL-3.0-only
             <template v-if="route.params.tid != undefined">
                 <span class="tn-avatar">
                     <component
-                        :is="tableIcons[tableIcon]"
-                        v-if="tableIcons[tableIcon]"
+                        :is="tableIcons[headerIcon]"
+                        v-if="tableIcons[headerIcon]"
                         class="h-5 w-5"
                         aria-hidden="true"
                     />
@@ -1153,6 +1153,12 @@ const rightSideNavigation = computed({
 const workspaceName = ref("");
 const tableName = ref("");
 const tableIcon = ref("");
+
+// The sidebar's tree hears of an icon change at once; the header's own copy
+// is read only when the table opens.
+const headerIcon = computed(
+    () => workspaceStore.getTableIcon(route.params.id, route.params.tid) ?? tableIcon.value,
+);
 
 async function fetchWorkspaceData() {
     const { id: workspaceId, tid: tableId } = route.params;
