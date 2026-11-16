@@ -52,6 +52,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         variant="secondary"
                         class="ml-auto"
                         :prepend-icon="TableCellsIcon"
+                        :is-disabled="rangeReversed"
                         @click="downloadCSV"
                     >
                         {{ t("projects.form_view.submissions.export") }}
@@ -236,6 +237,8 @@ async function loadTableNames() {
 // The server streams the file and the browser saves it straight to disk, as
 // the task report's export does.
 function downloadCSV() {
+    if (rangeReversed.value) return;
+
     const userStore = useUserStore();
     const params = new URLSearchParams(range.value);
 
@@ -246,6 +249,12 @@ function downloadCSV() {
         JSON.stringify({
             submitted_by: t.value("projects.form_view.submissions.submitted_by"),
             submitted_at: t.value("projects.form_view.submissions.date"),
+            ...Object.fromEntries(
+                shownFields.value.map((f) => [
+                    `field:${f.header_name}`,
+                    formFieldLabel(f, t.value),
+                ]),
+            ),
         }),
     );
 

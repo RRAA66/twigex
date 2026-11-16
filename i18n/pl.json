@@ -1992,6 +1992,10 @@
     "translation": "Nie udało się wczytać zgłoszeń formularza. Spróbuj ponownie."
   },
   {
+    "id": "workspace.form_submissions_range_reversed",
+    "translation": "Dzień „Od” jest późniejszy niż dzień „Do”. Wybierz dzień „Od” nie późniejszy niż „Do”."
+  },
+  {
     "id": "workspace.form_file_too_large",
     "translation": "Ten plik jest za duży."
   },

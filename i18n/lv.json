@@ -1992,6 +1992,10 @@
     "translation": "Neizdevās ielādēt veidlapas iesniegumus. Lūdzu, mēģiniet vēlreiz."
   },
   {
+    "id": "workspace.form_submissions_range_reversed",
+    "translation": "Diena laukā “No” ir pēc dienas laukā “Līdz”. Izvēlieties “No” dienu, kas nav vēlāka par “Līdz” dienu."
+  },
+  {
     "id": "workspace.form_file_too_large",
     "translation": "Šis fails ir pārāk liels."
   },

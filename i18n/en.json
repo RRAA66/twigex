@@ -2052,6 +2052,10 @@
     "translation": "Failed to load the form's submissions. Please try again."
   },
   {
+    "id": "workspace.form_submissions_range_reversed",
+    "translation": "The From day is after the To day. Pick a From day on or before it."
+  },
+  {
     "id": "workspace.form_file_too_large",
     "translation": "This file is too large."
   },

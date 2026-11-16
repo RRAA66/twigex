@@ -1992,6 +1992,10 @@
     "translation": "Пішінге жіберілген жауаптарды жүктеу сәтсіз аяқталды. Қайталап көріңіз."
   },
   {
+    "id": "workspace.form_submissions_range_reversed",
+    "translation": "«Бастап» күні «Дейін» күнінен кейін тұр. «Дейін» күнінен кеш емес «Бастап» күнін таңдаңыз."
+  },
+  {
     "id": "workspace.form_file_too_large",
     "translation": "Бұл файл тым үлкен."
   },

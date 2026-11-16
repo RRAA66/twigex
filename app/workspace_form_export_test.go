@@ -129,3 +129,23 @@ func TestExportFormSubmissionsRefusesAViewerWithoutTheGrid(t *testing.T) {
 		t.Fatalf("want 403, got %v", appErr)
 	}
 }
+
+func TestExportFormSubmissionsRefusesAFromDayAfterTheToDay(t *testing.T) {
+	a, _, _ := submitApp()
+
+	_, appErr := a.PrepareFormSubmissionsExport(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{From: 200, To: 100}, "UTC", "24h", nil, workspaceAdmin)
+	if appErr == nil || appErr.Status != http.StatusBadRequest {
+		t.Fatalf("want 400, got %v", appErr)
+	}
+}
+
+func TestExportFieldLabelTakesThePagesNameForAFieldWithoutALabel(t *testing.T) {
+	labels := map[string]string{"field:status": "Statuss"}
+
+	if got := exportFieldLabel(labels, model.WorkspaceFormField{HeaderName: "status", DisplayName: "Status"}); got != "Statuss" {
+		t.Errorf("label %q, want the page's name", got)
+	}
+	if got := exportFieldLabel(nil, model.WorkspaceFormField{HeaderName: "status", DisplayName: "Status"}); got != "Status" {
+		t.Errorf("label %q, want the field's name", got)
+	}
+}
