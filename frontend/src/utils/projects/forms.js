@@ -220,6 +220,25 @@ export function formSubmitFields(fields, values) {
     }));
 }
 
+// The shown answers as a calculation reads them. A number answer is read as
+// the server stores it, so 1e3 counts as 1000 rather than as the digits 1 and 3.
+export function calculationAnswers(fields, values) {
+    return Object.fromEntries(
+        fields.map((f) => {
+            const value = values[f.header_name];
+            const type = formFieldType(f);
+
+            if ((type !== "number" && type !== "decimal") || typeof value !== "string") {
+                return [f.header_name, value];
+            }
+
+            const number = value.trim() === "" ? NaN : Number(value);
+
+            return [f.header_name, Number.isFinite(number) ? number : ""];
+        }),
+    );
+}
+
 // A calculation's result from the form's answers, worked out as the grid
 // does from a row: a picked row or option counts by its name.
 export function calculatedAnswer(field, values) {

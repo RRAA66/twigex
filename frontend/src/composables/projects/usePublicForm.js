@@ -7,6 +7,7 @@ import { close, initialize, onProjectChange } from "@/js/websocket";
 import formService from "@/services/formService";
 import { useAlertStore } from "@/store/alerts";
 import {
+    calculationAnswers,
     defaultAnswers,
     fillableFormFields,
     formRequestError,
@@ -43,9 +44,7 @@ export function usePublicForm(token, { live = false, preview = false } = {}) {
 
     const fillable = computed(() => fillableFormFields(form.value?.fields));
     const fields = computed(() => shownFormFields(fillable.value, values.value));
-    const answers = computed(() =>
-        Object.fromEntries(fields.value.map((f) => [f.header_name, values.value[f.header_name]])),
-    );
+    const answers = computed(() => calculationAnswers(fields.value, values.value));
 
     function failLoad(error) {
         status.value = STATUS_BY_HTTP[error?.response?.status] || "failed";

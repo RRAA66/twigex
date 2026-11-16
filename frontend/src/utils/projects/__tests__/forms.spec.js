@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { t } from "@/i18n/index.js";
 import {
     calculatedAnswer,
+    calculationAnswers,
     defaultAnswer,
     defaultAnswers,
     defaultFromAnswer,
@@ -507,6 +508,22 @@ describe("calculations on a form", () => {
     it("works a calculation out from the answers as they are typed", () => {
         expect(calculatedAnswer(total, { qty: "3", price: "2.5" })).toBe("7.5");
         expect(calculatedAnswer(total, { qty: "4", price: "2.5" })).toBe("10");
+    });
+
+    it("reads a number answer as the number it stands for", () => {
+        const fields = [
+            { header_name: "qty", field_type: "number" },
+            { header_name: "price", field_type: "decimal" },
+            { header_name: "note", field_type: "text" },
+        ];
+        const answers = calculationAnswers(fields, { qty: "2", price: "1e3", note: "1e3" });
+
+        expect(answers).toEqual({ qty: 2, price: 1000, note: "1e3" });
+        expect(calculatedAnswer(total, answers)).toBe("2000");
+        expect(calculationAnswers(fields, { qty: "", price: "abc" })).toMatchObject({
+            qty: "",
+            price: "",
+        });
     });
 
     it("sends no calculation and asks none to be filled in", () => {
