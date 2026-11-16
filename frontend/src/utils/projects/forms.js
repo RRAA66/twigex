@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { extractErrorMessage } from "@/utils/errors";
 import { fieldLabel } from "@/utils/projects/rows";
 
 export const DEFAULT_ACCENT_COLOR = "#4f46e5";
@@ -44,13 +45,14 @@ export function normalizeFormData(data, workspaceId, tableId) {
         active: data.active ?? true,
         created_by: data.created_by || "",
         link_tables: data.link_tables || [],
+        updated_at: data.updated_at || 0,
     };
 }
 
 // Every field of the table is listed: a saved field keeps its settings, a
 // field added to the table since the form was saved comes last and hidden,
 // and the name is always shown and required because a row needs one.
-export function mergeFormFields(headers, savedFields, translate) {
+export function mergeFormFields(headers, savedFields) {
     const savedByName = new Map(savedFields.map((f) => [f.header_name, f]));
 
     const merged = headers
@@ -68,7 +70,8 @@ export function mergeFormFields(headers, savedFields, translate) {
                 id: "",
                 header_id: h.id || h.name,
                 header_name: h.name,
-                label: headerLabel(h, translate),
+                display_name: fieldLabel(h),
+                label: "",
                 placeholder: "",
                 description: "",
                 required: false,
@@ -143,6 +146,50 @@ function isEmptyFormValue(value) {
         value === false ||
         (Array.isArray(value) && value.length === 0)
     );
+}
+
+// A field's own label, or else its table field's current name, translated for
+// a built-in field.
+export function formFieldLabel(field, translate) {
+    return (
+        field.label ||
+        headerLabel({ name: field.header_name, display_name: field.display_name }, translate)
+    );
+}
+
+// Keeps a whole number's digits and leading minus, dropping anything else.
+export function wholeNumberText(text) {
+    return String(text ?? "")
+        .replace(/[^\d-]/g, "")
+        .replace(/(?!^)-/g, "");
+}
+
+// Number answers the server would refuse, with the message saying what each takes.
+export function invalidNumberFields(fields, values) {
+    const invalid = {};
+
+    for (const f of fields) {
+        const value = values[f.header_name];
+        const type = formFieldType(f);
+
+        if (isEmptyFormValue(value)) continue;
+
+        if (type === "number" && !/^\s*-?\d+\s*$/.test(String(value))) {
+            invalid[f.header_name] = "projects.form_view.error.whole_number";
+        } else if (type === "decimal" && !Number.isFinite(Number(value))) {
+            invalid[f.header_name] = "projects.form_view.error.number";
+        }
+    }
+
+    return invalid;
+}
+
+// A request that got no answer failed on the way, so axios's own "Network
+// Error" is the only message it has.
+export function formRequestError(error, translate) {
+    if (!error?.response) return translate("projects.form_view.error.network");
+
+    return extractErrorMessage(error);
 }
 
 export function missingRequiredFields(fields, values) {

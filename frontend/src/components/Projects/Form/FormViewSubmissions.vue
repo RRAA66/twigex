@@ -52,6 +52,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         variant="secondary"
                         class="ml-auto"
                         :prepend-icon="TableCellsIcon"
+                        :is-disabled="rangeReversed"
                         @click="downloadCSV"
                     >
                         {{ t("projects.form_view.submissions.export") }}
@@ -104,7 +105,7 @@ import { useAlertStore } from "@/store/alerts";
 import { useUserStore } from "@/store/user";
 import { useWorkspaceStore } from "@/store/workspaces";
 import { extractErrorMessage } from "@/utils/errors";
-import { fillableFormFields, formFieldType } from "@/utils/projects/forms";
+import { fillableFormFields, formFieldLabel, formFieldType } from "@/utils/projects/forms";
 import { tableDisplayNames } from "@/utils/projects/gridView";
 import BaseButton from "@/components/BaseButton.vue";
 import DataTable from "@/components/DataTable.vue";
@@ -119,8 +120,10 @@ const props = defineProps({
     workspaceId: { type: String, required: true },
     tableId: { type: String, required: true },
     formId: { type: String, required: true },
-    fields: { type: Array, default: () => [] },
+    fields: { type: Array, default: null },
 });
+
+const emit = defineEmits(["loaded"]);
 
 const alertStore = useAlertStore();
 const { getDateAndTime, getTimestampFromDateString, getEndOfDayTimestamp } = useDateOperations();
@@ -128,6 +131,7 @@ const id = useId();
 const { openTask } = useOpenTask();
 
 const submissions = ref([]);
+const loadedFields = ref([]);
 const total = ref(0);
 const page = ref(1);
 const loading = ref(true);
@@ -160,14 +164,16 @@ const emptyText = computed(() =>
         : t.value("projects.form_view.no_submissions"),
 );
 
-const shownFields = computed(() => fillableFormFields(props.fields));
+// Without the builder's fields, as for a member who may not open the builder,
+// the form's fields come with the submissions.
+const shownFields = computed(() => fillableFormFields(props.fields ?? loadedFields.value));
 
 const columns = computed(() => [
     { key: "submitted_by", label: t.value("projects.form_view.submissions.submitted_by") },
     { key: "submitted_at", label: t.value("projects.form_view.submissions.date") },
     ...shownFields.value.map((field, index) => ({
         key: field.header_name,
-        label: field.label || field.display_name || field.header_name,
+        label: formFieldLabel(field, t.value),
         hiddenBelow: index > 0 ? "md" : undefined,
     })),
 ]);
@@ -205,6 +211,8 @@ async function load(next = page.value) {
         submissions.value = data.items;
         total.value = data.total;
         page.value = next;
+        loadedFields.value = data.fields || [];
+        emit("loaded", data);
     } catch (error) {
         if (current === request) alertStore.showError(extractErrorMessage(error));
     } finally {
@@ -229,6 +237,8 @@ async function loadTableNames() {
 // The server streams the file and the browser saves it straight to disk, as
 // the task report's export does.
 function downloadCSV() {
+    if (rangeReversed.value) return;
+
     const userStore = useUserStore();
     const params = new URLSearchParams(range.value);
 
@@ -239,6 +249,12 @@ function downloadCSV() {
         JSON.stringify({
             submitted_by: t.value("projects.form_view.submissions.submitted_by"),
             submitted_at: t.value("projects.form_view.submissions.date"),
+            ...Object.fromEntries(
+                shownFields.value.map((f) => [
+                    `field:${f.header_name}`,
+                    formFieldLabel(f, t.value),
+                ]),
+            ),
         }),
     );
 
@@ -270,8 +286,8 @@ const stopChanges = onProjectChange((change) => {
 
 watch([fromDay, toDay], () => load(1));
 
-onMounted(() => {
-    load(1);
+onMounted(async () => {
+    await load(1);
     loadTableNames();
 });
 
