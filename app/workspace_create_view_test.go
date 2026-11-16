@@ -48,13 +48,21 @@ type tableViewAccess struct {
 }
 
 func (v tableViewAccess) CanPerformRowAction(tableID, workspacePerm, tableAction string) bool {
-	for _, r := range v.in.Roles {
+	return rolesAddUp(v.in, tableID, workspacePerm, tableAction)
+}
+
+// rolesAddUp is the enterprise row action rule: a workspace-level role's
+// permission, or the per-table permission on the table.
+func rolesAddUp(in interfaces.AccessInput, tableID, workspacePerm, tableAction string) bool {
+	for _, r := range in.Roles {
 		if !r.PerTableMode && slices.Contains(r.Permissions, workspacePerm) {
 			return true
 		}
 	}
 
-	return slices.Contains(v.in.TablePerms, model.TablePermission{TableID: tableID, Action: tableAction})
+	return slices.ContainsFunc(in.TablePerms, func(p model.TablePermission) bool {
+		return p.TableID == tableID && p.Action == tableAction
+	})
 }
 
 func createViewApp(memberRole string) (*App, *fakeCreateViewStore) {
