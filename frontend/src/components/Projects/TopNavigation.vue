@@ -205,7 +205,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         class="absolute left-0 z-20 mt-2 w-48 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
                     >
                         <MenuItem
-                            v-for="vt in CREATABLE_VIEW_TYPES"
+                            v-for="vt in creatableViewTypes"
                             :key="vt.type"
                             v-slot="{ active }"
                         >
@@ -503,6 +503,7 @@ import { useWorkspaceStore } from "@/store/workspaces";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { useUserStore } from "@/store/user";
 import { useWorkspaceRolesStore } from "@/store/workspaceRoles";
+import { useSettingsStore } from "@/store/settings";
 import ViewActions from "@/components/Projects/Menu/ViewActions.vue";
 import ViewActionsMenu from "./Menu/ViewActionsMenu.vue";
 import workspaceService from "@/services/workspaceService";
@@ -576,8 +577,13 @@ const ALL_VIEW_TYPES = [
     },
 ];
 
-const CREATABLE_VIEW_TYPES = ALL_VIEW_TYPES.filter((vt) =>
-    ["grid", "kanban", "form"].includes(vt.type),
+const settingsStore = useSettingsStore();
+const formsEnabled = computed(() => settingsStore.isFeatureEnabled("Forms"));
+
+const creatableViewTypes = computed(() =>
+    ALL_VIEW_TYPES.filter(
+        (vt) => ["grid", "kanban"].includes(vt.type) || (vt.type === "form" && formsEnabled.value),
+    ),
 );
 
 const FORM_ROUTES = ["form-view", "form-view-create"];
@@ -619,6 +625,8 @@ const viewTypeGroups = computed(() => {
     const result = [];
 
     for (const vt of ALL_VIEW_TYPES) {
+        if (vt.type === "form" && !formsEnabled.value) continue;
+
         const hasPermission = rolesStore.hasViewPermission(vt.type);
         let views = typesCreated.value.filter((v) => v.view_type === vt.type);
 
