@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { onScopeDispose, ref, toValue } from "vue";
+import { computed, onScopeDispose, ref, toValue } from "vue";
 import { t } from "@/i18n/index.js";
 import formService from "@/services/formService";
 import { useAlertStore } from "@/store/alerts";
@@ -105,7 +105,9 @@ export function useFormImages(form) {
         }
     }
 
+    const hasPending = computed(() => Object.keys(pending.value).length > 0);
+
     onScopeDispose(discard);
 
-    return { pick, remove, src, discard, save };
+    return { pick, remove, src, discard, save, hasPending };
 }

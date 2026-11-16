@@ -43,7 +43,11 @@ export function useFormBuilder() {
 
     let loadRequest = 0;
 
-    const isDirty = computed(() => status.value === "ready" && currentState() !== savedState.value);
+    const isDirty = computed(
+        () =>
+            status.value === "ready" &&
+            (currentState() !== savedState.value || images.hasPending.value),
+    );
 
     function currentState() {
         return JSON.stringify([formData.value, formFields.value]);
