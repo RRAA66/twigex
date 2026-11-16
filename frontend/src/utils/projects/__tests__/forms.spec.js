@@ -187,6 +187,12 @@ describe("missingRequiredFields", () => {
             missingRequiredFields(fields, { name: "A", tags: [{ id: "1" }], agree: true }),
         ).toEqual([]);
     });
+
+    it("counts an answer of only spaces as empty", () => {
+        const fields = [{ header_name: "name", required: true }];
+
+        expect(missingRequiredFields(fields, { name: "   " })).toEqual(["name"]);
+    });
 });
 
 describe("formSubmitFields", () => {
