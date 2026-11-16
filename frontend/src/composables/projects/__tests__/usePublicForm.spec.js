@@ -104,6 +104,39 @@ describe("usePublicForm", () => {
         expect(state.submitted.value).toBe(false);
     });
 
+    it("does not send a decimal in a whole number field, and says what it takes", async () => {
+        formService.getPublicForm.mockResolvedValue({
+            data: {
+                ...form,
+                fields: [{ header_name: "count", field_type: "number", visible: true }],
+            },
+        });
+        const { state } = await setup();
+
+        state.values.value = { count: "1.5" };
+        await state.submit();
+
+        expect(formService.submitPublicForm).not.toHaveBeenCalled();
+        expect(state.fieldErrors.value).toEqual({
+            count: "Enter a whole number, such as 12, without a decimal part.",
+        });
+
+        state.values.value = { count: "2" };
+        await nextTick();
+
+        expect(state.fieldErrors.value).toEqual({});
+    });
+
+    it("says the form could not be loaded without a connection", async () => {
+        formService.getPublicForm.mockRejectedValue(new Error("Network Error"));
+        const { state } = await setup();
+
+        expect(state.status.value).toBe("failed");
+        expect(state.loadError.value).toBe(
+            "Could not reach the server. Check your connection and try again.",
+        );
+    });
+
     it("clears a required field's error once it is filled in", async () => {
         const { state } = await setup();
 
