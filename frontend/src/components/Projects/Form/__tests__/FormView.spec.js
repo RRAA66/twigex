@@ -176,7 +176,7 @@ describe("FormView", () => {
             user: { permissions: ["views_form", "views_grid"] },
         });
 
-        expect(formService.getSubmissions).toHaveBeenCalledWith("w1", "t1", "f1", 1);
+        expect(formService.getSubmissions).toHaveBeenCalledWith("w1", "t1", "f1", { page: 1 });
         expect(w.text()).toContain("see below what was sent");
         expect(w.text()).toContain("Cost");
         expect(w.find("a[href='/forms/public/tok']").text()).toBe("Fill in the form");

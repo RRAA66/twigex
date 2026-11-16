@@ -108,3 +108,24 @@ func TestExportFormSubmissionsRefusesAMemberWhoCannotChangeViews(t *testing.T) {
 		t.Fatalf("want 403, got %v", appErr)
 	}
 }
+
+func TestExportFormSubmissionsIsOpenToAViewerOfFormsAndGrids(t *testing.T) {
+	a, ws, _ := submitApp()
+	ws.fakeAccessWorkspaceStore = memberWithPermissions(model.PermissionViewForm, model.PermissionViewGrid)
+	a.WorkspaceRoles = formRoles{}
+
+	if _, appErr := a.PrepareFormSubmissionsExport(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{}, "UTC", "24h", nil, accessUser()); appErr != nil {
+		t.Fatalf("PrepareFormSubmissionsExport: %v", appErr)
+	}
+}
+
+func TestExportFormSubmissionsRefusesAViewerWithoutTheGrid(t *testing.T) {
+	a, ws, _ := submitApp()
+	ws.fakeAccessWorkspaceStore = memberWithPermissions(model.PermissionViewForm)
+	a.WorkspaceRoles = formRoles{}
+
+	_, appErr := a.PrepareFormSubmissionsExport(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{}, "", "", nil, accessUser())
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Fatalf("want 403, got %v", appErr)
+	}
+}

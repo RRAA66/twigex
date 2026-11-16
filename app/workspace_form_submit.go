@@ -442,14 +442,12 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	return result, nil
 }
 
-// submissionsForm opens a form's submissions to who may change its view and
-// read its table, since the submissions are rows of the table.
 func (a *App) submissionsForm(ctx context.Context, workspaceID, tableID, formID string, user model.User) (*model.WorkspaceFormWithFields, *model.AppError) {
 	if !a.Server.License.HasForms() {
 		return nil, model.NewAppError("license.feature_unavailable", http.StatusPaymentRequired)
 	}
 
-	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionUpdateWorkspaceView); appErr != nil {
+	if appErr := a.requireFormSubmissionsAccess(ctx, user, workspaceID, tableID); appErr != nil {
 		return nil, appErr
 	}
 
