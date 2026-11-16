@@ -88,8 +88,50 @@ describe("FormFileInput", () => {
         await pickFiles(w.find("input[type='file']"), [new File(["MZ"], "run.exe")]);
         await flushPromises();
 
-        expect(showError).toHaveBeenCalledWith("Files of this type cannot be uploaded.");
+        expect(showError).toHaveBeenCalledWith(
+            "Could not upload run.exe: Files of this type cannot be uploaded.",
+        );
         expect(w.emitted("update:modelValue")).toBeUndefined();
+    });
+
+    it("keeps the files that uploaded when another of the same pick is refused", async () => {
+        formService.uploadPublicFormFiles.mockImplementation((_, [file]) =>
+            file.name === "run.exe"
+                ? Promise.reject({ response: { status: 400, data: { error: "Not allowed." } } })
+                : Promise.resolve({ data: [{ id: file.name, name: file.name }] }),
+        );
+        const w = mountInput();
+        const showError = vi.spyOn(useAlertStore(), "showError");
+
+        await pickFiles(w.find("input[type='file']"), [
+            new File(["1"], "a.pdf"),
+            new File(["MZ"], "run.exe"),
+            new File(["2"], "b.pdf"),
+        ]);
+        await flushPromises();
+
+        expect(w.emitted("update:modelValue")).toEqual([
+            [
+                [
+                    { id: "a.pdf", name: "a.pdf" },
+                    { id: "b.pdf", name: "b.pdf" },
+                ],
+            ],
+        ]);
+        expect(showError).toHaveBeenCalledWith("Could not upload run.exe: Not allowed.");
+    });
+
+    it("says an upload that lost the connection failed, in the user's language", async () => {
+        formService.uploadPublicFormFiles.mockRejectedValue(new Error("Network Error"));
+        const w = mountInput();
+        const showError = vi.spyOn(useAlertStore(), "showError");
+
+        await pickFiles(w.find("input[type='file']"), [new File(["1"], "x.pdf")]);
+        await flushPromises();
+
+        expect(showError).toHaveBeenCalledWith(
+            "Could not upload x.pdf: Could not reach the server. Check your connection and try again.",
+        );
     });
 
     it("sends no more files than a field keeps and says so", async () => {

@@ -103,6 +103,21 @@ describe("useFormImages", () => {
         expect(images.src("cover")).toBe("");
     });
 
+    it("says whether an image waits to be saved", async () => {
+        formService.setFormImage.mockResolvedValue({ data: { logo: "img1" } });
+        const { images } = setup();
+
+        expect(images.hasPending.value).toBe(false);
+
+        images.pick("logo", new File(["x"], "logo.png"));
+
+        expect(images.hasPending.value).toBe(true);
+
+        await images.save(saved, () => {});
+
+        expect(images.hasPending.value).toBe(false);
+    });
+
     it("takes an image the browser gives no type, by its extension", () => {
         const { images } = setup();
 

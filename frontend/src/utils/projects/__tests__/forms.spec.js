@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { t } from "@/i18n/index.js";
 import {
     calculatedAnswer,
+    calculationAnswers,
     defaultAnswer,
     defaultAnswers,
     defaultFromAnswer,
@@ -12,18 +13,22 @@ import {
     conditionValueWidget,
     emptyFormData,
     fillableFormFields,
+    formFieldLabel,
     formFieldType,
     formImageUrl,
     formLinkTables,
+    formRequestError,
     formSubmitFields,
     headerLabel,
     incompleteConditionFields,
+    invalidNumberFields,
     linkedTableId,
     mergeFormFields,
     missingRequiredFields,
     readOnlyWithoutDefault,
     normalizeFormData,
     shownFormFields,
+    wholeNumberText,
 } from "../forms";
 
 describe("headerLabel", () => {
@@ -71,6 +76,10 @@ describe("normalizeFormData", () => {
             workspace_id: "w1",
         });
     });
+
+    it("keeps the version the server stored, so a save can name it", () => {
+        expect(normalizeFormData({ id: "f1", updated_at: 1700 }, "w1", "t1").updated_at).toBe(1700);
+    });
 });
 
 describe("mergeFormFields", () => {
@@ -84,13 +93,14 @@ describe("mergeFormFields", () => {
     ];
 
     it("lists every field, calculations too, hidden except the name", () => {
-        const fields = mergeFormFields(headers, [], t.value);
+        const fields = mergeFormFields(headers, []);
 
         expect(fields.map((f) => f.header_name)).toEqual(["name", "status", "total", "budget"]);
         expect(fields.map((f) => f.visible)).toEqual([true, false, false, false]);
         expect(fields[3]).toMatchObject({
             header_id: "h-budget",
-            label: "Budget",
+            display_name: "Budget",
+            label: "",
             required: false,
             column_position: "full",
         });
@@ -102,7 +112,7 @@ describe("mergeFormFields", () => {
             { header_name: "name", label: "Title", visible: true, sort_order: 1 },
         ];
 
-        const fields = mergeFormFields(headers, saved, t.value);
+        const fields = mergeFormFields(headers, saved);
 
         expect(fields.map((f) => f.header_name)).toEqual(["budget", "name", "status", "total"]);
         expect(fields[0]).toMatchObject({ label: "Cost", column_position: "full" });
@@ -120,7 +130,7 @@ describe("mergeFormFields", () => {
             },
         ];
 
-        const client = mergeFormFields(linked, [], t.value).find((f) => f.header_name === "client");
+        const client = mergeFormFields(linked, []).find((f) => f.header_name === "client");
 
         expect(client).toMatchObject({
             field_type: "link",
@@ -145,7 +155,7 @@ describe("mergeFormFields", () => {
             },
         ];
 
-        const [budget, status] = mergeFormFields(headers, saved, t.value);
+        const [budget, status] = mergeFormFields(headers, saved);
 
         expect(budget.visibility_rule).toBeNull();
         expect(status.visibility_rule).toEqual(saved[1].visibility_rule);
@@ -154,7 +164,7 @@ describe("mergeFormFields", () => {
     it("always shows and requires the name", () => {
         const saved = [{ header_name: "name", visible: false, required: false, sort_order: 0 }];
 
-        const [name] = mergeFormFields(headers, saved, t.value);
+        const [name] = mergeFormFields(headers, saved);
 
         expect(name).toMatchObject({ visible: true, required: true });
     });
@@ -501,6 +511,22 @@ describe("calculations on a form", () => {
         expect(calculatedAnswer(total, { qty: "4", price: "2.5" })).toBe("10");
     });
 
+    it("reads a number answer as the number it stands for", () => {
+        const fields = [
+            { header_name: "qty", field_type: "number" },
+            { header_name: "price", field_type: "decimal" },
+            { header_name: "note", field_type: "text" },
+        ];
+        const answers = calculationAnswers(fields, { qty: "2", price: "1e3", note: "1e3" });
+
+        expect(answers).toEqual({ qty: 2, price: 1000, note: "1e3" });
+        expect(calculatedAnswer(total, answers)).toBe("2000");
+        expect(calculationAnswers(fields, { qty: "", price: "abc" })).toMatchObject({
+            qty: "",
+            price: "",
+        });
+    });
+
     it("sends no calculation and asks none to be filled in", () => {
         const fields = [
             { header_name: "qty", field_type: "number" },
@@ -548,5 +574,53 @@ describe("readOnlyWithoutDefault", () => {
         expect(readOnlyWithoutDefault({ ...field, default_value: "", required: false })).toBe(
             false,
         );
+    });
+});
+
+describe("formFieldLabel", () => {
+    it("prefers the builder's label, then the table field's current, translated name", () => {
+        expect(formFieldLabel({ header_name: "name", label: "Title" }, t.value)).toBe("Title");
+        expect(formFieldLabel({ header_name: "status", label: "" }, t.value)).toBe("Status");
+        expect(
+            formFieldLabel({ header_name: "c_1", label: "", display_name: "Renamed" }, t.value),
+        ).toBe("Renamed");
+    });
+});
+
+describe("wholeNumberText", () => {
+    it("keeps the digits and a leading minus", () => {
+        expect(wholeNumberText(" -1 2a-3")).toBe("-123");
+        expect(wholeNumberText(null)).toBe("");
+    });
+});
+
+describe("invalidNumberFields", () => {
+    const fields = [
+        { header_name: "count", field_type: "number" },
+        { header_name: "price", field_type: "decimal" },
+    ];
+
+    it("names a decimal in a whole number field and text in a number field", () => {
+        expect(invalidNumberFields(fields, { count: "1.5", price: "abc" })).toEqual({
+            count: "projects.form_view.error.whole_number",
+            price: "projects.form_view.error.number",
+        });
+    });
+
+    it("accepts empty and well-formed answers", () => {
+        expect(invalidNumberFields(fields, { count: "-12", price: "4.5" })).toEqual({});
+        expect(invalidNumberFields(fields, {})).toEqual({});
+    });
+});
+
+describe("formRequestError", () => {
+    it("says a request that got no answer could not reach the server", () => {
+        expect(formRequestError(new Error("Network Error"), t.value)).toBe(
+            "Could not reach the server. Check your connection and try again.",
+        );
+    });
+
+    it("keeps the server's own reason", () => {
+        expect(formRequestError({ response: { data: { error: "Nope" } } }, t.value)).toBe("Nope");
     });
 });

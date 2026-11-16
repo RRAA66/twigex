@@ -156,13 +156,24 @@ func TestCreateFormRefusesADefaultItsFieldWouldRefuse(t *testing.T) {
 	}
 }
 
+func TestCreateFormRefusesADecimalDefaultForAWholeNumberField(t *testing.T) {
+	a, ws, _ := submitApp()
+	ws.meta = defaultsMeta("number")
+
+	fields := []model.WorkspaceFormField{{HeaderName: "budget", Label: "Budget", DefaultValue: "12.5"}}
+	_, appErr := a.CreateForm(context.Background(), wsID, tbl1, model.WorkspaceForm{Name: "Signup"}, fields, workspaceAdmin)
+	if appErr == nil || appErr.Status != http.StatusBadRequest {
+		t.Fatalf("want 400, got %v", appErr)
+	}
+}
+
 func TestCreateFormKeepsAValidDefault(t *testing.T) {
 	a, ws, _ := submitApp()
 	ws.meta = defaultsMeta("number")
 	ws.options = []string{"open"}
 
 	fields := []model.WorkspaceFormField{
-		{HeaderName: "budget", Label: "Budget", DefaultValue: "12.5"},
+		{HeaderName: "budget", Label: "Budget", DefaultValue: "12"},
 		{HeaderName: "status", Label: "Status", DefaultValue: "open", ReadOnly: true, Visible: true},
 	}
 	created, appErr := a.CreateForm(context.Background(), wsID, tbl1, model.WorkspaceForm{Name: "Signup"}, fields, workspaceAdmin)
@@ -171,7 +182,7 @@ func TestCreateFormKeepsAValidDefault(t *testing.T) {
 	}
 
 	saved := ws.forms[created.ID].Fields
-	if saved[0].DefaultValue != "12.5" || saved[1].DefaultValue != "open" || !saved[1].ReadOnly {
+	if saved[0].DefaultValue != "12" || saved[1].DefaultValue != "open" || !saved[1].ReadOnly {
 		t.Errorf("fields %+v, want both defaults kept", saved)
 	}
 }

@@ -1,6 +1,7 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { extractErrorMessage } from "@/utils/errors";
 import { calculateRowValueForRow, formatCellValue } from "@/utils/projects/formulas";
 import { fieldLabel } from "@/utils/projects/rows";
 
@@ -48,13 +49,14 @@ export function normalizeFormData(data, workspaceId, tableId) {
         active: data.active ?? true,
         created_by: data.created_by || "",
         link_tables: data.link_tables || [],
+        updated_at: data.updated_at || 0,
     };
 }
 
 // Every field of the table is listed: a saved field keeps its settings, a
 // field added to the table since the form was saved comes last and hidden,
 // and the name is always shown and required because a row needs one.
-export function mergeFormFields(headers, savedFields, translate) {
+export function mergeFormFields(headers, savedFields) {
     const savedByName = new Map(savedFields.map((f) => [f.header_name, f]));
 
     const merged = headers
@@ -68,7 +70,8 @@ export function mergeFormFields(headers, savedFields, translate) {
                 id: "",
                 header_id: h.id || h.name,
                 header_name: h.name,
-                label: headerLabel(h, translate),
+                display_name: fieldLabel(h),
+                label: "",
                 placeholder: "",
                 description: "",
                 required: false,
@@ -156,6 +159,50 @@ function isEmptyFormValue(value) {
     );
 }
 
+// A field's own label, or else its table field's current name, translated for
+// a built-in field.
+export function formFieldLabel(field, translate) {
+    return (
+        field.label ||
+        headerLabel({ name: field.header_name, display_name: field.display_name }, translate)
+    );
+}
+
+// Keeps a whole number's digits and leading minus, dropping anything else.
+export function wholeNumberText(text) {
+    return String(text ?? "")
+        .replace(/[^\d-]/g, "")
+        .replace(/(?!^)-/g, "");
+}
+
+// Number answers the server would refuse, with the message saying what each takes.
+export function invalidNumberFields(fields, values) {
+    const invalid = {};
+
+    for (const f of fields) {
+        const value = values[f.header_name];
+        const type = formFieldType(f);
+
+        if (isEmptyFormValue(value)) continue;
+
+        if (type === "number" && !/^\s*-?\d+\s*$/.test(String(value))) {
+            invalid[f.header_name] = "projects.form_view.error.whole_number";
+        } else if (type === "decimal" && !Number.isFinite(Number(value))) {
+            invalid[f.header_name] = "projects.form_view.error.number";
+        }
+    }
+
+    return invalid;
+}
+
+// A request that got no answer failed on the way, so axios's own "Network
+// Error" is the only message it has.
+export function formRequestError(error, translate) {
+    if (!error?.response) return translate("projects.form_view.error.network");
+
+    return extractErrorMessage(error);
+}
+
 export function missingRequiredFields(fields, values) {
     return answeredFields(fields)
         .filter((f) => f.required && !f.read_only && isEmptyFormValue(values[f.header_name]))
@@ -180,6 +227,25 @@ export function formSubmitFields(fields, values) {
         name: f.header_name,
         value: submitValue(values[f.header_name]),
     }));
+}
+
+// The shown answers as a calculation reads them. A number answer is read as
+// the server stores it, so 1e3 counts as 1000 rather than as the digits 1 and 3.
+export function calculationAnswers(fields, values) {
+    return Object.fromEntries(
+        fields.map((f) => {
+            const value = values[f.header_name];
+            const type = formFieldType(f);
+
+            if ((type !== "number" && type !== "decimal") || typeof value !== "string") {
+                return [f.header_name, value];
+            }
+
+            const number = value.trim() === "" ? NaN : Number(value);
+
+            return [f.header_name, Number.isFinite(number) ? number : ""];
+        }),
+    );
 }
 
 // A calculation's result from the form's answers, worked out as the grid
