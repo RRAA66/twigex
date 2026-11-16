@@ -22,6 +22,21 @@ const (
 	maxFormImageBytes  = 6 << 20
 )
 
+func (a *API) initWorkspaceForms() {
+	if !*a.app.ConfigStore.Config.FeatureFlags.Forms {
+		return
+	}
+
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms", a.createForm).Methods("POST")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}", a.getForm).Methods("GET")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}", a.updateForm).Methods("PUT")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}", a.deleteForm).Methods("DELETE")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}/submissions", a.getFormSubmissions).Methods("GET")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}/submissions/export", a.exportFormSubmissions).Methods("GET")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}/images/{kind}", a.setFormImage).Methods("POST")
+	a.BaseRoutes.Workspaces.HandleFunc("/{id}/table/{tid}/forms/{fid}/images/{kind}", a.removeFormImage).Methods("DELETE")
+}
+
 func (a *API) createForm(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 
@@ -104,6 +119,10 @@ func (a *API) deleteForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) initPublicForms() {
+	if !*a.app.ConfigStore.Config.FeatureFlags.Forms {
+		return
+	}
+
 	forms := a.BaseRoutes.PublicSharedFiles.PathPrefix("/forms").Subrouter()
 	forms.HandleFunc("/{token}", a.getPublicForm).Methods("GET")
 	forms.HandleFunc("/{token}/submit", a.submitPublicForm).Methods("POST")
