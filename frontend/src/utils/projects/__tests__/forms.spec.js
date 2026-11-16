@@ -6,13 +6,17 @@ import { t } from "@/i18n/index.js";
 import {
     emptyFormData,
     fillableFormFields,
+    formFieldLabel,
     formFieldType,
+    formRequestError,
     formSubmitFields,
     headerLabel,
+    invalidNumberFields,
     linkedTableId,
     mergeFormFields,
     missingRequiredFields,
     normalizeFormData,
+    wholeNumberText,
 } from "../forms";
 
 describe("headerLabel", () => {
@@ -217,5 +221,53 @@ describe("formSubmitFields", () => {
             { name: "done", value: false },
             { name: "notes", value: "" },
         ]);
+    });
+});
+
+describe("formFieldLabel", () => {
+    it("prefers the builder's label, then the table field's current, translated name", () => {
+        expect(formFieldLabel({ header_name: "name", label: "Title" }, t.value)).toBe("Title");
+        expect(formFieldLabel({ header_name: "status", label: "" }, t.value)).toBe("Status");
+        expect(
+            formFieldLabel({ header_name: "c_1", label: "", display_name: "Renamed" }, t.value),
+        ).toBe("Renamed");
+    });
+});
+
+describe("wholeNumberText", () => {
+    it("keeps the digits and a leading minus", () => {
+        expect(wholeNumberText(" -1 2a-3")).toBe("-123");
+        expect(wholeNumberText(null)).toBe("");
+    });
+});
+
+describe("invalidNumberFields", () => {
+    const fields = [
+        { header_name: "count", field_type: "number" },
+        { header_name: "price", field_type: "decimal" },
+    ];
+
+    it("names a decimal in a whole number field and text in a number field", () => {
+        expect(invalidNumberFields(fields, { count: "1.5", price: "abc" })).toEqual({
+            count: "projects.form_view.error.whole_number",
+            price: "projects.form_view.error.number",
+        });
+    });
+
+    it("accepts empty and well-formed answers", () => {
+        expect(invalidNumberFields(fields, { count: "-12", price: "4.5" })).toEqual({});
+        expect(invalidNumberFields(fields, {})).toEqual({});
+    });
+});
+
+describe("formRequestError", () => {
+    it("says a request that got no answer could not reach the server", () => {
+        expect(formRequestError(new Error("Network Error"), t.value)).toBe(
+            "Could not reach the server. Check your connection and try again.",
+        );
+    });
+
+    it("keeps the server's own reason", () => {
+        expect(formRequestError({ response: { data: { error: "Nope" } } }, t.value)).toBe("Nope");
     });
 });

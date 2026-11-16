@@ -2462,5 +2462,8 @@
     "projects.form_view.error.copy_failed": "Сілтемені көшіру сәтсіз аяқталды.",
     "projects.form_view.public.no_access": "Бұл формаға қолжетімділігіңіз жоқ. Оның жұмыс кеңістігінің мүшесінен сізді қосуын сұраңыз.",
     "projects.form_view.public.not_found": "Бұл форма жоқ немесе енді ашық емес.",
-    "projects.form_view.public.read_only": "Бұл форманы көре аласыз, бірақ осы кестеге жазба қосуға рұқсатыңыз жоқ."
+    "projects.form_view.public.read_only": "Бұл форманы көре аласыз, бірақ осы кестеге жазба қосуға рұқсатыңыз жоқ.",
+    "projects.form_view.error.whole_number": "Бүтін сан енгізіңіз, мысалы, 12, ондық бөлігінсіз.",
+    "projects.form_view.error.number": "Сан енгізіңіз, мысалы, 12 немесе 4.5.",
+    "projects.form_view.error.network": "Серверге қосылу мүмкін болмады. Байланысты тексеріп, қайталап көріңіз."
 }
