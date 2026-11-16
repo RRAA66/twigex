@@ -20,6 +20,7 @@ import { useSettingsStore } from "@/store/settings";
 const formPages = [
     { name: "form-view-create", params: { id: "w1", tid: "t1" } },
     { name: "form-view", params: { id: "w1", tid: "t1", fid: "f1" } },
+    { name: "public-form", params: { token: "token-1" } },
 ];
 
 describe("form pages", () => {

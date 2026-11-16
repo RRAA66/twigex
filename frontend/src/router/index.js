@@ -823,6 +823,7 @@ const routes = [
         meta: {
             requireAuth: true,
         },
+        beforeEnter: requireForms,
     },
     {
         path: "/login",
