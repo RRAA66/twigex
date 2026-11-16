@@ -43,3 +43,28 @@ func TestKnowledgeGraphFlagFromEnv(t *testing.T) {
 		})
 	}
 }
+
+func TestFormsFlagFromEnv(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+		want  bool
+	}{
+		{"empty", "", false},
+		{"true", "true", true},
+		{"false", "false", false},
+		{"anything else", "yes", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("TWIGEX_FEATURE_FORMS", tc.value)
+
+			flags := featureFlagsFromEnv()
+
+			if *flags.Forms != tc.want {
+				t.Fatalf("want %v, got %v", tc.want, *flags.Forms)
+			}
+		})
+	}
+}
