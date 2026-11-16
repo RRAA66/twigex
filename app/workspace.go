@@ -80,6 +80,10 @@ func (a *App) GetProjectWorkspaceRoles(workspaceID string) ([]model.ProjectWorks
 }
 
 func (a *App) UpdateProjectWorkspaceRole(user model.User, workspaceID, roleID string, patch model.ProjectWorkspaceRolePatch) (*model.ProjectWorkspaceRole, *model.AppError) {
+	if appErr := a.RequireWorkspaceRoles(); appErr != nil {
+		return nil, appErr
+	}
+
 	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateRoles) {
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
@@ -127,6 +131,10 @@ func (a *App) UpdateProjectWorkspaceRole(user model.User, workspaceID, roleID st
 }
 
 func (a *App) CreateProjectWorkspaceRole(user model.User, workspaceID string, role model.ProjectWorkspaceRole) (*model.ProjectWorkspaceRole, *model.AppError) {
+	if appErr := a.RequireWorkspaceRoles(); appErr != nil {
+		return nil, appErr
+	}
+
 	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionCreateRoles) {
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
@@ -210,13 +218,19 @@ func (a *App) UpdateWorkspaceMemberRole(workspaceID string, memberID string, rol
 		return false, appErr
 	}
 
+	if appErr := a.keepProjectWorkspaceAdmin(workspaceID, memberID, role); appErr != nil {
+		return false, appErr
+	}
+
 	return a.setProjectWorkspaceMemberRole(workspaceID, memberID, role, user)
 }
 
 func (a *App) setProjectWorkspaceMemberRole(workspaceID, memberID, role string, user model.User) (bool, *model.AppError) {
 	// Allow clearing a role (role == "") so admins can remove restrictions after expiry.
-	if role != "" && !a.Server.License.HasWorkspaceRoles() {
-		return false, model.NewAppError("workspace.roles_license_required", http.StatusPaymentRequired)
+	if !onlyBuiltInWorkspaceRoles(strings.Fields(role)) {
+		if appErr := a.RequireWorkspaceRoles(); appErr != nil {
+			return false, appErr
+		}
 	}
 
 	roles, appErr := a.validProjectWorkspaceRoles(workspaceID, strings.Fields(role))
@@ -2177,8 +2191,60 @@ func (a *App) SetViewShares(ctx context.Context, user model.User, workspaceID, t
 	return nil
 }
 
+func (a *App) optionTableField(ctx context.Context, tableID string) (string, string, error) {
+	dbCtx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	return a.Store.Workspace.GetOptionTableField(dbCtx, tableID)
+}
+
+func (a *App) isBuiltInStatus(tableID string, fieldName string, optionID string) (bool, error) {
+	if fieldName != "status" {
+		return false, nil
+	}
+
+	tableName, err := a.Store.Workspace.GetTableName(tableID)
+	if err != nil {
+		return false, err
+	}
+
+	name, err := a.Store.Workspace.GetTaskFieldValue(tableName, optionID, "name")
+	if err != nil {
+		return false, err
+	}
+
+	isBuiltIn := name == "Completed" || name == "Cancelled"
+
+	return isBuiltIn, nil
+}
+
+func (a *App) canManageOptions(user model.User, workspaceID string, parentTableID string) bool {
+	if a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceTable) {
+		return true
+	}
+
+	return a.CanPerformRowAction(user, workspaceID, parentTableID, model.PermissionCreateFields, model.PermissionCreateFields)
+}
+
+func (a *App) requireOptionTableOf(ctx context.Context, tableID string, optionTableID string) *model.AppError {
+	dbCtx, cancel := a.dbCtx(ctx)
+	defer cancel()
+
+	isOption, err := a.Store.Workspace.IsOptionTableOf(dbCtx, tableID, optionTableID)
+	if err != nil {
+		tlog.Errorw("Failed to check the option table", "table_id", tableID, "linked_table_id", optionTableID, "error", err)
+		return model.NewAppError("workspace.single_select_update_failed", http.StatusInternalServerError)
+	}
+
+	if !isOption {
+		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	return nil
+}
+
 func (a *App) UpdateWorkspaceSingleSelectName(ctx context.Context, workspaceID string, tableID string, taskID string, field string, value string, user model.User, LinkedTableID string) (*map[string]interface{}, *model.AppError) {
-	if !a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionUpdateTask, model.PermissionUpdateTask) {
+	if !a.canManageOptions(user, workspaceID, tableID) {
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
@@ -2188,6 +2254,11 @@ func (a *App) UpdateWorkspaceSingleSelectName(ctx context.Context, workspaceID s
 
 	if isOptions, err := a.Store.Workspace.IsTableSingleSelect(LinkedTableID); err != nil || !isOptions {
 		return nil, model.NewAppError("request.invalid", http.StatusBadRequest)
+	}
+
+	appErr := a.requireOptionTableOf(ctx, tableID, LinkedTableID)
+	if appErr != nil {
+		return nil, appErr
 	}
 
 	linkedTableName, err := a.Store.Workspace.GetTableName(LinkedTableID)
@@ -2237,12 +2308,20 @@ func (a *App) UpdateWorkspaceSingleSelectName(ctx context.Context, workspaceID s
 }
 
 func (a *App) UpdateWorkspaceTask(ctx context.Context, workspaceID string, tableID string, taskID string, field string, value string, user model.User, fieldID string) (*map[string]interface{}, *model.AppError) {
-	if !a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionUpdateTask, model.PermissionUpdateTask) {
-		isSingleSelect, _ := a.Store.Workspace.IsTableSingleSelect(tableID)
-		parentID := a.Store.Workspace.GetTableParentID(tableID)
-		if !isSingleSelect || parentID == "" || !a.CanPerformRowAction(user, workspaceID, parentID, model.PermissionEditFields, model.PermissionEditFields) {
-			return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
-		}
+	parentID, optionField, err := a.optionTableField(ctx, tableID)
+	if err != nil {
+		tlog.Errorw("Failed to check the option table", "workspace_id", workspaceID, "table_id", tableID, "error", err)
+		return nil, model.NewAppError("workspace.task_update_failed", http.StatusInternalServerError)
+	}
+
+	isOption := parentID != ""
+
+	if isOption && !a.canManageOptions(user, workspaceID, parentID) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if !isOption && !a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionUpdateTask, model.PermissionUpdateTask) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
 	if appErr := a.requireTaskAccess(user, workspaceID, tableID, taskID); appErr != nil {
@@ -2267,8 +2346,8 @@ func (a *App) UpdateWorkspaceTask(ctx context.Context, workspaceID string, table
 		return nil, model.NewAppError("request.invalid", http.StatusBadRequest)
 	}
 
-	if field == "name" {
-		currentName, err := a.Store.Workspace.GetTaskFieldValue(tableName, taskID, "name")
+	if isOption && field == "name" {
+		builtIn, err := a.isBuiltInStatus(tableID, optionField, taskID)
 		if err != nil {
 			tlog.Errorw("Failed to get current task name",
 				"workspace_id", workspaceID,
@@ -2279,7 +2358,7 @@ func (a *App) UpdateWorkspaceTask(ctx context.Context, workspaceID string, table
 			return nil, model.NewAppError("workspace.task_update_failed", http.StatusInternalServerError)
 		}
 
-		if currentName == "Completed" || currentName == "Cancelled" {
+		if builtIn {
 			return nil, model.NewAppError("workspace.task_update_protected", http.StatusBadRequest)
 		}
 	}
@@ -2500,8 +2579,7 @@ func (a *App) AddFieldValue(ctx context.Context, workspaceID string, tableID str
 		return nil, model.NewAppError("workspace.relationship_not_found", http.StatusNotFound)
 	}
 
-	// tableID is the parent table that owns the single-select field, check edit_fields on it.
-	if !a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionEditFields, model.PermissionEditFields) {
+	if !a.canManageOptions(user, workspaceID, tableID) {
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
@@ -3577,7 +3655,19 @@ const maxTaskDescription = 65535
 // option of the section field a Kanban column stands for; fields sets the
 // rest of what the task starts with.
 func (a *App) CreateWorkspaceTask(ctx context.Context, workspaceID string, tableID string, name string, singleSelect string, section string, fields model.NewTaskFields, user model.User, parentTaskID string) (*map[string]interface{}, *model.AppError) {
-	if !a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionCreateTask, model.PermissionCreateTask) {
+	parentID, _, err := a.optionTableField(ctx, tableID)
+	if err != nil {
+		tlog.Errorw("Failed to check the option table", "workspace_id", workspaceID, "table_id", tableID, "error", err)
+		return nil, model.NewAppError("workspace.task_create_failed", http.StatusInternalServerError)
+	}
+
+	isOption := parentID != ""
+
+	if isOption && !a.canManageOptions(user, workspaceID, parentID) {
+		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if !isOption && !a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionCreateTask, model.PermissionCreateTask) {
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
@@ -4271,11 +4361,31 @@ func (a *App) DeleteWorkspaceTableView(ctx context.Context, workspaceID string, 
 }
 
 func (a *App) DeleteWorkspaceTask(ctx context.Context, workspaceID string, tableID string, taskID string, user model.User) (bool, *model.AppError) {
-	if !a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionDeleteTask, model.PermissionDeleteTask) {
-		isSingleSelect, _ := a.Store.Workspace.IsTableSingleSelect(tableID)
-		parentID := a.Store.Workspace.GetTableParentID(tableID)
-		if !isSingleSelect || parentID == "" || !a.CanPerformRowAction(user, workspaceID, parentID, model.PermissionEditFields, model.PermissionEditFields) {
-			return false, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	parentID, optionField, err := a.optionTableField(ctx, tableID)
+	if err != nil {
+		tlog.Errorw("Failed to check the option table", "workspace_id", workspaceID, "table_id", tableID, "error", err)
+		return false, model.NewAppError("workspace.task_delete_failed", http.StatusInternalServerError)
+	}
+
+	isOption := parentID != ""
+
+	if isOption && !a.canManageOptions(user, workspaceID, parentID) {
+		return false, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if !isOption && !a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionDeleteTask, model.PermissionDeleteTask) {
+		return false, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if isOption {
+		builtIn, err := a.isBuiltInStatus(tableID, optionField, taskID)
+		if err != nil {
+			tlog.Errorw("Failed to get option name", "table_id", tableID, "option_id", taskID, "error", err)
+			return false, model.NewAppError("workspace.task_delete_failed", http.StatusInternalServerError)
+		}
+
+		if builtIn {
+			return false, model.NewAppError("workspace.task_delete_protected", http.StatusBadRequest)
 		}
 	}
 
@@ -4533,7 +4643,7 @@ func (a *App) GetWorkspaceCurrentUser(user model.User, workspaceID string) (*mod
 	// A workspace-level role grants full access regardless of any per-table roles.
 	workspaceUser.PerTableMode = hasPerTableRole && !hasWorkspaceLevelRole
 
-	if workspaceUser.PerTableMode {
+	if hasPerTableRole {
 		tablePerms, err := a.Store.Workspace.GetTablePermissionsForRoles(roleIDs, workspaceID)
 		if err != nil {
 			tlog.Errorw("Failed to get table permissions", "workspace_id", workspaceID, "user_id", user.ID, "error", err)
@@ -4565,6 +4675,10 @@ func (a *App) GetRoleTablePermissions(user model.User, workspaceID, roleID strin
 }
 
 func (a *App) UpdateRoleTablePermissions(user model.User, workspaceID, roleID string, perms []model.TablePermission) *model.AppError {
+	if appErr := a.RequireWorkspaceRoles(); appErr != nil {
+		return appErr
+	}
+
 	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateRoles) {
 		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
@@ -5196,19 +5310,81 @@ func (a *App) buildAccessInputs(ctx context.Context, users []model.User, workspa
 	return inputs
 }
 
-type openAccess struct{}
+type basicAccess struct {
+	perTableMode       bool
+	assignedOnlyAll    bool
+	assignedOnlyTables map[string]bool
+	workspacePerms     map[string]bool
+}
 
-func (openAccess) VisibleTables(tables []model.WorkspaceTable) []model.WorkspaceTable { return tables }
-func (openAccess) AssignedOnlyAll() bool                                              { return false }
-func (openAccess) AssignedOnly(_ string) bool                                         { return false }
-func (openAccess) CanPerformRowAction(_, _, _ string) bool                            { return true }
-func (openAccess) TableHasPermission(_, _ string) bool                                { return true }
+func newBasicAccess(in interfaces.AccessInput) basicAccess {
+	access := basicAccess{
+		assignedOnlyTables: map[string]bool{},
+		workspacePerms:     map[string]bool{},
+	}
+
+	hasPerTableRole := false
+	hasWorkspaceLevelRole := false
+
+	for _, role := range in.Roles {
+		if role.PerTableMode {
+			hasPerTableRole = true
+		} else {
+			hasWorkspaceLevelRole = true
+		}
+
+		for _, permission := range role.Permissions {
+			if permission == model.PermissionShowAssignedTasksOnly {
+				access.assignedOnlyAll = true
+			}
+
+			if !role.PerTableMode {
+				access.workspacePerms[permission] = true
+			}
+		}
+	}
+
+	access.perTableMode = hasPerTableRole && !hasWorkspaceLevelRole
+
+	for _, permission := range in.TablePerms {
+		if permission.Action == model.PermissionShowAssignedTasksOnly {
+			access.assignedOnlyTables[permission.TableID] = true
+		}
+	}
+
+	return access
+}
+
+func (b basicAccess) VisibleTables(tables []model.WorkspaceTable) []model.WorkspaceTable {
+	if b.perTableMode {
+		return []model.WorkspaceTable{}
+	}
+
+	return tables
+}
+
+func (b basicAccess) AssignedOnlyAll() bool { return b.assignedOnlyAll }
+
+func (b basicAccess) AssignedOnly(tableID string) bool {
+	return b.assignedOnlyAll || b.assignedOnlyTables[tableID]
+}
+
+func (b basicAccess) CanPerformRowAction(_, workspacePerm, _ string) bool {
+	if b.perTableMode {
+		return false
+	}
+
+	return b.workspacePerms[workspacePerm]
+}
+
+func (b basicAccess) TableHasPermission(_, _ string) bool { return !b.perTableMode }
+
 func (a *App) resolveAccess(in interfaces.AccessInput) interfaces.WorkspaceAccess {
 	if a.WorkspaceRoles != nil {
 		return a.WorkspaceRoles.Resolve(in)
 	}
 
-	return openAccess{}
+	return newBasicAccess(in)
 }
 
 func (a *App) buildAssignedOnlyMapFromInput(_ model.User, _ string, in interfaces.AccessInput) map[string]bool {
