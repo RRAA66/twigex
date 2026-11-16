@@ -2424,5 +2424,11 @@
     "projects.form_view.success.saved": "Пішін сәтті сақталды",
     "projects.form_view.view_type": "Форма",
     "projects.form_view.no_access": "Бұл форманы ашу үшін көріністерді өңдеу рұқсаты қажет.",
+    "projects.form_view.not_found": "Бұл пішін енді жоқ.",
+    "projects.form_view.changed_elsewhere": "Бұл пішінді басқа біреу өзгертті. Соңғы нұсқасын көру үшін қайта жүктеңіз.",
+    "projects.form_view.action.reload": "Қайта жүктеу",
+    "projects.form_view.unsaved_title": "Сақтамай шығу керек пе?",
+    "projects.form_view.unsaved_message": "Бұл пішіндегі өзгерістеріңіз сақталмаған және жоғалады.",
+    "projects.form_view.unsaved_leave": "Шығу",
     "projects.form_view.field.visible": "Формада көрсету"
 }

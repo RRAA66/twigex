@@ -3,8 +3,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
+import { h } from "vue";
 import { createPinia, setActivePinia } from "pinia";
-import { createMemoryHistory, createRouter } from "vue-router";
+import { createMemoryHistory, createRouter, RouterView } from "vue-router";
+import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FormView from "@/components/Projects/Form/FormView.vue";
 import FormViewNameDialog from "@/components/Projects/Form/FormViewNameDialog.vue";
 import formService from "@/services/formService";
@@ -53,6 +55,33 @@ async function mountAt(path, { licensed = true, user = { permissions: viewPermis
     await router.isReady();
 
     const w = mount(FormView, { global: { plugins: [pinia, router] }, attachTo: document.body });
+
+    await flushPromises();
+
+    return { w, router };
+}
+
+async function mountRouted(path) {
+    const pinia = createPinia();
+
+    setActivePinia(pinia);
+    useSettingsStore().setLicense({ forms: true });
+    useWorkspaceRolesStore().setUser({ permissions: viewPermissions });
+
+    const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+            { path: "/p/:id/form/:tid/view/:fid", name: "form-view", component: FormView },
+            { path: "/elsewhere", name: "elsewhere", component: { render: () => null } },
+        ],
+    });
+
+    await router.push(path);
+
+    const w = mount(
+        { render: () => h(RouterView) },
+        { global: { plugins: [pinia, router] }, attachTo: document.body },
+    );
 
     await flushPromises();
 
@@ -119,6 +148,91 @@ describe("FormView", () => {
         expect(w.text()).toContain("You need permission to edit views");
         expect(useAlertStore().show).toBeFalsy();
         w.unmount();
+    });
+
+    it("says a deleted form no longer exists", async () => {
+        formService.getForm.mockRejectedValue({ response: { status: 404 } });
+
+        const { w } = await mountAt("/p/w1/form/t1/view/f1");
+
+        expect(w.text()).toContain("This form no longer exists");
+        expect(w.text()).not.toContain("Something went wrong");
+        w.unmount();
+    });
+
+    it("sends the version it opened and offers a reload when someone saved meanwhile", async () => {
+        formService.getForm.mockResolvedValue({
+            data: { id: "f1", name: "Intake", updated_at: 1700, fields: [] },
+        });
+        formService.updateForm.mockRejectedValue({ response: { status: 409 } });
+        const { w } = await mountAt("/p/w1/form/t1/view/f1");
+
+        await w.find("input[type=text]").setValue("Signup");
+        await button(w, "Update").trigger("click");
+        await flushPromises();
+
+        expect(formService.updateForm).toHaveBeenCalledWith(
+            "w1",
+            "t1",
+            "f1",
+            expect.objectContaining({ updated_at: 1700 }),
+            expect.any(Array),
+        );
+        expect(w.text()).toContain("This form was changed by someone else");
+        expect(useAlertStore().show).toBeFalsy();
+
+        await button(w, "Reload").trigger("click");
+        await flushPromises();
+
+        expect(formService.getForm).toHaveBeenCalledTimes(2);
+        expect(w.text()).not.toContain("This form was changed by someone else");
+        w.unmount();
+    });
+
+    it("asks before leaving a form with unsaved changes", async () => {
+        formService.getForm.mockResolvedValue({ data: { id: "f1", name: "Intake", fields: [] } });
+        const { w, router } = await mountRouted("/p/w1/form/t1/view/f1");
+
+        router.push("/elsewhere");
+        await flushPromises();
+        expect(router.currentRoute.value.name).toBe("elsewhere");
+
+        await router.push("/p/w1/form/t1/view/f1");
+        await flushPromises();
+        await w.find("input[type=text]").setValue("Signup");
+
+        router.push("/elsewhere");
+        await flushPromises();
+
+        const dialog = w.findComponent(ConfirmDialog);
+
+        expect(dialog.props("open")).toBe(true);
+        expect(router.currentRoute.value.name).toBe("form-view");
+
+        dialog.vm.$emit("confirm");
+        await flushPromises();
+        expect(router.currentRoute.value.name).toBe("elsewhere");
+        w.unmount();
+    });
+
+    it("warns the browser before a reload loses changes", async () => {
+        formService.getForm.mockResolvedValue({ data: { id: "f1", name: "Intake", fields: [] } });
+        const { w } = await mountAt("/p/w1/form/t1/view/f1");
+        const unload = () => {
+            const event = new Event("beforeunload", { cancelable: true });
+
+            window.dispatchEvent(event);
+
+            return event.defaultPrevented;
+        };
+
+        expect(unload()).toBe(false);
+
+        await w.find("input[type=text]").setValue("Signup");
+
+        expect(unload()).toBe(true);
+        w.unmount();
+        expect(unload()).toBe(false);
     });
 
     it("creates a form under the name given and opens it", async () => {

@@ -2424,5 +2424,11 @@
     "projects.form_view.success.saved": "Veidlapa veiksmīgi saglabāta",
     "projects.form_view.view_type": "Veidlapa",
     "projects.form_view.no_access": "Lai atvērtu šo veidlapu, nepieciešama atļauja rediģēt skatus.",
+    "projects.form_view.not_found": "Šī veidlapa vairs nepastāv.",
+    "projects.form_view.changed_elsewhere": "Šo veidlapu ir mainījis kāds cits. Pārlādējiet, lai redzētu jaunāko versiju.",
+    "projects.form_view.action.reload": "Pārlādēt",
+    "projects.form_view.unsaved_title": "Iziet, nesaglabājot?",
+    "projects.form_view.unsaved_message": "Jūsu izmaiņas šajā veidlapā nav saglabātas un tiks zaudētas.",
+    "projects.form_view.unsaved_leave": "Iziet",
     "projects.form_view.field.visible": "Rādīt veidlapā"
 }

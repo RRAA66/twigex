@@ -2424,5 +2424,11 @@
     "projects.form_view.success.saved": "Form saved successfully",
     "projects.form_view.view_type": "Form",
     "projects.form_view.no_access": "You need permission to edit views to open this form.",
+    "projects.form_view.not_found": "This form no longer exists.",
+    "projects.form_view.changed_elsewhere": "This form was changed by someone else. Reload to see the latest version.",
+    "projects.form_view.action.reload": "Reload",
+    "projects.form_view.unsaved_title": "Leave without saving?",
+    "projects.form_view.unsaved_message": "Your changes to this form have not been saved and will be lost.",
+    "projects.form_view.unsaved_leave": "Leave",
     "projects.form_view.field.visible": "Show on form"
 }

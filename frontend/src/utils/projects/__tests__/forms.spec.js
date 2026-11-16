@@ -50,6 +50,10 @@ describe("normalizeFormData", () => {
             workspace_id: "w1",
         });
     });
+
+    it("keeps the version the server stored, so a save can name it", () => {
+        expect(normalizeFormData({ id: "f1", updated_at: 1700 }, "w1", "t1").updated_at).toBe(1700);
+    });
 });
 
 describe("mergeFormFields", () => {

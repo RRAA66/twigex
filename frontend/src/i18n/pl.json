@@ -2424,5 +2424,11 @@
     "projects.form_view.success.saved": "Formularz zapisany pomyślnie",
     "projects.form_view.view_type": "Formularz",
     "projects.form_view.no_access": "Aby otworzyć ten formularz, potrzebujesz uprawnienia do edycji widoków.",
+    "projects.form_view.not_found": "Ten formularz już nie istnieje.",
+    "projects.form_view.changed_elsewhere": "Ten formularz został zmieniony przez kogoś innego. Odśwież, aby zobaczyć najnowszą wersję.",
+    "projects.form_view.action.reload": "Odśwież",
+    "projects.form_view.unsaved_title": "Wyjść bez zapisywania?",
+    "projects.form_view.unsaved_message": "Twoje zmiany w tym formularzu nie zostały zapisane i zostaną utracone.",
+    "projects.form_view.unsaved_leave": "Wyjdź",
     "projects.form_view.field.visible": "Pokaż w formularzu"
 }
