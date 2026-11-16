@@ -523,17 +523,23 @@ func (s *CollimatoSettings) SetDefaults() {
 
 type FeatureFlags struct {
 	KnowledgeGraph *bool
+	Forms          *bool
 }
 
 func (f *FeatureFlags) SetDefaults() {
 	if f.KnowledgeGraph == nil {
 		f.KnowledgeGraph = NewBool(false)
 	}
+
+	if f.Forms == nil {
+		f.Forms = NewBool(false)
+	}
 }
 
 func (f *FeatureFlags) ByName() map[string]bool {
 	flags := map[string]bool{
 		"KnowledgeGraph": *f.KnowledgeGraph,
+		"Forms":          *f.Forms,
 	}
 
 	return flags
