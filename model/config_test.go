@@ -25,11 +25,11 @@ func TestFeatureFlagsAreOffByDefault(t *testing.T) {
 }
 
 func TestFeatureFlagsEnabledListsFlagsThatAreOn(t *testing.T) {
-	flags := FeatureFlags{KnowledgeGraph: NewBool(true)}
+	flags := FeatureFlags{KnowledgeGraph: NewBool(true), Forms: NewBool(true)}
 
 	enabled := flags.Enabled()
 
-	want := []string{"KnowledgeGraph"}
+	want := []string{"Forms", "KnowledgeGraph"}
 	if !slices.Equal(enabled, want) {
 		t.Fatalf("want %v, got %v", want, enabled)
 	}
