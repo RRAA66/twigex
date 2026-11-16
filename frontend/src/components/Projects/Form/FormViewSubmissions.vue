@@ -59,7 +59,7 @@ import workspaceService from "@/services/workspaceService";
 import { useAlertStore } from "@/store/alerts";
 import { useWorkspaceStore } from "@/store/workspaces";
 import { extractErrorMessage } from "@/utils/errors";
-import { fillableFormFields, formFieldType } from "@/utils/projects/forms";
+import { fillableFormFields, formFieldLabel, formFieldType } from "@/utils/projects/forms";
 import { tableDisplayNames } from "@/utils/projects/gridView";
 import DataTable from "@/components/DataTable.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
@@ -72,28 +72,33 @@ const props = defineProps({
     workspaceId: { type: String, required: true },
     tableId: { type: String, required: true },
     formId: { type: String, required: true },
-    fields: { type: Array, default: () => [] },
+    fields: { type: Array, default: null },
 });
+
+const emit = defineEmits(["loaded"]);
 
 const alertStore = useAlertStore();
 const { getDateAndTime } = useDateOperations();
 const { openTask } = useOpenTask();
 
 const submissions = ref([]);
+const loadedFields = ref([]);
 const total = ref(0);
 const page = ref(1);
 const loading = ref(true);
 let request = 0;
 let reloadTimer = null;
 
-const shownFields = computed(() => fillableFormFields(props.fields));
+// Without the builder's fields, as for a member who may not open the builder,
+// the form's fields come with the submissions.
+const shownFields = computed(() => fillableFormFields(props.fields ?? loadedFields.value));
 
 const columns = computed(() => [
     { key: "submitted_by", label: t.value("projects.form_view.submissions.submitted_by") },
     { key: "submitted_at", label: t.value("projects.form_view.submissions.date") },
     ...shownFields.value.map((field, index) => ({
         key: field.header_name,
-        label: field.label || field.display_name || field.header_name,
+        label: formFieldLabel(field, t.value),
         hiddenBelow: index > 0 ? "md" : undefined,
     })),
 ]);
@@ -122,6 +127,8 @@ async function load(next = page.value) {
         submissions.value = data.items;
         total.value = data.total;
         page.value = next;
+        loadedFields.value = data.fields || [];
+        emit("loaded", data);
     } catch (error) {
         if (current === request) alertStore.showError(extractErrorMessage(error));
     } finally {
@@ -160,8 +167,8 @@ const stopChanges = onProjectChange((change) => {
     reloadTimer = setTimeout(() => load(), RELOAD_DELAY_MS);
 });
 
-onMounted(() => {
-    load(1);
+onMounted(async () => {
+    await load(1);
     loadTableNames();
 });
 
