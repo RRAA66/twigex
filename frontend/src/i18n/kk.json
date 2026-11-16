@@ -2498,6 +2498,8 @@
     "projects.form_view.submissions.date": "Күні",
     "projects.form_view.submissions.export": "CSV экспорттау",
     "projects.form_view.submissions.from": "Бастап",
+    "projects.form_view.submissions.range_reversed": "«Бастап» күні «Дейін» күнінен кейін тұр. «Дейін» күнінен кеш емес «Бастап» күнін таңдаңыз.",
+    "projects.form_view.submissions.none_in_range": "Бұл күндер аралығында жауаптар жоқ",
     "projects.form_view.submissions.files": "one {count} файл | other {count} файл",
     "projects.form_view.submissions.hidden_item": "Жасырын",
     "projects.form_view.submissions.row_unavailable": "Жол жойылған немесе сізге көрінбейді",

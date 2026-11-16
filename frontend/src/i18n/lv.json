@@ -2498,6 +2498,8 @@
     "projects.form_view.submissions.date": "Datums",
     "projects.form_view.submissions.export": "Eksportēt CSV",
     "projects.form_view.submissions.from": "No",
+    "projects.form_view.submissions.range_reversed": "Diena laukā “No” ir pēc dienas laukā “Līdz”. Izvēlieties “No” dienu, kas nav vēlāka par “Līdz” dienu.",
+    "projects.form_view.submissions.none_in_range": "Šajā datumu diapazonā nav neviena iesnieguma",
     "projects.form_view.submissions.files": "zero {count} failu | one {count} fails | other {count} faili",
     "projects.form_view.submissions.hidden_item": "Slēpts",
     "projects.form_view.submissions.row_unavailable": "Rinda dzēsta vai jums nav redzama",

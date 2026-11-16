@@ -2498,6 +2498,8 @@
     "projects.form_view.submissions.date": "Date",
     "projects.form_view.submissions.export": "Export CSV",
     "projects.form_view.submissions.from": "From",
+    "projects.form_view.submissions.range_reversed": "The From day is after the To day. Pick a From day on or before it.",
+    "projects.form_view.submissions.none_in_range": "No submissions in this date range",
     "projects.form_view.submissions.files": "one {count} file | other {count} files",
     "projects.form_view.submissions.hidden_item": "Hidden",
     "projects.form_view.submissions.row_unavailable": "Row deleted or not visible to you",
