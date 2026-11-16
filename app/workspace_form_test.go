@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -139,6 +140,41 @@ func memberWithoutViewPermissions() fakeAccessWorkspaceStore {
 	return fakeAccessWorkspaceStore{memberRoleName: role.Name, roles: []model.ProjectWorkspaceRole{role}}
 }
 
+// perTableViewManager is a member whose one role is per-table and manages
+// the views of tableID only.
+func perTableViewManager(tableID string) fakeAccessWorkspaceStore {
+	role := model.ProjectWorkspaceRole{ID: "table-id", Name: "table", PerTableMode: true}
+	return fakeAccessWorkspaceStore{
+		memberRoleName: role.Name,
+		roles:          []model.ProjectWorkspaceRole{role},
+		tablePerms:     []model.TablePermission{{RoleID: role.ID, TableID: tableID, Action: "manage_views"}},
+	}
+}
+
+// tableGrantRoles answers table permissions as the enterprise roles do: from
+// the table permissions for per-table roles, and yes to anyone else.
+type tableGrantRoles struct{}
+
+func (tableGrantRoles) Resolve(in interfaces.AccessInput) interfaces.WorkspaceAccess {
+	return tableGrantAccess{in: in}
+}
+
+type tableGrantAccess struct {
+	openAccess
+	in interfaces.AccessInput
+}
+
+func (g tableGrantAccess) TableHasPermission(tableID, action string) bool {
+	perTable := slices.ContainsFunc(g.in.Roles, func(r model.ProjectWorkspaceRole) bool { return r.PerTableMode })
+	if !perTable {
+		return true
+	}
+
+	return slices.ContainsFunc(g.in.TablePerms, func(p model.TablePermission) bool {
+		return p.TableID == tableID && p.Action == action
+	})
+}
+
 func TestCreateFormStoresItOnTheURLTable(t *testing.T) {
 	a, ws := formApp(workspaceAdminAccess(), true)
 
@@ -187,6 +223,45 @@ func TestUpdateFormRefusesAMemberWhoCannotChangeViews(t *testing.T) {
 	}
 	if ws.writes != 0 {
 		t.Errorf("wrote %d times, want none", ws.writes)
+	}
+}
+
+func TestFormsRefuseAMemberWithoutViewPermissionsOutsidePerTableMode(t *testing.T) {
+	a, ws := formApp(memberWithoutViewPermissions(), true)
+	a.WorkspaceRoles = tableGrantRoles{}
+	ctx := context.Background()
+
+	_, createErr := a.CreateForm(ctx, wsID, tbl1, model.WorkspaceForm{Name: "Signup"}, nil, accessUser())
+	_, getErr := a.GetForm(ctx, wsID, tbl1, "form-1", accessUser())
+	_, updateErr := a.UpdateForm(ctx, wsID, tbl1, "form-1", model.WorkspaceForm{Name: "Renamed"}, nil, accessUser())
+	deleteErr := a.DeleteForm(ctx, wsID, tbl1, "form-1", accessUser())
+
+	for name, appErr := range map[string]*model.AppError{"create": createErr, "get": getErr, "update": updateErr, "delete": deleteErr} {
+		if appErr == nil || appErr.Status != http.StatusForbidden {
+			t.Errorf("%s: want 403, got %v", name, appErr)
+		}
+	}
+	if ws.writes != 0 {
+		t.Errorf("wrote %d times, want none", ws.writes)
+	}
+}
+
+func TestFormsAreOpenToAPerTableRoleThatManagesTheTablesViews(t *testing.T) {
+	a, _ := formApp(perTableViewManager(tbl1), true)
+	a.WorkspaceRoles = tableGrantRoles{}
+
+	if _, appErr := a.GetForm(context.Background(), wsID, tbl1, "form-1", accessUser()); appErr != nil {
+		t.Fatalf("GetForm: %v", appErr)
+	}
+}
+
+func TestFormsRefuseAPerTableRoleThatManagesAnotherTablesViews(t *testing.T) {
+	a, _ := formApp(perTableViewManager(tbl2), true)
+	a.WorkspaceRoles = tableGrantRoles{}
+
+	_, appErr := a.GetForm(context.Background(), wsID, tbl1, "form-1", accessUser())
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Fatalf("want 403, got %v", appErr)
 	}
 }
 
