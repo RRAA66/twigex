@@ -168,6 +168,7 @@ func (c *ConfigStore) loadCollimatoSettings() {
 
 func (c *ConfigStore) loadFeatureFlags() {
 	setBool(&c.Config.FeatureFlags.KnowledgeGraph, "TWIGEX_FEATURE_KNOWLEDGE_GRAPH")
+	setBool(&c.Config.FeatureFlags.Forms, "TWIGEX_FEATURE_FORMS")
 }
 
 func (c *ConfigStore) loadLDAPSettings() {
