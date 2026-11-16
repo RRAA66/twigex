@@ -143,11 +143,10 @@ const {
     createForm,
 } = useFormBuilder();
 
-// The server also lets a role that manages this table's views build its
-// forms, which only a per-table role can grant.
-const managesTableViews = computed(
-    () =>
-        rolesStore.perTableMode && rolesStore.hasTablePermission(route.params.tid, "manage_views"),
+// The server also lets a per-table role that manages this table's views
+// build its forms.
+const managesTableViews = computed(() =>
+    rolesStore.grantedOnTable(route.params.tid, "manage_views"),
 );
 
 const canCreateForm = computed(
