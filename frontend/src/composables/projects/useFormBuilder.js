@@ -1,7 +1,7 @@
 // Copyright (c) 2022 Twigex, SIA.
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { ref, onMounted, watch } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { t } from "@/i18n/index.js";
 import formService from "@/services/formService";
@@ -24,8 +24,20 @@ export function useFormBuilder() {
     const headers = ref([]);
     const status = ref("loading");
     const saving = ref(false);
+    const changedElsewhere = ref(false);
+    const savedState = ref("");
 
     let loadRequest = 0;
+
+    const isDirty = computed(() => status.value === "ready" && currentState() !== savedState.value);
+
+    function currentState() {
+        return JSON.stringify([formData.value, formFields.value]);
+    }
+
+    function markSaved() {
+        savedState.value = currentState();
+    }
 
     async function loadHeaders() {
         const { data } = await workspaceStore.fetchWorkspaceNav(route.params.id);
@@ -52,6 +64,7 @@ export function useFormBuilder() {
 
         formData.value = emptyFormData(id, tid);
         formFields.value = [];
+        changedElsewhere.value = false;
 
         if (!settingsStore.getLicenseFeature("forms")) {
             status.value = "unlicensed";
@@ -68,13 +81,20 @@ export function useFormBuilder() {
 
             headers.value = tableHeaders;
             if (saved.form) formData.value = normalizeFormData(saved.form, id, tid);
-            formFields.value = mergeFormFields(tableHeaders, saved.fields, t.value);
+            formFields.value = mergeFormFields(tableHeaders, saved.fields);
+            markSaved();
             status.value = "ready";
         } catch (error) {
             if (request !== loadRequest) return;
 
             if (error?.response?.status === 403) {
                 status.value = "forbidden";
+
+                return;
+            }
+
+            if (error?.response?.status === 404) {
+                status.value = "missing";
 
                 return;
             }
@@ -124,10 +144,17 @@ export function useFormBuilder() {
             renameViewTab(data.id, data.name);
             if (request === loadRequest) {
                 formData.value = normalizeFormData(data, route.params.id, route.params.tid);
+                markSaved();
             }
 
             alertStore.showSuccess(t.value("projects.form_view.success.saved"));
         } catch (error) {
+            if (error?.response?.status === 409 && request === loadRequest) {
+                changedElsewhere.value = true;
+
+                return;
+            }
+
             alertStore.showError(extractErrorMessage(error));
         } finally {
             saving.value = false;
@@ -150,6 +177,7 @@ export function useFormBuilder() {
             if (request !== loadRequest) return true;
 
             formData.value = normalizeFormData(data, route.params.id, route.params.tid);
+            markSaved();
             await router.replace({
                 name: "form-view",
                 params: { id: route.params.id, tid: route.params.tid, fid: data.id },
@@ -184,6 +212,8 @@ export function useFormBuilder() {
         headers,
         status,
         saving,
+        changedElsewhere,
+        isDirty,
         load,
         updateSettings,
         updateField,

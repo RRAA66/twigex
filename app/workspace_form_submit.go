@@ -486,7 +486,12 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 	case field.FieldType == "number" || field.FieldType == "decimal":
 		number, ok := formNumber(value)
 		if !ok {
-			return invalid
+			return model.NewAppError("workspace.form_submit_number_invalid", http.StatusBadRequest)
+		}
+
+		// A number column holds whole numbers and would round a decimal.
+		if field.FieldType == "number" && number != math.Trunc(number) {
+			return model.NewAppError("workspace.form_submit_whole_number", http.StatusBadRequest)
 		}
 
 		task.Values[name] = number

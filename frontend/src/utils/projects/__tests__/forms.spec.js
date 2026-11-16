@@ -60,6 +60,10 @@ describe("normalizeFormData", () => {
             workspace_id: "w1",
         });
     });
+
+    it("keeps the version the server stored, so a save can name it", () => {
+        expect(normalizeFormData({ id: "f1", updated_at: 1700 }, "w1", "t1").updated_at).toBe(1700);
+    });
 });
 
 describe("mergeFormFields", () => {
@@ -73,13 +77,13 @@ describe("mergeFormFields", () => {
     ];
 
     it("lists every editable field, hidden except the name", () => {
-        const fields = mergeFormFields(headers, [], t.value);
+        const fields = mergeFormFields(headers, []);
 
         expect(fields.map((f) => f.header_name)).toEqual(["name", "status", "budget"]);
         expect(fields.map((f) => f.visible)).toEqual([true, false, false]);
         expect(fields[2]).toMatchObject({
             header_id: "h-budget",
-            label: "Budget",
+            label: "",
             required: false,
             column_position: "full",
         });
@@ -91,7 +95,7 @@ describe("mergeFormFields", () => {
             { header_name: "name", label: "Title", visible: true, sort_order: 1 },
         ];
 
-        const fields = mergeFormFields(headers, saved, t.value);
+        const fields = mergeFormFields(headers, saved);
 
         expect(fields.map((f) => f.header_name)).toEqual(["budget", "name", "status"]);
         expect(fields[0]).toMatchObject({ label: "Cost", column_position: "full" });
@@ -100,7 +104,7 @@ describe("mergeFormFields", () => {
     it("always shows and requires the name", () => {
         const saved = [{ header_name: "name", visible: false, required: false, sort_order: 0 }];
 
-        const [name] = mergeFormFields(headers, saved, t.value);
+        const [name] = mergeFormFields(headers, saved);
 
         expect(name).toMatchObject({ visible: true, required: true });
     });
