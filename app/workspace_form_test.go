@@ -143,6 +143,11 @@ func (f formAccess) VisibleTables(tables []model.WorkspaceTable) []model.Workspa
 	return visible
 }
 
+func memberWithPermissions(permissions ...string) fakeAccessWorkspaceStore {
+	role := model.ProjectWorkspaceRole{ID: "viewer-id", Name: "viewer", Permissions: permissions}
+	return fakeAccessWorkspaceStore{memberRoleName: role.Name, roles: []model.ProjectWorkspaceRole{role}}
+}
+
 func memberWithoutViewPermissions() fakeAccessWorkspaceStore {
 	role := model.ProjectWorkspaceRole{ID: "reader-id", Name: "reader", Permissions: []string{model.PermissionCreateTask}}
 	return fakeAccessWorkspaceStore{memberRoleName: role.Name, roles: []model.ProjectWorkspaceRole{role}}

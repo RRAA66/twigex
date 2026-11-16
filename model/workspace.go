@@ -706,7 +706,11 @@ type FormSubmissionsFilter struct {
 	Access    SQLFilter
 }
 
+// FormSubmissionsPage carries the form's fields and link too, for a member
+// who sees the submissions but may not open the form's builder.
 type FormSubmissionsPage struct {
-	Items []WorkspaceFormSubmission `json:"items"`
-	Total int                       `json:"total"`
+	Items       []WorkspaceFormSubmission `json:"items"`
+	Total       int                       `json:"total"`
+	Fields      []WorkspaceFormField      `json:"fields"`
+	PublicToken string                    `json:"public_token"`
 }

@@ -754,6 +754,39 @@ func TestFormSubmissionsAreOpenToWhoManagesTheTablesViews(t *testing.T) {
 	}
 }
 
+func TestFormSubmissionsAreOpenToAViewerOfFormsAndGrids(t *testing.T) {
+	a, ws, _ := submitApp()
+	ws.fakeAccessWorkspaceStore = memberWithPermissions(model.PermissionViewForm, model.PermissionViewGrid)
+	a.WorkspaceRoles = formRoles{}
+
+	if _, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, accessUser()); appErr != nil {
+		t.Fatalf("GetFormSubmissions: %v", appErr)
+	}
+}
+
+func TestFormSubmissionsRefuseAViewerWithoutTheGrid(t *testing.T) {
+	a, ws, _ := submitApp()
+	ws.fakeAccessWorkspaceStore = memberWithPermissions(model.PermissionViewForm)
+	a.WorkspaceRoles = formRoles{}
+
+	_, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, accessUser())
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Fatalf("want 403, got %v", appErr)
+	}
+}
+
+func TestFormSubmissionsCarryTheFormsFieldsAndLink(t *testing.T) {
+	a, _, _ := submitApp(model.WorkspaceFormField{HeaderName: "budget", FieldType: "number", Visible: true})
+
+	page, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("GetFormSubmissions: %v", appErr)
+	}
+	if page.PublicToken == "" || !slices.ContainsFunc(page.Fields, func(f model.WorkspaceFormField) bool { return f.HeaderName == "budget" }) {
+		t.Errorf("page %+v, want the form's link and fields", page)
+	}
+}
+
 func TestFormSubmissionsRefusesAMemberWhoCannotChangeViews(t *testing.T) {
 	a, ws, _ := submitApp()
 	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
