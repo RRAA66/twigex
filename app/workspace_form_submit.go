@@ -486,6 +486,13 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 	case field.FieldType == "number" || field.FieldType == "decimal":
 		number, ok := formNumber(value)
 		if !ok {
+			// A decimal written with a comma, such as 1,5, still has a decimal part.
+			if text, isText := value.(string); isText && field.FieldType == "number" {
+				if _, decimal := formNumber(strings.Replace(text, ",", ".", 1)); decimal {
+					return model.NewAppError("workspace.form_submit_whole_number", http.StatusBadRequest)
+				}
+			}
+
 			return model.NewAppError("workspace.form_submit_number_invalid", http.StatusBadRequest)
 		}
 
