@@ -2478,5 +2478,6 @@
     "projects.form_view.error.network": "Could not reach the server. Check your connection and try again.",
     "projects.form_view.action.add_files": "Add files",
     "projects.form_view.action.remove_file": "Remove {name}",
-    "projects.form_view.error.too_many_files": "A field takes up to {max} files. The others were left out."
+    "projects.form_view.error.too_many_files": "A field takes up to {max} files. The others were left out.",
+    "projects.form_view.error.files_not_uploaded": "Could not upload {names}: {reason}"
 }

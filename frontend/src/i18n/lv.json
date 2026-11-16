@@ -2478,5 +2478,6 @@
     "projects.form_view.error.network": "Neizdevās sazināties ar serveri. Pārbaudiet savienojumu un mēģiniet vēlreiz.",
     "projects.form_view.action.add_files": "Pievienot failus",
     "projects.form_view.action.remove_file": "Noņemt {name}",
-    "projects.form_view.error.too_many_files": "Laukam var pievienot ne vairāk kā {max} failus. Pārējie netika pievienoti."
+    "projects.form_view.error.too_many_files": "Laukam var pievienot ne vairāk kā {max} failus. Pārējie netika pievienoti.",
+    "projects.form_view.error.files_not_uploaded": "Neizdevās augšupielādēt {names}: {reason}"
 }

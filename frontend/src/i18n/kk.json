@@ -2478,5 +2478,6 @@
     "projects.form_view.error.network": "Серверге қосылу мүмкін болмады. Байланысты тексеріп, қайталап көріңіз.",
     "projects.form_view.action.add_files": "Файлдарды қосу",
     "projects.form_view.action.remove_file": "{name} жою",
-    "projects.form_view.error.too_many_files": "Өріске ең көбі {max} файл қосуға болады. Қалғандары қосылмады."
+    "projects.form_view.error.too_many_files": "Өріске ең көбі {max} файл қосуға болады. Қалғандары қосылмады.",
+    "projects.form_view.error.files_not_uploaded": "{names} жүктеп салу мүмкін болмады: {reason}"
 }
