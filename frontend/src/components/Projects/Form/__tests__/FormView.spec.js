@@ -419,6 +419,19 @@ describe("FormView", () => {
         w.unmount();
     });
 
+    it("adds a per-table role that manages the table's views to a workspace role", async () => {
+        const { w } = await mountAt("/p/w1/form/t1", {
+            user: {
+                permissions: ["create_task"],
+                per_table_mode: false,
+                table_permissions: [{ table_id: "t1", action: "manage_views" }],
+            },
+        });
+
+        expect(button(w, "Save")).toBeDefined();
+        w.unmount();
+    });
+
     describe("a saved form", () => {
         const saved = {
             id: "f1",

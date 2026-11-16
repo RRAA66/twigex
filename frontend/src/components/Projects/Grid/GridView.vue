@@ -631,6 +631,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                                                         <button
                                                             v-if="
                                                                 isDialog &&
+                                                                canEditRow &&
                                                                 getHeaderType(colIndex)
                                                                     .header_name === 'name' &&
                                                                 !isProtectedStatus(colIndex, item)
@@ -901,7 +902,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                         </div>
                     </div>
 
-                    <div class="new-task-row-sticky">
+                    <div v-if="canAddRow" class="new-task-row-sticky">
                         <div :class="!isAddingTask ? 'grid-row empty-row' : 'grid-row'">
                             <div
                                 class="grid-item-text"
@@ -1437,9 +1438,18 @@ const userStore = useUserStore();
 const workspaceStore = useWorkspaceStore();
 const { loadTablePreset, storeTablePreset } = useTableFilters();
 const rolesStore = useWorkspaceRolesStore();
-const canEditRow = computed(() =>
-    rolesStore.canRowAction(props.isDialog ? dialogTableID.value : route.params.tid, "update_task"),
-);
+const canManageOptions = computed(() => rolesStore.canManageOptions(route.params.tid));
+const canAddRow = computed(() => !props.isSingleSelect || canManageOptions.value);
+const canEditRow = computed(() => {
+    if (props.isDialog && props.isSingleSelect) {
+        return canManageOptions.value;
+    }
+
+    return rolesStore.canRowAction(
+        props.isDialog ? dialogTableID.value : route.params.tid,
+        "update_task",
+    );
+});
 const canEditFields = computed(() => {
     const permissions = rolesStore.userPermissions;
 
@@ -1448,7 +1458,11 @@ const canEditFields = computed(() => {
 
     if (rolesStore.perTableMode) return rolesStore.hasTablePermission(tableId, "edit_fields");
 
-    return permissions.includes("update_workspace_table") || permissions.includes("edit_fields");
+    return (
+        permissions.includes("update_workspace_table") ||
+        permissions.includes("edit_fields") ||
+        rolesStore.grantedOnTable(tableId, "edit_fields")
+    );
 });
 const canManageFields = computed(() => {
     const permissions = rolesStore.userPermissions;
@@ -1458,7 +1472,11 @@ const canManageFields = computed(() => {
 
     if (rolesStore.perTableMode) return rolesStore.hasTablePermission(tableId, "create_fields");
 
-    return permissions.includes("update_workspace_table") || permissions.includes("create_fields");
+    return (
+        permissions.includes("update_workspace_table") ||
+        permissions.includes("create_fields") ||
+        rolesStore.grantedOnTable(tableId, "create_fields")
+    );
 });
 const tableUniqueId = ref(`table-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
