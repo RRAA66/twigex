@@ -35,7 +35,8 @@ describe("FormFieldInput", () => {
     it.each([
         ["text", "input"],
         ["checkbox", "input[type='checkbox']"],
-        ["number", "input[type='number']"],
+        ["decimal", "input[type='number']"],
+        ["number", "input[inputmode='numeric']"],
     ])("labels a %s field with its own label", (fieldType, selector) => {
         mountField({ field_type: fieldType });
 
@@ -82,6 +83,16 @@ describe("FormFieldInput", () => {
             "Agree",
         );
         expect(w.find("input").exists()).toBe(false);
+    });
+
+    it("marks no required read-only field as one to fill in", () => {
+        mountField({ field_type: "text", required: true, read_only: true, default_value: "A" });
+
+        const label = document.getElementById(
+            w.find("[aria-readonly='true']").attributes("aria-labelledby"),
+        );
+
+        expect(label.textContent).not.toContain("*");
     });
 
     it("labels a master link field's list button and marks it invalid", async () => {
@@ -157,6 +168,35 @@ describe("FormFieldInput", () => {
 
         expect(w.text()).toContain("No color chosen");
         expect(w.emitted("update:modelValue")).toBeUndefined();
+    });
+
+    it("keeps a whole number field to digits and refuses a decimal separator", async () => {
+        mountField({ field_type: "number" }, { modelValue: "12" });
+
+        const input = w.find("input");
+
+        await input.setValue("12.");
+        await input.setValue("1,5");
+        await input.setValue(" 1 200x");
+
+        expect(w.emitted("update:modelValue")).toEqual([["12"], ["12"], ["1200"]]);
+        expect(input.element.value).toBe("1200");
+    });
+
+    it("names a field with no label of its own after its table field, translated", () => {
+        mountField({ header_name: "due_date", label: "", field_type: "default_date" });
+
+        expect(labelFor(w.find("button").element)).toContain("Due Date");
+
+        w.unmount();
+        mountField({
+            header_name: "budget",
+            label: "",
+            display_name: "Cost",
+            field_type: "decimal",
+        });
+
+        expect(labelFor(w.find("input").element)).toContain("Cost");
     });
 
     it("clears a chosen colour", async () => {
