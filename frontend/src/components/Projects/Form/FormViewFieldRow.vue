@@ -105,6 +105,9 @@ SPDX-License-Identifier: AGPL-3.0-only
                     :label="t('projects.form_view.field.read_only')"
                     @update:model-value="emit('update', { read_only: $event })"
                 />
+                <p v-if="readOnlyWithoutDefault(field)" class="mt-1 text-xs text-amber-700">
+                    {{ t("projects.form_view.field.read_only_no_default") }}
+                </p>
             </div>
             <FormViewFieldCondition
                 v-if="!isNameField"
@@ -133,6 +136,7 @@ import {
     defaultFromAnswer,
     formFieldType,
     linkedTableId,
+    readOnlyWithoutDefault,
 } from "@/utils/projects/forms";
 import FormFieldInput from "@/components/Projects/Form/FormFieldInput.vue";
 import FormViewFieldCondition from "@/components/Projects/Form/FormViewFieldCondition.vue";

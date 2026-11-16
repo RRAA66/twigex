@@ -2441,6 +2441,7 @@
     "projects.form_view.field.default_value": "Wartość domyślna",
     "projects.form_view.field.label": "Etykieta",
     "projects.form_view.field.read_only": "Tylko do odczytu",
+    "projects.form_view.field.read_only_no_default": "Pole tylko do odczytu bez wartości domyślnej pozostaje puste, więc „Wymagane” nic nie zmienia. Ustaw wartość domyślną.",
     "projects.form_view.field.placeholder_label": "Tekst zastępczy",
     "projects.form_view.field.column_width": "Kolumna",
     "projects.form_view.field.col_full": "Pełna szerokość",

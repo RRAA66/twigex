@@ -2441,6 +2441,7 @@
     "projects.form_view.field.default_value": "Noklusējuma vērtība",
     "projects.form_view.field.label": "Nosaukums",
     "projects.form_view.field.read_only": "Tikai lasāms",
+    "projects.form_view.field.read_only_no_default": "Tikai lasāms lauks bez noklusējuma vērtības paliek tukšs, tāpēc “Obligāts” neko nemaina. Norādiet noklusējuma vērtību.",
     "projects.form_view.field.placeholder_label": "Vietturis",
     "projects.form_view.field.column_width": "Kolonna",
     "projects.form_view.field.col_full": "Pilns platums",
