@@ -2548,6 +2548,7 @@
     "projects.form_view.error.files_not_uploaded": "{names} жүктеп салу мүмкін болмады: {reason}",
     "projects.form_view.error.image_type": "JPEG, PNG, GIF немесе WebP суретін пайдаланыңыз.",
     "projects.form_view.error.image_too_large": "Көлемі 5 МБ-тан аспайтын суретті пайдаланыңыз.",
+    "projects.form_view.error.image_unreadable": "Бұл файл көрсетуге болатын сурет емес.",
     "projects.form_view.error.images_not_saved": "Пішін сақталды, бірақ оның суреттері сақталмады: {reason}",
     "projects.form_view.cover_position": "Мұқаба суретінің орны",
     "projects.form_view.cover_position_hint": "Суретті жылжыту үшін жоғары және төмен көрсеткі пернелерін пайдаланыңыз, аяқтау үшін Enter немесе Escape пернесін басыңыз.",

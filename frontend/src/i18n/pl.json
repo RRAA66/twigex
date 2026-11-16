@@ -2548,6 +2548,7 @@
     "projects.form_view.error.files_not_uploaded": "Nie udało się przesłać {names}: {reason}",
     "projects.form_view.error.image_type": "Użyj obrazu JPEG, PNG, GIF lub WebP.",
     "projects.form_view.error.image_too_large": "Użyj obrazu o rozmiarze do 5 MB.",
+    "projects.form_view.error.image_unreadable": "Ten plik nie jest obrazem, który można wyświetlić.",
     "projects.form_view.error.images_not_saved": "Formularz został zapisany, ale jego obrazy nie: {reason}",
     "projects.form_view.cover_position": "Położenie obrazu okładki",
     "projects.form_view.cover_position_hint": "Użyj strzałek w górę i w dół, aby przesunąć obraz, a następnie naciśnij Enter lub Escape, aby zakończyć.",

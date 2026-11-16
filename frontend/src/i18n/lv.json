@@ -2548,6 +2548,7 @@
     "projects.form_view.error.files_not_uploaded": "Neizdevās augšupielādēt {names}: {reason}",
     "projects.form_view.error.image_type": "Izmantojiet JPEG, PNG, GIF vai WebP attēlu.",
     "projects.form_view.error.image_too_large": "Izmantojiet attēlu, kas nav lielāks par 5 MB.",
+    "projects.form_view.error.image_unreadable": "Šis fails nav attēls, ko var parādīt.",
     "projects.form_view.error.images_not_saved": "Veidlapa ir saglabāta, bet tās attēli nav: {reason}",
     "projects.form_view.cover_position": "Vāka attēla novietojums",
     "projects.form_view.cover_position_hint": "Lai pārvietotu attēlu, izmantojiet bulttaustiņus uz augšu un uz leju, un nospiediet Enter vai Escape, lai pabeigtu.",

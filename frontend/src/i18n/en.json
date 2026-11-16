@@ -2548,6 +2548,7 @@
     "projects.form_view.error.files_not_uploaded": "Could not upload {names}: {reason}",
     "projects.form_view.error.image_type": "Use a JPEG, PNG, GIF or WebP image.",
     "projects.form_view.error.image_too_large": "Use an image of 5 MB or less.",
+    "projects.form_view.error.image_unreadable": "This file is not an image that can be shown.",
     "projects.form_view.error.images_not_saved": "The form was saved, but its images were not: {reason}",
     "projects.form_view.cover_position": "Cover image position",
     "projects.form_view.cover_position_hint": "Use the up and down arrow keys to move the image, then press Enter or Escape to finish.",

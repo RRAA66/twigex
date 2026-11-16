@@ -117,6 +117,15 @@ describe("FormView", () => {
         vi.clearAllMocks();
         vi.spyOn(URL, "createObjectURL").mockImplementation((file) => `blob:${file.name}`);
         vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+        // jsdom loads no images, so a picked image never would.
+        vi.stubGlobal(
+            "Image",
+            class {
+                set src(_) {
+                    queueMicrotask(() => this.onload());
+                }
+            },
+        );
         vi.stubGlobal(
             "ResizeObserver",
             class {
