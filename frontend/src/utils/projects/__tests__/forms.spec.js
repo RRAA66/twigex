@@ -21,6 +21,7 @@ import {
     linkedTableId,
     mergeFormFields,
     missingRequiredFields,
+    readOnlyWithoutDefault,
     normalizeFormData,
     shownFormFields,
 } from "../forms";
@@ -246,6 +247,18 @@ describe("missingRequiredFields", () => {
         expect(
             missingRequiredFields(fields, { name: "A", tags: [{ id: "1" }], agree: true }),
         ).toEqual([]);
+    });
+
+    it("leaves out a read-only field, which the server fills from its default", () => {
+        const fields = [{ header_name: "code", required: true, read_only: true }];
+
+        expect(missingRequiredFields(fields, {})).toEqual([]);
+    });
+
+    it("counts an answer of only spaces as empty", () => {
+        const fields = [{ header_name: "name", required: true }];
+
+        expect(missingRequiredFields(fields, { name: "   " })).toEqual(["name"]);
     });
 });
 
@@ -515,5 +528,25 @@ describe("formLinkTables", () => {
             { id: "t2", name: "tbl_2", display_name: "Clients" },
             { id: "t3", name: "tbl_3", display_name: "" },
         ]);
+    });
+});
+
+describe("readOnlyWithoutDefault", () => {
+    it("flags a required read-only field with no default", () => {
+        expect(readOnlyWithoutDefault({ required: true, read_only: true, default_value: "" })).toBe(
+            true,
+        );
+    });
+
+    it("does not flag one with a default, or one that is not both", () => {
+        const field = { field_type: "text", required: true, read_only: true, default_value: "A" };
+
+        expect(readOnlyWithoutDefault(field)).toBe(false);
+        expect(readOnlyWithoutDefault({ ...field, default_value: "", read_only: false })).toBe(
+            false,
+        );
+        expect(readOnlyWithoutDefault({ ...field, default_value: "", required: false })).toBe(
+            false,
+        );
     });
 });
