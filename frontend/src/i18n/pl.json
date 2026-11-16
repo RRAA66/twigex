@@ -1813,6 +1813,7 @@
     "projects.popover_menu.delete_message_table": "Czy na pewno chcesz usunąć tę tabelę? Tej operacji nie można cofnąć.",
     "projects.popover_menu.delete_title_view": "Usuń widok",
     "projects.popover_menu.delete_message_view": "Czy na pewno chcesz usunąć ten widok? Tej operacji nie można cofnąć.",
+    "projects.popover_menu.delete_message_form": "Usunąć ten formularz? Jego link przestanie działać, a lista zgłoszeń zostanie usunięta. Dodane przez niego wiersze pozostaną w tabeli. Tej operacji nie można cofnąć.",
     "projects.popover_menu.delete_title_field": "Usuń pole",
     "projects.popover_menu.delete_message_field": "Czy na pewno chcesz usunąć to pole? Tej operacji nie można cofnąć.",
     "projects.popover_menu.delete_message_single_field": "Czy na pewno chcesz usunąć to pole jednokrotnego wyboru? Tej operacji nie można cofnąć.",

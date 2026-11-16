@@ -1813,6 +1813,7 @@
     "projects.popover_menu.delete_message_table": "Осы кестені жойғыңыз келетініне сенімдісіз бе? Бұл әрекетті қайтаруға болмайды.",
     "projects.popover_menu.delete_title_view": "Көріністі жою",
     "projects.popover_menu.delete_message_view": "Осы көріністі жойғыңыз келетініне сенімдісіз бе? Бұл әрекетті қайтаруға болмайды.",
+    "projects.popover_menu.delete_message_form": "Бұл пішінді жою керек пе? Оның сілтемесі жұмысын тоқтатады және жіберілімдер тізімі жойылады. Ол қосқан жолдар кестеде қалады. Бұл әрекетті қайтаруға болмайды.",
     "projects.popover_menu.delete_title_field": "Өрісті жою",
     "projects.popover_menu.delete_message_field": "Осы өрісті жойғыңыз келетініне сенімдісіз бе? Бұл әрекетті қайтаруға болмайды.",
     "projects.popover_menu.delete_message_single_field": "Осы жалғыз таңдау өрісін жойғыңыз келетініне сенімдісіз бе? Бұл әрекетті қайтаруға болмайды.",
