@@ -105,6 +105,10 @@ func (a *API) deleteForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) initPublicForms() {
+	if !*a.app.ConfigStore.Config.FeatureFlags.Forms {
+		return
+	}
+
 	forms := a.BaseRoutes.PublicSharedFiles.PathPrefix("/forms").Subrouter()
 	forms.HandleFunc("/{token}", a.getPublicForm).Methods("GET")
 	forms.HandleFunc("/{token}/submit", a.submitPublicForm).Methods("POST")

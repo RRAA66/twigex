@@ -21,15 +21,22 @@ func formRoutes(t *testing.T, formsOn bool) []string {
 		app: &app.App{ConfigStore: config.ConfigStore{Config: &model.ServerConfig{
 			FeatureFlags: model.FeatureFlags{Forms: model.NewBool(formsOn)},
 		}}},
-		BaseRoutes: &Routes{Workspaces: mux.NewRouter()},
+		BaseRoutes: &Routes{Workspaces: mux.NewRouter(), PublicSharedFiles: mux.NewRouter()},
 	}
 	a.initWorkspaces()
+	a.initPublicForms()
+
+	return append(routesUnder(t, a.BaseRoutes.Workspaces), routesUnder(t, a.BaseRoutes.PublicSharedFiles)...)
+}
+
+func routesUnder(t *testing.T, router *mux.Router) []string {
+	t.Helper()
 
 	var routes []string
-	err := a.BaseRoutes.Workspaces.Walk(func(route *mux.Route, _ *mux.Router, _ []*mux.Route) error {
+	err := router.Walk(func(route *mux.Route, _ *mux.Router, _ []*mux.Route) error {
 		path, _ := route.GetPathTemplate()
 		methods, _ := route.GetMethods()
-		if strings.Contains(path, "/forms") {
+		if strings.Contains(path, "/forms") && len(methods) > 0 {
 			routes = append(routes, strings.Join(methods, ",")+" "+path)
 		}
 
@@ -57,6 +64,9 @@ func TestFormRoutesAreRegisteredWithFormsOn(t *testing.T) {
 		"GET /{id}/table/{tid}/forms/{fid}/submissions",
 		"POST /{id}/table/{tid}/forms",
 		"PUT /{id}/table/{tid}/forms/{fid}",
+		"GET /forms/{token}",
+		"GET /forms/{token}/linked/{tableId}",
+		"POST /forms/{token}/submit",
 	}
 
 	if routes := formRoutes(t, true); !slices.Equal(routes, want) {
