@@ -139,7 +139,7 @@ export function formImageUrl(workspaceId, fileId) {
 function isEmptyFormValue(value) {
     return (
         value == null ||
-        value === "" ||
+        (typeof value === "string" && value.trim() === "") ||
         value === false ||
         (Array.isArray(value) && value.length === 0)
     );
@@ -147,7 +147,7 @@ function isEmptyFormValue(value) {
 
 export function missingRequiredFields(fields, values) {
     return fields
-        .filter((f) => f.required && isEmptyFormValue(values[f.header_name]))
+        .filter((f) => f.required && !f.read_only && isEmptyFormValue(values[f.header_name]))
         .map((f) => f.header_name);
 }
 
@@ -176,6 +176,11 @@ export function defaultAnswer(field) {
         default:
             return field.default_value;
     }
+}
+
+// No one can answer such a field, so it stays empty on every submission.
+export function readOnlyWithoutDefault(field) {
+    return Boolean(field.required && field.read_only && isEmptyFormValue(defaultAnswer(field)));
 }
 
 export function defaultAnswers(fields) {
