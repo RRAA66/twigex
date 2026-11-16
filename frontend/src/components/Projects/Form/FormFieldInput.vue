@@ -105,11 +105,17 @@ SPDX-License-Identifier: AGPL-3.0-only
             v-else-if="type === 'master-link'"
             :model-value="modelValue || ''"
             :options="tableOptions"
-            :label="selectLabel"
+            :label="label"
+            label-class="mb-1 block text-xs font-medium text-gray-600"
             :error="Boolean(error)"
             :placeholder="field.placeholder || t('projects.form_view.placeholder.select_table')"
             @update:model-value="update"
-        />
+        >
+            <template #label>
+                {{ label }}
+                <span v-if="field.required" class="text-red-500">*</span>
+            </template>
+        </BaseSelect>
         <input
             v-else
             :id="id"
@@ -171,10 +177,8 @@ const label = computed(
     () => props.field.label || props.field.display_name || props.field.header_name,
 );
 
-// BaseSelect labels its own button, so its label carries the required mark.
+// BaseSelect labels its own button.
 const labelledBySelect = computed(() => type.value === "master-link");
-
-const selectLabel = computed(() => (props.field.required ? `${label.value} *` : label.value));
 
 const aria = computed(() => {
     const describedBy = [];
