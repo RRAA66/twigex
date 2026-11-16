@@ -274,8 +274,7 @@ func fitsVarchar(values ...string) bool {
 // Also needs the user to read the table: a role can hide one table from a
 // member who manages views elsewhere.
 func (a *App) requireFormTableAccess(ctx context.Context, user model.User, workspaceID, tableID, permission string) *model.AppError {
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, permission) &&
-		!a.ProjectWorkspaceTableHasPermission(user, workspaceID, tableID, "manage_views") {
+	if !a.canChangeTableViews(user, workspaceID, tableID, permission) {
 		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
