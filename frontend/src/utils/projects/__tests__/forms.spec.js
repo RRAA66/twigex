@@ -92,6 +92,7 @@ describe("mergeFormFields", () => {
         expect(fields.map((f) => f.visible)).toEqual([true, false, false]);
         expect(fields[2]).toMatchObject({
             header_id: "h-budget",
+            display_name: "Budget",
             label: "",
             required: false,
             column_position: "full",

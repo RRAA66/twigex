@@ -69,6 +69,7 @@ export function mergeFormFields(headers, savedFields) {
                 id: "",
                 header_id: h.id || h.name,
                 header_name: h.name,
+                display_name: fieldLabel(h),
                 label: "",
                 placeholder: "",
                 description: "",
