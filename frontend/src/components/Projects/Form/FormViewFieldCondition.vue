@@ -49,6 +49,7 @@ import {
     CONDITION_OPERATORS,
     conditionTriggers,
     conditionValueWidget,
+    formFieldLabel,
 } from "@/utils/projects/forms";
 import BaseCheckbox from "@/components/BaseCheckbox.vue";
 import BaseSelect from "@/components/BaseSelect.vue";
@@ -81,7 +82,7 @@ const trigger = computed(() =>
 const triggerOptions = computed(() =>
     conditionTriggers(props.fields, props.field).map((f) => ({
         value: f.header_name,
-        label: f.label || f.display_name || f.header_name,
+        label: formFieldLabel(f, t.value),
     })),
 );
 

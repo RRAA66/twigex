@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"regexp"
 	"slices"
@@ -168,7 +169,6 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 	}
 
 	form.ID = formID
-	form.UpdatedAt = time.Now().Unix()
 
 	// Fields are replaced as a whole, so ids sent back by the client are not
 	// reused: one taken from another form would collide with its row.
@@ -177,7 +177,12 @@ func (a *App) UpdateForm(ctx context.Context, workspaceID, tableID, formID strin
 		fields[i].FormID = formID
 	}
 
-	if err := a.Store.Workspace.UpdateForm(ctx, form, fields); err != nil {
+	err := a.Store.Workspace.UpdateForm(ctx, form, fields)
+	if errors.Is(err, model.ErrFormChanged) {
+		return nil, model.NewAppError("workspace.form_changed", http.StatusConflict)
+	}
+
+	if err != nil {
 		tlog.Errorw("Failed to update form",
 			"form_id", formID,
 			"error", err,

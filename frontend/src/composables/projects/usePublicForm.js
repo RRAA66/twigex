@@ -6,11 +6,12 @@ import { t } from "@/i18n/index.js";
 import { close, initialize, onProjectChange } from "@/js/websocket";
 import formService from "@/services/formService";
 import { useAlertStore } from "@/store/alerts";
-import { extractErrorMessage } from "@/utils/errors";
 import {
     defaultAnswers,
     fillableFormFields,
+    formRequestError,
     formSubmitFields,
+    invalidNumberFields,
     missingRequiredFields,
     shownFormFields,
 } from "@/utils/projects/forms";
@@ -44,7 +45,7 @@ export function usePublicForm(token, { live = false } = {}) {
 
     function failLoad(error) {
         status.value = STATUS_BY_HTTP[error?.response?.status] || "failed";
-        loadError.value = extractErrorMessage(error);
+        loadError.value = formRequestError(error, t.value);
     }
 
     async function load() {
@@ -75,18 +76,22 @@ export function usePublicForm(token, { live = false } = {}) {
             if (current !== reloadRequest) return;
 
             if (STATUS_BY_HTTP[error?.response?.status]) failLoad(error);
-            else alertStore.showError(extractErrorMessage(error));
+            else alertStore.showError(formRequestError(error, t.value));
         }
     }
 
     async function submit() {
         submitError.value = "";
-        fieldErrors.value = Object.fromEntries(
-            missingRequiredFields(fields.value, values.value).map((name) => [
-                name,
-                t.value("common.error.required_field"),
-            ]),
+
+        const numberErrors = Object.entries(invalidNumberFields(fields.value, values.value)).map(
+            ([name, key]) => [name, t.value(key)],
         );
+        const requiredErrors = missingRequiredFields(fields.value, values.value).map((name) => [
+            name,
+            t.value("common.error.required_field"),
+        ]);
+
+        fieldErrors.value = Object.fromEntries([...numberErrors, ...requiredErrors]);
         if (Object.keys(fieldErrors.value).length > 0) return;
 
         submitting.value = true;
@@ -98,7 +103,7 @@ export function usePublicForm(token, { live = false } = {}) {
             );
             submitted.value = true;
         } catch (error) {
-            submitError.value = extractErrorMessage(error);
+            submitError.value = formRequestError(error, t.value);
         } finally {
             submitting.value = false;
         }
@@ -108,9 +113,12 @@ export function usePublicForm(token, { live = false } = {}) {
         if (Object.keys(fieldErrors.value).length === 0) return;
 
         const missing = new Set(missingRequiredFields(fields.value, values.value));
+        const invalid = invalidNumberFields(fields.value, values.value);
 
         fieldErrors.value = Object.fromEntries(
-            Object.entries(fieldErrors.value).filter(([name]) => missing.has(name)),
+            Object.entries(fieldErrors.value).filter(
+                ([name]) => missing.has(name) || invalid[name],
+            ),
         );
     }
 

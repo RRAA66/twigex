@@ -755,6 +755,39 @@ func TestFormSubmissionsAreOpenToWhoManagesTheTablesViews(t *testing.T) {
 	}
 }
 
+func TestFormSubmissionsAreOpenToAViewerOfFormsAndGrids(t *testing.T) {
+	a, ws, _ := submitApp()
+	ws.fakeAccessWorkspaceStore = memberWithPermissions(model.PermissionViewForm, model.PermissionViewGrid)
+	a.WorkspaceRoles = formRoles{}
+
+	if _, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{}, 1, accessUser()); appErr != nil {
+		t.Fatalf("GetFormSubmissions: %v", appErr)
+	}
+}
+
+func TestFormSubmissionsRefuseAViewerWithoutTheGrid(t *testing.T) {
+	a, ws, _ := submitApp()
+	ws.fakeAccessWorkspaceStore = memberWithPermissions(model.PermissionViewForm)
+	a.WorkspaceRoles = formRoles{}
+
+	_, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{}, 1, accessUser())
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Fatalf("want 403, got %v", appErr)
+	}
+}
+
+func TestFormSubmissionsCarryTheFormsFieldsAndLink(t *testing.T) {
+	a, _, _ := submitApp(model.WorkspaceFormField{HeaderName: "budget", FieldType: "number", Visible: true})
+
+	page, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{}, 1, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("GetFormSubmissions: %v", appErr)
+	}
+	if page.PublicToken == "" || !slices.ContainsFunc(page.Fields, func(f model.WorkspaceFormField) bool { return f.HeaderName == "budget" }) {
+		t.Errorf("page %+v, want the form's link and fields", page)
+	}
+}
+
 func TestFormSubmissionsRefusesAMemberWhoCannotChangeViews(t *testing.T) {
 	a, ws, _ := submitApp()
 	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
@@ -906,8 +939,12 @@ func TestSubmitFormChecksValuesAgainstTheirColumns(t *testing.T) {
 		{"a web link", field("site", "url"), "https://example.com", "https://example.com"},
 		{"a script link", field("site", "url"), "javascript:alert(1)", nil},
 		{"a link that is not text", field("site", "url"), 5.0, nil},
-		{"a number as text", field("amount", "number"), " 12.5 ", 12.5},
+		{"a number as text", field("amount", "decimal"), " 12.5 ", 12.5},
 		{"a number", field("amount", "decimal"), 3.0, 3.0},
+		{"a whole number as text", field("amount", "number"), " 12 ", 12.0},
+		{"a whole number", field("amount", "number"), 3.0, 3.0},
+		{"a decimal as text in a whole number field", field("amount", "number"), "12.5", nil},
+		{"a decimal in a whole number field", field("amount", "number"), 0.5, nil},
 		{"text in a number field", field("amount", "number"), "twelve", nil},
 		{"not a number", field("amount", "decimal"), "NaN", nil},
 		{"true in a number field", field("amount", "number"), true, nil},
@@ -942,6 +979,29 @@ func TestSubmitFormChecksValuesAgainstTheirColumns(t *testing.T) {
 			}
 			if got := ws.created[0].Values[c.field.HeaderName]; got != c.wantValue {
 				t.Errorf("stored %v, want %v", got, c.wantValue)
+			}
+		})
+	}
+}
+
+func TestSubmitFormSaysWhatANumberFieldTakes(t *testing.T) {
+	cases := []struct {
+		fieldType string
+		value     any
+		wantID    string
+	}{
+		{"number", "12.5", "workspace.form_submit_whole_number"},
+		{"number", "twelve", "workspace.form_submit_number_invalid"},
+		{"decimal", "twelve", "workspace.form_submit_number_invalid"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.fieldType+" "+c.value.(string), func(t *testing.T) {
+			a, _, _ := submitApp(model.WorkspaceFormField{HeaderName: "amount", FieldType: c.fieldType, Visible: true})
+
+			_, appErr := submit(a, submitter, model.FormValue{Name: "amount", Value: c.value})
+			if appErr == nil || appErr.Status != http.StatusBadRequest || appErr.ID != c.wantID {
+				t.Fatalf("want 400 %s, got %v", c.wantID, appErr)
 			}
 		})
 	}

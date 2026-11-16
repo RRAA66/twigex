@@ -94,6 +94,27 @@ describe("FormViewFieldCondition", () => {
         w.unmount();
     });
 
+    it("names a field without a label of its own after its table field, translated", async () => {
+        const due = { header_name: "due_date", label: "", visible: true, field_type: "date" };
+        const budget = { header_name: "c_1", label: "", display_name: "Budget", visible: true };
+        const field = {
+            header_name: "reason",
+            visible: true,
+            visibility_rule: { trigger_field: "", operator: "equals", value: "" },
+        };
+        const w = mountWith(FormViewFieldCondition, { field, fields: [due, budget, field] });
+
+        await flushPromises();
+
+        const labels = w
+            .findAllComponents(BaseSelect)[0]
+            .props("options")
+            .map((o) => o.label);
+
+        expect(labels).toEqual(["Due Date", "Budget"]);
+        w.unmount();
+    });
+
     it("clears the value when the operator takes another kind of input", async () => {
         const field = {
             header_name: "reason",

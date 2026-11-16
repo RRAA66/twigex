@@ -5,6 +5,7 @@ package sqlstore
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/twigex/twigex/model"
@@ -75,6 +76,34 @@ func TestCreateFormWritesItsViewAndReadsFieldsFromTheTable(t *testing.T) {
 	}
 	if status.FieldType != "status" {
 		t.Errorf("status field %+v, want the system field type", status)
+	}
+}
+
+func TestGetFormLeavesOutAFieldDeletedFromTheTable(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	fields := []model.WorkspaceFormField{
+		{ID: "ff-1", HeaderID: "f-budget", Label: "Budget", SortOrder: 1},
+		{ID: "ff-2", HeaderName: "client", Label: "Client", SortOrder: 2},
+		{ID: "ff-3", HeaderName: "status", Label: "Status", SortOrder: 3},
+	}
+	if err := w.CreateForm(ctx, form, fields); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	mustExec(t, `UPDATE workspace_fields SET deleted_at = 5 WHERE id IN ('f-budget', 'f-client')`)
+
+	got, err := w.GetForm(ctx, "form-1")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+	if len(got.Fields) != 1 || got.Fields[0].HeaderName != "status" {
+		t.Errorf("fields %+v, want only status", got.Fields)
 	}
 }
 
@@ -161,7 +190,6 @@ func TestUpdateFormReplacesFieldsAndRenamesItsView(t *testing.T) {
 	}
 
 	form.Name = "Renamed"
-	form.UpdatedAt = 200
 	if err := w.UpdateForm(ctx, form, []model.WorkspaceFormField{{ID: "ff-2", HeaderName: "client", Label: "Client"}}); err != nil {
 		t.Fatalf("UpdateForm: %v", err)
 	}
@@ -170,8 +198,8 @@ func TestUpdateFormReplacesFieldsAndRenamesItsView(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetForm: %v", err)
 	}
-	if got.Name != "Renamed" || got.UpdatedAt != 200 {
-		t.Errorf("form %+v, want it renamed", got.WorkspaceForm)
+	if got.Name != "Renamed" || got.UpdatedAt <= 100 {
+		t.Errorf("form %+v, want it renamed with a later updated_at", got.WorkspaceForm)
 	}
 	if len(got.Fields) != 1 || got.Fields[0].ID != "ff-2" {
 		t.Errorf("fields %+v, want only ff-2", got.Fields)
@@ -203,6 +231,42 @@ func TestFormTakesTheNameOfItsRenamedTab(t *testing.T) {
 	}
 	if got.Name != "From the tab menu" {
 		t.Errorf("name %q, want the tab's name", got.Name)
+	}
+}
+
+func TestUpdateFormLeavesAFormSavedSinceItWasRead(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	if err := w.CreateForm(ctx, form, []model.WorkspaceFormField{{ID: "ff-1", HeaderName: "budget", Label: "Budget"}}); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	first := form
+	first.Name = "First"
+	if err := w.UpdateForm(ctx, first, nil); err != nil {
+		t.Fatalf("first UpdateForm: %v", err)
+	}
+
+	second := form
+	second.Name = "Second"
+	if err := w.UpdateForm(ctx, second, nil); !errors.Is(err, model.ErrFormChanged) {
+		t.Fatalf("second UpdateForm: got %v, want ErrFormChanged", err)
+	}
+
+	got, err := w.GetForm(ctx, "form-1")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+	if got.Name != "First" {
+		t.Errorf("form named %q, want the first save kept", got.Name)
+	}
+	if n := countRows(t, testDB, `SELECT COUNT(*) FROM workspace_view WHERE id = 'form-1' AND name = 'First'`); n != 1 {
+		t.Errorf("found %d views named First, want 1", n)
 	}
 }
 
