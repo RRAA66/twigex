@@ -1954,5 +1954,9 @@
   {
     "id": "workspace.form_update_failed",
     "translation": "Пішінді жаңарту сәтсіз аяқталды. Қайталап көріңіз."
+  },
+  {
+    "id": "workspace.form_changed",
+    "translation": "Бұл пішінді басқа біреу өзгертті. Соңғы нұсқасын көру үшін қайта жүктеңіз."
   }
 ]

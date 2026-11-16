@@ -78,6 +78,9 @@ func (w *workspaceRepository) GetForm(ctx context.Context, formID string) (*mode
 }
 
 // UpdateForm replaces the form's fields and keeps its view's name in step.
+// form.UpdatedAt is the version the caller read: a form saved since then is
+// left as it is and ErrFormChanged returned. The new updated_at is always
+// above the old one, so two saves within a second still differ.
 func (w *workspaceRepository) UpdateForm(ctx context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error {
 	tx, err := w.Db.BeginTx(ctx, nil)
 	if err != nil {
@@ -86,19 +89,28 @@ func (w *workspaceRepository) UpdateForm(ctx context.Context, form model.Workspa
 
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(ctx, `
+	result, err := tx.ExecContext(ctx, `
 		UPDATE workspace_forms
 		SET name = ?, title = ?, description = ?, cover_image = ?, cover_position = ?, logo = ?, accent_color = ?,
-		    active = ?, updated_at = ?
-		WHERE id = ?`,
+		    active = ?, updated_at = GREATEST(UNIX_TIMESTAMP(), updated_at + 1)
+		WHERE id = ? AND updated_at = ?`,
 		form.Name, form.Title, form.Description, form.CoverImage, form.CoverPosition, form.Logo, form.AccentColor,
-		form.Active, form.UpdatedAt, form.ID,
+		form.Active, form.ID, form.UpdatedAt,
 	)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, `UPDATE workspace_view SET name = ?, updated_at = ? WHERE id = ?`, form.Name, form.UpdatedAt, form.ID)
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if changed == 0 {
+		return model.ErrFormChanged
+	}
+
+	_, err = tx.ExecContext(ctx, `UPDATE workspace_view SET name = ?, updated_at = UNIX_TIMESTAMP() WHERE id = ?`, form.Name, form.ID)
 	if err != nil {
 		return err
 	}

@@ -2014,5 +2014,9 @@
   {
     "id": "workspace.form_update_failed",
     "translation": "Failed to update form. Please try again."
+  },
+  {
+    "id": "workspace.form_changed",
+    "translation": "This form was changed by someone else. Reload to see the latest version."
   }
 ]

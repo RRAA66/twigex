@@ -48,6 +48,10 @@ func (d *TaskDay) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// ErrFormChanged is returned when a form to be saved was changed since the
+// caller read it.
+var ErrFormChanged = errors.New("the form was changed since it was read")
+
 // ErrFolderCycle is returned when a folder is to be moved into itself or into
 // a folder inside it.
 var ErrFolderCycle = errors.New("a folder cannot be moved inside itself")

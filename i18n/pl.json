@@ -1954,5 +1954,9 @@
   {
     "id": "workspace.form_update_failed",
     "translation": "Nie udało się zaktualizować formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_changed",
+    "translation": "Ten formularz został zmieniony przez kogoś innego. Odśwież, aby zobaczyć najnowszą wersję."
   }
 ]

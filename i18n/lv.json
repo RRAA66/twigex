@@ -1954,5 +1954,9 @@
   {
     "id": "workspace.form_update_failed",
     "translation": "Neizdevās atjaunināt veidlapu. Lūdzu, mēģiniet vēlreiz."
+  },
+  {
+    "id": "workspace.form_changed",
+    "translation": "Šo veidlapu ir mainījis kāds cits. Pārlādējiet, lai redzētu jaunāko versiju."
   }
 ]
