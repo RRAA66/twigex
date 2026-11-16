@@ -181,7 +181,6 @@ const type = computed(() => formFieldType(props.field));
 
 const label = computed(() => formFieldLabel(props.field, t.value));
 
-// BaseSelect labels its own button.
 // Set while the last key or paste into a whole number field was refused.
 const refusedDecimal = ref(false);
 
@@ -189,6 +188,7 @@ const shownError = computed(() =>
     refusedDecimal.value ? t.value("projects.form_view.error.whole_number_only") : props.error,
 );
 
+// BaseSelect labels its own button.
 const labelledBySelect = computed(() => type.value === "master-link");
 
 const aria = computed(() => {
