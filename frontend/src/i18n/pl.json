@@ -2464,6 +2464,7 @@
     "projects.form_view.public.not_found": "Ten formularz nie istnieje lub nie jest już otwarty.",
     "projects.form_view.public.read_only": "Możesz wyświetlić ten formularz, ale nie masz uprawnień do dodawania rekordów do tej tabeli.",
     "projects.form_view.error.whole_number": "Wpisz liczbę całkowitą, np. 12, bez części dziesiętnej.",
+    "projects.form_view.error.whole_number_only": "Tylko liczby całkowite, np. 15 — w tym polu nie można wpisać części dziesiętnej.",
     "projects.form_view.error.number": "Wpisz liczbę, np. 12 lub 4.5.",
     "projects.form_view.error.network": "Nie udało się połączyć z serwerem. Sprawdź połączenie i spróbuj ponownie."
 }

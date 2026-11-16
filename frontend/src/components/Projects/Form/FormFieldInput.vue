@@ -125,7 +125,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             :step="type === 'decimal' ? '0.01' : undefined"
             v-bind="aria"
             class="block w-full rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            :class="error ? 'ring-red-600' : 'ring-gray-300'"
+            :class="shownError ? 'ring-red-600' : 'ring-gray-300'"
             :placeholder="field.placeholder || t(placeholderKey)"
             @input="onInput"
         />
@@ -137,18 +137,18 @@ SPDX-License-Identifier: AGPL-3.0-only
             {{ field.description }}
         </p>
 
-        <p v-if="error" :id="errorId" class="mt-1 text-xs text-red-600">{{ error }}</p>
+        <p v-if="shownError" :id="errorId" class="mt-1 text-xs text-red-600">{{ shownError }}</p>
     </div>
 </template>
 
 <script setup>
-import { computed, useId } from "vue";
+import { computed, ref, useId } from "vue";
 import { t } from "@/i18n/index.js";
 import {
     formFieldLabel,
     formFieldType,
+    isWholeNumberText,
     linkedTableId,
-    wholeNumberText,
 } from "@/utils/projects/forms";
 import BaseSelect from "@/components/BaseSelect.vue";
 import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
@@ -182,17 +182,24 @@ const type = computed(() => formFieldType(props.field));
 const label = computed(() => formFieldLabel(props.field, t.value));
 
 // BaseSelect labels its own button.
+// Set while the last key or paste into a whole number field was refused.
+const refusedDecimal = ref(false);
+
+const shownError = computed(() =>
+    refusedDecimal.value ? t.value("projects.form_view.error.whole_number_only") : props.error,
+);
+
 const labelledBySelect = computed(() => type.value === "master-link");
 
 const aria = computed(() => {
     const describedBy = [];
 
     if (props.field.description) describedBy.push(descriptionId);
-    if (props.error) describedBy.push(errorId);
+    if (shownError.value) describedBy.push(errorId);
 
     return {
         "aria-describedby": describedBy.join(" ") || undefined,
-        "aria-invalid": props.error ? "true" : undefined,
+        "aria-invalid": shownError.value ? "true" : undefined,
         "aria-required": props.field.required ? "true" : undefined,
     };
 });
@@ -226,12 +233,20 @@ function onInput(event) {
         return;
     }
 
-    // A decimal separator is refused rather than dropped, which would turn 12.5 into 125.
-    const digits = /[.,]/.test(event.target.value)
-        ? String(props.modelValue ?? "")
-        : wholeNumberText(event.target.value);
+    const typed = event.target.value;
 
-    event.target.value = digits;
-    update(digits);
+    refusedDecimal.value = !isWholeNumberText(typed);
+    if (!refusedDecimal.value) {
+        update(typed);
+
+        return;
+    }
+
+    // The whole key or paste is undone, as dropping part of it would turn 1.5 into 15.
+    const before = String(props.modelValue ?? "");
+    const caret = Math.max(0, event.target.selectionStart - (typed.length - before.length));
+
+    event.target.value = before;
+    event.target.setSelectionRange?.(caret, caret);
 }
 </script>

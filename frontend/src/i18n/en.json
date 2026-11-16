@@ -2464,6 +2464,7 @@
     "projects.form_view.public.not_found": "This form doesn't exist or is no longer open.",
     "projects.form_view.public.read_only": "You can view this form but you're not allowed to add records to this table.",
     "projects.form_view.error.whole_number": "Enter a whole number, such as 12, without a decimal part.",
+    "projects.form_view.error.whole_number_only": "Whole numbers only, such as 15 — this field takes no decimals.",
     "projects.form_view.error.number": "Enter a number, such as 12 or 4.5.",
     "projects.form_view.error.network": "Could not reach the server. Check your connection and try again."
 }
