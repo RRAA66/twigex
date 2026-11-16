@@ -126,23 +126,25 @@ func formApp(access fakeAccessWorkspaceStore, licensed bool) (*App, *fakeFormSto
 	return a, ws
 }
 
-// formRoles stands in for enterprise roles that grant no table permissions,
-// so only workspace permissions let a member manage views, and that hide one
-// table from everyone they resolve. viewsTable is a table whose views they
-// let a member manage after all.
-type formRoles struct{ hiddenTable, viewsTable string }
+// formRoles stands in for enterprise roles that add up a member's workspace
+// and per-table permissions, and that hide one table from everyone they
+// resolve.
+type formRoles struct{ hiddenTable string }
 
-func (r formRoles) Resolve(interfaces.AccessInput) interfaces.WorkspaceAccess {
-	return formAccess(r)
+func (r formRoles) Resolve(in interfaces.AccessInput) interfaces.WorkspaceAccess {
+	return formAccess{hiddenTable: r.hiddenTable, in: in}
 }
 
-type formAccess struct{ hiddenTable, viewsTable string }
+type formAccess struct {
+	hiddenTable string
+	in          interfaces.AccessInput
+}
 
-func (formAccess) AssignedOnlyAll() bool                   { return false }
-func (formAccess) AssignedOnly(string) bool                { return false }
-func (formAccess) CanPerformRowAction(_, _, _ string) bool { return true }
-func (f formAccess) TableHasPermission(tableID, action string) bool {
-	return tableID == f.viewsTable && action == "manage_views"
+func (formAccess) AssignedOnlyAll() bool               { return false }
+func (formAccess) AssignedOnly(string) bool            { return false }
+func (formAccess) TableHasPermission(_, _ string) bool { return false }
+func (f formAccess) CanPerformRowAction(tableID, workspacePerm, tableAction string) bool {
+	return rolesAddUp(f.in, tableID, workspacePerm, tableAction)
 }
 func (f formAccess) VisibleTables(tables []model.WorkspaceTable) []model.WorkspaceTable {
 	var visible []model.WorkspaceTable
@@ -176,8 +178,8 @@ func perTableViewManager(tableID string) fakeAccessWorkspaceStore {
 	}
 }
 
-// tableGrantRoles answers table permissions as the enterprise roles do: from
-// the table permissions for per-table roles, and yes to anyone else.
+// tableGrantRoles answers table permissions as the enterprise roles do: a
+// member's workspace and per-table roles add up.
 type tableGrantRoles struct{}
 
 func (tableGrantRoles) Resolve(in interfaces.AccessInput) interfaces.WorkspaceAccess {
@@ -189,15 +191,8 @@ type tableGrantAccess struct {
 	in interfaces.AccessInput
 }
 
-func (g tableGrantAccess) TableHasPermission(tableID, action string) bool {
-	perTable := slices.ContainsFunc(g.in.Roles, func(r model.ProjectWorkspaceRole) bool { return r.PerTableMode })
-	if !perTable {
-		return true
-	}
-
-	return slices.ContainsFunc(g.in.TablePerms, func(p model.TablePermission) bool {
-		return p.TableID == tableID && p.Action == action
-	})
+func (g tableGrantAccess) CanPerformRowAction(tableID, workspacePerm, tableAction string) bool {
+	return rolesAddUp(g.in, tableID, workspacePerm, tableAction)
 }
 
 func TestCreateFormStoresItOnTheURLTable(t *testing.T) {
