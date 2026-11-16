@@ -348,3 +348,40 @@ func (a *App) ProjectWorkspaceTableHasPermission(user model.User, workspaceId, t
 	in := a.buildAccessInput(user, workspaceId)
 	return a.resolveAccess(in).TableHasPermission(tableId, action)
 }
+
+// canChangeTableViews reports whether the user may change tableID's views:
+// by the workspace permission, or by a per-table role that manages the
+// table's views. The access layer allows every table action to a member who
+// is not in per-table mode, so its answer counts only in that mode.
+func (a *App) canChangeTableViews(user model.User, workspaceID, tableID, permission string) bool {
+	if a.ProjectWorkspaceHasPermission(user, workspaceID, permission) {
+		return true
+	}
+
+	if a.WorkspaceRoles == nil || !a.IsWorkspaceMemberOrGroupMember(workspaceID, user.ID) {
+		return false
+	}
+
+	in := a.buildAccessInput(user, workspaceID)
+	if !onlyPerTableRoles(in.Roles) {
+		return false
+	}
+
+	return a.resolveAccess(in).TableHasPermission(tableID, "manage_views")
+}
+
+// onlyPerTableRoles matches GetWorkspaceCurrentUser's per-table mode: a
+// workspace-level role beside per-table ones gives workspace-level access.
+func onlyPerTableRoles(roles []model.ProjectWorkspaceRole) bool {
+	if len(roles) == 0 {
+		return false
+	}
+
+	for _, r := range roles {
+		if !r.PerTableMode {
+			return false
+		}
+	}
+
+	return true
+}

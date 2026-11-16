@@ -43,6 +43,9 @@ SPDX-License-Identifier: AGPL-3.0-only
                             :placeholder="t('projects.form_view.placeholder.pick_date')"
                         />
                     </div>
+                    <p v-if="rangeReversed" role="alert" class="pb-2 text-xs text-red-600">
+                        {{ t("projects.form_view.submissions.range_reversed") }}
+                    </p>
                     <BaseButton
                         type="button"
                         size="small"
@@ -56,7 +59,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 </div>
             </template>
             <template #empty>
-                {{ t("projects.form_view.no_submissions") }}
+                {{ emptyText }}
             </template>
             <template #submitted_by="{ item }">
                 <div class="flex min-w-0 items-center gap-x-3">
@@ -144,6 +147,19 @@ const range = computed(() => {
     return params;
 });
 
+const rangeReversed = computed(
+    () =>
+        range.value.from !== undefined &&
+        range.value.to !== undefined &&
+        range.value.from >= range.value.to,
+);
+
+const emptyText = computed(() =>
+    fromDay.value || toDay.value
+        ? t.value("projects.form_view.submissions.none_in_range")
+        : t.value("projects.form_view.no_submissions"),
+);
+
 const shownFields = computed(() => fillableFormFields(props.fields));
 
 const columns = computed(() => [
@@ -173,6 +189,15 @@ function submitterName(submission) {
 
 async function load(next = page.value) {
     const current = ++request;
+
+    if (rangeReversed.value) {
+        submissions.value = [];
+        total.value = 0;
+        page.value = 1;
+        loading.value = false;
+
+        return;
+    }
 
     loading.value = true;
     try {

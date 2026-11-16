@@ -186,6 +186,38 @@ describe("FormViewSubmissions", () => {
         });
     });
 
+    it("warns about a From day after the To day and lists nothing for it", async () => {
+        respond([submission("s1", { name: "A" })]);
+        w = await mountList();
+        formService.getSubmissions.mockClear();
+
+        const [from, to] = w.findAllComponents({ name: "DatePickerField" });
+
+        from.vm.$emit("update:modelValue", "2026-11-05");
+        to.vm.$emit("update:modelValue", "2026-11-04");
+        await flushPromises();
+
+        expect(formService.getSubmissions).not.toHaveBeenCalled();
+        expect(w.find("[role='alert']").text()).toBe(
+            "The From day is after the To day. Pick a From day on or before it.",
+        );
+        expect(w.text()).toContain("No submissions in this date range");
+        expect(w.findComponent({ name: "DataTable" }).props("items")).toEqual([]);
+    });
+
+    it("says no submission was sent in the days picked", async () => {
+        respond([]);
+        w = await mountList();
+
+        w.findAllComponents({ name: "DatePickerField" })[0].vm.$emit(
+            "update:modelValue",
+            "2026-11-03",
+        );
+        await flushPromises();
+
+        expect(w.text()).toContain("No submissions in this date range");
+    });
+
     it("downloads the submissions of the days picked as a CSV", async () => {
         respond([]);
         w = await mountList();
