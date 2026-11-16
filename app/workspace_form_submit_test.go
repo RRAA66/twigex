@@ -747,7 +747,7 @@ func TestFormSubmissionsArePaged(t *testing.T) {
 
 func TestFormSubmissionsAreOpenToWhoManagesTheTablesViews(t *testing.T) {
 	a, ws, _ := submitApp()
-	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
+	ws.fakeAccessWorkspaceStore = perTableViewManager(tbl1)
 	a.WorkspaceRoles = formRoles{viewsTable: tbl1}
 
 	if _, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{}, 1, accessUser()); appErr != nil {

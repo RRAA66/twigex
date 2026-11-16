@@ -41,6 +41,23 @@ describe("FormFileInput", () => {
         expect(w.emitted("update:modelValue")).toEqual([[[earlier, uploaded]]]);
     });
 
+    it("does not send the form it sits in when files are added", async () => {
+        const onSubmit = vi.fn((event) => event.preventDefault());
+        const w = mount(
+            {
+                components: { FormFileInput },
+                template: `<form @submit="onSubmit"><FormFileInput id="docs" token="tok" /></form>`,
+                setup: () => ({ onSubmit }),
+            },
+            { attachTo: document.body },
+        );
+
+        await w.find("button").trigger("click");
+
+        expect(onSubmit).not.toHaveBeenCalled();
+        w.unmount();
+    });
+
     it("takes a file back off the field", async () => {
         const w = mountInput([uploaded, { id: "file2", name: "b.pdf" }]);
 

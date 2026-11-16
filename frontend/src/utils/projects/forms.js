@@ -138,7 +138,7 @@ export function formImageUrl(workspaceId, fileId) {
 function isEmptyFormValue(value) {
     return (
         value == null ||
-        value === "" ||
+        (typeof value === "string" && value.trim() === "") ||
         value === false ||
         (Array.isArray(value) && value.length === 0)
     );

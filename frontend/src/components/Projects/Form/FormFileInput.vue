@@ -28,6 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
         <BaseButton
             :id="id"
+            type="button"
             size="small"
             variant="secondary"
             :prepend-icon="ArrowUpTrayIcon"
