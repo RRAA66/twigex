@@ -2880,9 +2880,14 @@ func (a *App) doneStatusIDs(tableID string) ([]string, error) {
 	return ids, nil
 }
 
+// canEditTable is what changing a table itself asks for: its name or its icon.
+func (a *App) canEditTable(user model.User, workspaceID, tableID string) bool {
+	return a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceTable) ||
+		a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionCreateFields, model.PermissionCreateFields)
+}
+
 func (a *App) UpdateWorkspaceTable(ctx context.Context, workspaceID, tableID, name string, user model.User) (*string, *model.AppError) {
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceTable) &&
-		!a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionCreateFields, model.PermissionCreateFields) {
+	if !a.canEditTable(user, workspaceID, tableID) {
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
@@ -2906,8 +2911,7 @@ func (a *App) UpdateWorkspaceTable(ctx context.Context, workspaceID, tableID, na
 }
 
 func (a *App) UpdateTableIcon(ctx context.Context, workspaceID, tableID, icon string, user model.User) *model.AppError {
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionUpdateWorkspaceTable) &&
-		!a.CanPerformRowAction(user, workspaceID, tableID, model.PermissionCreateFields, model.PermissionCreateFields) {
+	if !a.canEditTable(user, workspaceID, tableID) {
 		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
