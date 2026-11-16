@@ -11,7 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             class="mb-1 block text-xs font-medium text-gray-600"
         >
             {{ label }}
-            <span v-if="field.required" class="text-red-500">*</span>
+            <span v-if="asksAnswer" class="text-red-500">*</span>
         </label>
         <p
             v-if="field.description && !labelledBySelect"
@@ -210,6 +210,9 @@ const type = computed(() => formFieldType(props.field));
 const label = computed(() => formFieldLabel(props.field, t.value));
 
 // BaseSelect labels its own button.
+// A read-only field is filled by its default, so it asks nothing of the user.
+const asksAnswer = computed(() => props.field.required && !props.field.read_only);
+
 const labelledBySelect = computed(() => type.value === "master-link" && !props.field.read_only);
 
 const aria = computed(() => {
@@ -221,7 +224,7 @@ const aria = computed(() => {
     return {
         "aria-describedby": describedBy.join(" ") || undefined,
         "aria-invalid": props.error ? "true" : undefined,
-        "aria-required": props.field.required ? "true" : undefined,
+        "aria-required": asksAnswer.value ? "true" : undefined,
     };
 });
 

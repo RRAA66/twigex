@@ -85,6 +85,16 @@ describe("FormFieldInput", () => {
         expect(w.find("input").exists()).toBe(false);
     });
 
+    it("marks no required read-only field as one to fill in", () => {
+        mountField({ field_type: "text", required: true, read_only: true, default_value: "A" });
+
+        const label = document.getElementById(
+            w.find("[aria-readonly='true']").attributes("aria-labelledby"),
+        );
+
+        expect(label.textContent).not.toContain("*");
+    });
+
     it("labels a master link field's list button and marks it invalid", async () => {
         mountField({ field_type: "master link", required: true }, { error: "Required" });
         await nextTick();
