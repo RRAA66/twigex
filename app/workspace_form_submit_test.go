@@ -905,8 +905,12 @@ func TestSubmitFormChecksValuesAgainstTheirColumns(t *testing.T) {
 		{"a web link", field("site", "url"), "https://example.com", "https://example.com"},
 		{"a script link", field("site", "url"), "javascript:alert(1)", nil},
 		{"a link that is not text", field("site", "url"), 5.0, nil},
-		{"a number as text", field("amount", "number"), " 12.5 ", 12.5},
+		{"a number as text", field("amount", "decimal"), " 12.5 ", 12.5},
 		{"a number", field("amount", "decimal"), 3.0, 3.0},
+		{"a whole number as text", field("amount", "number"), " 12 ", 12.0},
+		{"a whole number", field("amount", "number"), 3.0, 3.0},
+		{"a decimal as text in a whole number field", field("amount", "number"), "12.5", nil},
+		{"a decimal in a whole number field", field("amount", "number"), 0.5, nil},
 		{"text in a number field", field("amount", "number"), "twelve", nil},
 		{"not a number", field("amount", "decimal"), "NaN", nil},
 		{"true in a number field", field("amount", "number"), true, nil},
@@ -941,6 +945,29 @@ func TestSubmitFormChecksValuesAgainstTheirColumns(t *testing.T) {
 			}
 			if got := ws.created[0].Values[c.field.HeaderName]; got != c.wantValue {
 				t.Errorf("stored %v, want %v", got, c.wantValue)
+			}
+		})
+	}
+}
+
+func TestSubmitFormSaysWhatANumberFieldTakes(t *testing.T) {
+	cases := []struct {
+		fieldType string
+		value     any
+		wantID    string
+	}{
+		{"number", "12.5", "workspace.form_submit_whole_number"},
+		{"number", "twelve", "workspace.form_submit_number_invalid"},
+		{"decimal", "twelve", "workspace.form_submit_number_invalid"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.fieldType+" "+c.value.(string), func(t *testing.T) {
+			a, _, _ := submitApp(model.WorkspaceFormField{HeaderName: "amount", FieldType: c.fieldType, Visible: true})
+
+			_, appErr := submit(a, submitter, model.FormValue{Name: "amount", Value: c.value})
+			if appErr == nil || appErr.Status != http.StatusBadRequest || appErr.ID != c.wantID {
+				t.Fatalf("want 400 %s, got %v", c.wantID, appErr)
 			}
 		})
 	}
