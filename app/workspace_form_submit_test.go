@@ -51,6 +51,16 @@ func (f *fakeFormSubmitStore) IsMember(_, userID string) (bool, error) {
 	return userID != outsider.ID, nil
 }
 
+// GetUserByUserID gives the submitter and the members the built-in user
+// role, which may create rows.
+func (f *fakeFormSubmitStore) GetUserByUserID(userID, workspaceID string) (*model.WorkspaceMember, error) {
+	if userID == submitter.ID || slices.Contains(f.members, userID) {
+		return &model.WorkspaceMember{Role: model.ProjectWorkspaceUserRoleID}, nil
+	}
+
+	return f.fakeFormStore.GetUserByUserID(userID, workspaceID)
+}
+
 func (f *fakeFormSubmitStore) GetFormByToken(_ context.Context, token string) (*model.WorkspaceFormWithFields, error) {
 	for _, form := range f.forms {
 		if form.PublicToken == token && form.Active {
@@ -247,6 +257,7 @@ var outsider = &model.User{ID: "outsider", Role: model.SystemUserRoleId}
 func submitApp(fields ...model.WorkspaceFormField) (*App, *fakeFormSubmitStore, *fakeFormUserStore) {
 	a, forms := formApp(workspaceAdminAccess(), true)
 	forms.forms["form-1"].Fields = fields
+	forms.roles = append(forms.roles, *model.MakeDefaultProjectWorkspaceRoles()[model.ProjectWorkspaceUserRoleID])
 
 	ws := &fakeFormSubmitStore{
 		fakeFormStore:  forms,
@@ -747,7 +758,7 @@ func TestFormSubmissionsArePaged(t *testing.T) {
 func TestFormSubmissionsAreOpenToWhoManagesTheTablesViews(t *testing.T) {
 	a, ws, _ := submitApp()
 	ws.fakeAccessWorkspaceStore = perTableViewManager(tbl1)
-	a.WorkspaceRoles = formRoles{viewsTable: tbl1}
+	a.WorkspaceRoles = formRoles{}
 
 	if _, appErr := a.GetFormSubmissions(context.Background(), wsID, tbl1, "form-1", 1, accessUser()); appErr != nil {
 		t.Fatalf("GetFormSubmissions: %v", appErr)

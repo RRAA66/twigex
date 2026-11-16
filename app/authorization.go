@@ -197,8 +197,28 @@ func (a *App) ProjectWorkspaceHasPermission(user model.User, workspaceId string,
 	return a.ProjectWorkspaceGrantPermission(user, workspaceId, permissionId)
 }
 
-// CanPerformRowAction asks for membership before resolving roles because,
-// without enterprise roles, resolving grants everything to anyone.
+func onlyBuiltInWorkspaceRoles(roles []string) bool {
+	for _, role := range roles {
+		if role != model.ProjectWorkspaceAdminRoleID && role != model.ProjectWorkspaceUserRoleID {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (a *App) RequireWorkspaceRoles() *model.AppError {
+	if !a.Server.License.HasWorkspaceRoles() {
+		return model.NewAppError("workspace.roles_license_required", http.StatusPaymentRequired)
+	}
+
+	if a.WorkspaceRoles == nil {
+		return model.NewAppError("workspace.roles_enterprise_required", http.StatusNotImplemented)
+	}
+
+	return nil
+}
+
 func (a *App) CanPerformRowAction(user model.User, workspaceID, tableID, workspacePerm, tableAction string) bool {
 	if !a.IsWorkspaceMemberOrGroupMember(workspaceID, user.ID) {
 		return false
@@ -351,37 +371,11 @@ func (a *App) ProjectWorkspaceTableHasPermission(user model.User, workspaceId, t
 
 // canChangeTableViews reports whether the user may change tableID's views:
 // by the workspace permission, or by a per-table role that manages the
-// table's views. The access layer allows every table action to a member who
-// is not in per-table mode, so its answer counts only in that mode.
+// table's views.
 func (a *App) canChangeTableViews(user model.User, workspaceID, tableID, permission string) bool {
 	if a.ProjectWorkspaceHasPermission(user, workspaceID, permission) {
 		return true
 	}
 
-	if a.WorkspaceRoles == nil || !a.IsWorkspaceMemberOrGroupMember(workspaceID, user.ID) {
-		return false
-	}
-
-	in := a.buildAccessInput(user, workspaceID)
-	if !onlyPerTableRoles(in.Roles) {
-		return false
-	}
-
-	return a.resolveAccess(in).TableHasPermission(tableID, "manage_views")
-}
-
-// onlyPerTableRoles matches GetWorkspaceCurrentUser's per-table mode: a
-// workspace-level role beside per-table ones gives workspace-level access.
-func onlyPerTableRoles(roles []model.ProjectWorkspaceRole) bool {
-	if len(roles) == 0 {
-		return false
-	}
-
-	for _, r := range roles {
-		if !r.PerTableMode {
-			return false
-		}
-	}
-
-	return true
+	return a.CanPerformRowAction(user, workspaceID, tableID, permission, "manage_views")
 }
