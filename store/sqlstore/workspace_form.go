@@ -189,7 +189,9 @@ func (w *workspaceRepository) getFormFields(ctx context.Context, formID, tableID
 		return nil, err
 	}
 
-	for i, f := range fields {
+	// A field deleted from the table keeps its column, so it is left out here.
+	kept := make([]model.WorkspaceFormField, 0, len(fields))
+	for _, f := range fields {
 		field := model.SystemFieldData(tableID, f.HeaderName)
 		if field == nil {
 			stored, ok := meta.Fields[f.HeaderName]
@@ -203,12 +205,13 @@ func (w *workspaceRepository) getFormFields(ctx context.Context, formID, tableID
 		linkedID := meta.Links[f.HeaderName]
 		linked := meta.LinkedTables[linkedID]
 
-		fields[i].FieldType = field.FieldType
-		fields[i].DisplayName = field.DisplayName
-		fields[i].LinkedID = linkedID
-		fields[i].SingleSelect = linked.SingleSelect
-		fields[i].ParentTableID = linked.ParentTableID
+		f.FieldType = field.FieldType
+		f.DisplayName = field.DisplayName
+		f.LinkedID = linkedID
+		f.SingleSelect = linked.SingleSelect
+		f.ParentTableID = linked.ParentTableID
+		kept = append(kept, f)
 	}
 
-	return fields, nil
+	return kept, nil
 }

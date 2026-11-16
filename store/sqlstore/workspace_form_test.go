@@ -77,6 +77,34 @@ func TestCreateFormWritesItsViewAndReadsFieldsFromTheTable(t *testing.T) {
 	}
 }
 
+func TestGetFormLeavesOutAFieldDeletedFromTheTable(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	fields := []model.WorkspaceFormField{
+		{ID: "ff-1", HeaderID: "f-budget", Label: "Budget", SortOrder: 1},
+		{ID: "ff-2", HeaderName: "client", Label: "Client", SortOrder: 2},
+		{ID: "ff-3", HeaderName: "status", Label: "Status", SortOrder: 3},
+	}
+	if err := w.CreateForm(ctx, form, fields); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	mustExec(t, `UPDATE workspace_fields SET deleted_at = 5 WHERE id IN ('f-budget', 'f-client')`)
+
+	got, err := w.GetForm(ctx, "form-1")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+	if len(got.Fields) != 1 || got.Fields[0].HeaderName != "status" {
+		t.Errorf("fields %+v, want only status", got.Fields)
+	}
+}
+
 func TestGetFormUnknownIsNil(t *testing.T) {
 	requireDB(t)
 	resetFormTables(t)
