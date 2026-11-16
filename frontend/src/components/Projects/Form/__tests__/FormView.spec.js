@@ -152,7 +152,9 @@ describe("FormView", () => {
     it("explains a missing permission instead of showing an error", async () => {
         formService.getForm.mockRejectedValue({ response: { status: 403 } });
 
-        const { w } = await mountAt("/p/w1/form/t1/view/f1");
+        const { w } = await mountAt("/p/w1/form/t1/view/f1", {
+            user: { permissions: [...viewPermissions, "create_task"] },
+        });
 
         expect(w.text()).toContain("You need permission to edit views");
         expect(w.text()).toContain("ask whoever built it for its link");
@@ -173,13 +175,53 @@ describe("FormView", () => {
         });
 
         const { w } = await mountAt("/p/w1/form/t1/view/f1", {
-            user: { permissions: ["views_form", "views_grid"] },
+            user: { permissions: ["views_form", "views_grid", "create_task"] },
         });
 
         expect(formService.getSubmissions).toHaveBeenCalledWith("w1", "t1", "f1", { page: 1 });
         expect(w.text()).toContain("see below what was sent");
         expect(w.text()).toContain("Cost");
         expect(w.find("a[href='/forms/public/tok']").text()).toBe("Fill in the form");
+        w.unmount();
+    });
+
+    it.each([
+        ["a workspace role", { permissions: ["views_form", "views_grid"] }],
+        [
+            "a per-table role",
+            {
+                permissions: ["views_form", "views_grid"],
+                per_table_mode: true,
+                table_permissions: [
+                    { table_id: "t1", action: "view" },
+                    { table_id: "t2", action: "create_task" },
+                ],
+            },
+        ],
+    ])(
+        "tells a viewer who may not add rows, by %s, that they cannot fill the form in",
+        async (_, user) => {
+            formService.getForm.mockRejectedValue({ response: { status: 403 } });
+            formService.getSubmissions.mockResolvedValue({
+                data: { items: [], total: 0, public_token: "tok", fields: [] },
+            });
+
+            const { w } = await mountAt("/p/w1/form/t1/view/f1", { user });
+
+            expect(w.text()).toContain("cannot fill it in");
+            expect(w.text()).not.toContain("You can still fill in");
+            expect(w.find("a[href='/forms/public/tok']").exists()).toBe(false);
+            w.unmount();
+        },
+    );
+
+    it("tells a member who may neither add rows nor see submissions that they cannot fill the form in", async () => {
+        formService.getForm.mockRejectedValue({ response: { status: 403 } });
+
+        const { w } = await mountAt("/p/w1/form/t1/view/f1");
+
+        expect(w.text()).toContain("cannot fill in this form");
+        expect(w.text()).not.toContain("ask whoever built it");
         w.unmount();
     });
 
