@@ -2455,6 +2455,8 @@
     "projects.form_view.submissions.date": "Data",
     "projects.form_view.submissions.export": "Eksportuj CSV",
     "projects.form_view.submissions.from": "Od",
+    "projects.form_view.submissions.range_reversed": "Dzień „Od” jest późniejszy niż dzień „Do”. Wybierz dzień „Od” nie późniejszy niż „Do”.",
+    "projects.form_view.submissions.none_in_range": "Brak zgłoszeń w tym zakresie dat",
     "projects.form_view.submissions.files": "one {count} plik | few {count} pliki | many {count} plików | other {count} pliku",
     "projects.form_view.submissions.hidden_item": "Ukryty",
     "projects.form_view.submissions.row_unavailable": "Wiersz usunięty lub niewidoczny dla Ciebie",
