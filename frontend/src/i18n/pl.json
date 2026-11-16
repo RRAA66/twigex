@@ -1813,6 +1813,7 @@
     "projects.popover_menu.delete_message_table": "Czy na pewno chcesz usunąć tę tabelę? Tej operacji nie można cofnąć.",
     "projects.popover_menu.delete_title_view": "Usuń widok",
     "projects.popover_menu.delete_message_view": "Czy na pewno chcesz usunąć ten widok? Tej operacji nie można cofnąć.",
+    "projects.popover_menu.delete_message_form": "Usunąć ten formularz? Jego link przestanie działać, a lista zgłoszeń zostanie usunięta. Dodane przez niego wiersze pozostaną w tabeli. Tej operacji nie można cofnąć.",
     "projects.popover_menu.delete_title_field": "Usuń pole",
     "projects.popover_menu.delete_message_field": "Czy na pewno chcesz usunąć to pole? Tej operacji nie można cofnąć.",
     "projects.popover_menu.delete_message_single_field": "Czy na pewno chcesz usunąć to pole jednokrotnego wyboru? Tej operacji nie można cofnąć.",
@@ -2423,5 +2424,11 @@
     "projects.form_view.success.saved": "Formularz zapisany pomyślnie",
     "projects.form_view.view_type": "Formularz",
     "projects.form_view.no_access": "Aby otworzyć ten formularz, potrzebujesz uprawnienia do edycji widoków.",
+    "projects.form_view.not_found": "Ten formularz już nie istnieje.",
+    "projects.form_view.changed_elsewhere": "Ten formularz został zmieniony przez kogoś innego. Odśwież, aby zobaczyć najnowszą wersję.",
+    "projects.form_view.action.reload": "Odśwież",
+    "projects.form_view.unsaved_title": "Wyjść bez zapisywania?",
+    "projects.form_view.unsaved_message": "Twoje zmiany w tym formularzu nie zostały zapisane i zostaną utracone.",
+    "projects.form_view.unsaved_leave": "Wyjdź",
     "projects.form_view.field.visible": "Pokaż w formularzu"
 }

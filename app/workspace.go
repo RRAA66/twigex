@@ -1418,9 +1418,13 @@ func (a *App) hydrateAssignedStatuses(tasks []map[string]interface{}) {
 }
 
 func (a *App) CreateView(ctx context.Context, workspaceID string, tableID string, order string, name string, viewType string, isPublic bool, user model.User, groupField string, parentTableID string) (*model.WorkspaceView, *model.AppError) {
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionCreateWorkspaceView) &&
-		!a.ProjectWorkspaceTableHasPermission(user, workspaceID, tableID, "manage_views") {
+	if !a.canChangeTableViews(user, workspaceID, tableID, model.PermissionCreateWorkspaceView) {
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	// A form view is made with its form by CreateForm; one made here would have none.
+	if viewType == "form" {
+		return nil, model.NewAppError("workspace.view_form_type_invalid", http.StatusBadRequest)
 	}
 
 	exists, err := a.Store.Workspace.ViewExistsByName(tableID, name)
@@ -4237,8 +4241,7 @@ func (a *App) DeleteWorkspaceTableView(ctx context.Context, workspaceID string, 
 		return false, appErr
 	}
 
-	if !a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionDeleteTableView) &&
-		!a.ProjectWorkspaceTableHasPermission(user, workspaceID, tableID, "manage_views") {
+	if !a.canChangeTableViews(user, workspaceID, tableID, model.PermissionDeleteTableView) {
 		return false, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 

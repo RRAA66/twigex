@@ -20,6 +20,13 @@ SPDX-License-Identifier: AGPL-3.0-only
     </div>
 
     <div
+        v-else-if="status === 'missing'"
+        class="flex h-full w-full flex-col items-center justify-center gap-y-2 p-6 text-center"
+    >
+        <p class="text-sm text-gray-500">{{ t("projects.form_view.not_found") }}</p>
+    </div>
+
+    <div
         v-else-if="status === 'failed'"
         class="flex h-full w-full flex-col items-center justify-center gap-y-3 p-6 text-center"
     >
@@ -63,6 +70,19 @@ SPDX-License-Identifier: AGPL-3.0-only
             </BaseButton>
         </div>
 
+        <div
+            v-if="changedElsewhere"
+            role="alert"
+            class="flex shrink-0 items-center gap-x-3 border-b border-yellow-200 bg-yellow-50 px-4 py-2"
+        >
+            <p class="flex-1 text-sm text-yellow-800">
+                {{ t("projects.form_view.changed_elsewhere") }}
+            </p>
+            <BaseButton size="small" variant="secondary" @click="load">
+                {{ t("projects.form_view.action.reload") }}
+            </BaseButton>
+        </div>
+
         <FormViewBuild
             :form="formData"
             :fields="formFields"
@@ -79,18 +99,28 @@ SPDX-License-Identifier: AGPL-3.0-only
             @confirm="createWithName"
             @close="dialogMode = null"
         />
+
+        <ConfirmDialog
+            :open="!!answerLeave"
+            :title="t('projects.form_view.unsaved_title')"
+            :message="t('projects.form_view.unsaved_message')"
+            :confirm-label="t('projects.form_view.unsaved_leave')"
+            @confirm="answerLeave(true)"
+            @close="answerLeave(false)"
+        />
     </div>
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
-import { useRoute } from "vue-router";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from "vue-router";
 import { LockClosedIcon } from "@heroicons/vue/24/outline";
 import { t } from "@/i18n/index.js";
 import { useFormBuilder } from "@/composables/projects/useFormBuilder";
 import { useWorkspaceRolesStore } from "@/store/workspaceRoles";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseSpinner from "@/components/BaseSpinner.vue";
+import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import LicensePurchase from "@/components/Settings/LicensePurchase.vue";
 import FormViewBuild from "@/components/Projects/Form/FormViewBuild.vue";
 import FormViewNameDialog from "@/components/Projects/Form/FormViewNameDialog.vue";
@@ -103,6 +133,8 @@ const {
     headers,
     status,
     saving,
+    changedElsewhere,
+    isDirty,
     load,
     updateSettings,
     updateField,
@@ -127,8 +159,40 @@ const canUpdateForm = computed(
 );
 
 const dialogMode = ref(null);
+const answerLeave = ref(null);
 
 async function createWithName(name) {
     if (await createForm(name)) dialogMode.value = null;
 }
+
+function confirmLeave() {
+    if (!isDirty.value) return true;
+
+    return new Promise((resolve) => {
+        answerLeave.value = (leave) => {
+            answerLeave.value = null;
+            resolve(leave);
+        };
+    });
+}
+
+function warnBeforeUnload(event) {
+    if (!isDirty.value) return;
+    event.preventDefault();
+    event.returnValue = "";
+}
+
+onBeforeRouteLeave(confirmLeave);
+
+onBeforeRouteUpdate((to, from) =>
+    to.params.id === from.params.id &&
+    to.params.tid === from.params.tid &&
+    to.params.fid === from.params.fid
+        ? true
+        : confirmLeave(),
+);
+
+onMounted(() => window.addEventListener("beforeunload", warnBeforeUnload));
+
+onBeforeUnmount(() => window.removeEventListener("beforeunload", warnBeforeUnload));
 </script>

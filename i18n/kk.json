@@ -1372,6 +1372,10 @@
     "translation": "Осы атаумен көрініс бұрыннан бар."
   },
   {
+    "id": "workspace.view_form_type_invalid",
+    "translation": "Пішінді Пішін көрінісінен жасаңыз."
+  },
+  {
     "id": "workspace.single_select_update_failed",
     "translation": "Опция атауын жаңарту сәтсіз аяқталды. Қайталап көріңіз."
   },
@@ -1950,6 +1954,10 @@
   {
     "id": "workspace.form_update_failed",
     "translation": "Пішінді жаңарту сәтсіз аяқталды. Қайталап көріңіз."
+  },
+  {
+    "id": "workspace.form_changed",
+    "translation": "Бұл пішінді басқа біреу өзгертті. Соңғы нұсқасын көру үшін қайта жүктеңіз."
   },
   {
     "id": "workspace.form_login_required",

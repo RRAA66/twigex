@@ -43,13 +43,14 @@ export function normalizeFormData(data, workspaceId, tableId) {
         public_token: data.public_token || "",
         active: data.active ?? true,
         created_by: data.created_by || "",
+        updated_at: data.updated_at || 0,
     };
 }
 
 // Every field of the table is listed: a saved field keeps its settings, a
 // field added to the table since the form was saved comes last and hidden,
 // and the name is always shown and required because a row needs one.
-export function mergeFormFields(headers, savedFields, translate) {
+export function mergeFormFields(headers, savedFields) {
     const savedByName = new Map(savedFields.map((f) => [f.header_name, f]));
 
     const merged = headers
@@ -67,7 +68,7 @@ export function mergeFormFields(headers, savedFields, translate) {
                 id: "",
                 header_id: h.id || h.name,
                 header_name: h.name,
-                label: headerLabel(h, translate),
+                label: "",
                 placeholder: "",
                 description: "",
                 required: false,

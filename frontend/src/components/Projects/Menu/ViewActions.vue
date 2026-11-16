@@ -7,7 +7,11 @@ SPDX-License-Identifier: AGPL-3.0-only
     <ConfirmDialog
         :open="confirming"
         :title="t('projects.popover_menu.delete_title_view')"
-        :message="t('projects.popover_menu.delete_message_view')"
+        :message="
+            target?.view_type === 'form'
+                ? t('projects.popover_menu.delete_message_form')
+                : t('projects.popover_menu.delete_message_view')
+        "
         :confirm-label="t('common.button.delete')"
         @confirm="deleteView"
         @close="confirming = false"

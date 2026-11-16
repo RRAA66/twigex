@@ -1372,6 +1372,10 @@
     "translation": "Widok o tej nazwie już istnieje."
   },
   {
+    "id": "workspace.view_form_type_invalid",
+    "translation": "Utwórz formularz w widoku Formularz."
+  },
+  {
     "id": "workspace.single_select_update_failed",
     "translation": "Nie udało się zaktualizować nazwy opcji. Spróbuj ponownie."
   },
@@ -1950,6 +1954,10 @@
   {
     "id": "workspace.form_update_failed",
     "translation": "Nie udało się zaktualizować formularza. Spróbuj ponownie."
+  },
+  {
+    "id": "workspace.form_changed",
+    "translation": "Ten formularz został zmieniony przez kogoś innego. Odśwież, aby zobaczyć najnowszą wersję."
   },
   {
     "id": "workspace.form_login_required",
