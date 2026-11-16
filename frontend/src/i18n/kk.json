@@ -2476,6 +2476,7 @@
     "projects.form_view.public.not_found": "Бұл форма жоқ немесе енді ашық емес.",
     "projects.form_view.public.read_only": "Бұл форманы көре аласыз, бірақ осы кестеге жазба қосуға рұқсатыңыз жоқ.",
     "projects.form_view.error.whole_number": "Бүтін сан енгізіңіз, мысалы, 12, ондық бөлігінсіз.",
+    "projects.form_view.error.whole_number_only": "Тек бүтін сандар, мысалы, 15 — бұл өріске ондық бөлшек енгізуге болмайды.",
     "projects.form_view.error.number": "Сан енгізіңіз, мысалы, 12 немесе 4.5.",
     "projects.form_view.error.network": "Серверге қосылу мүмкін болмады. Байланысты тексеріп, қайталап көріңіз."
 }
