@@ -17,7 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
         @pointerdown="pressItem($event, table)"
     >
         <span v-if="alignWithFolders" class="h-5 w-5 flex-none" aria-hidden="true" />
-        <TableCellsIcon class="h-5 w-5 flex-none" aria-hidden="true" />
+        <component :is="icon" class="h-5 w-5 flex-none" aria-hidden="true" />
         <span class="truncate">{{ name }}</span>
     </div>
 </template>
@@ -25,7 +25,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script setup>
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { TableCellsIcon } from "@heroicons/vue/24/outline";
+import { tableIcons } from "@/constants/tableIcons";
 import { useMoveProjectItem } from "@/composables/projects/useMoveProjectItem";
 import { useWorkspaceStore } from "@/store/workspaces";
 
@@ -43,6 +43,7 @@ const workspaceStore = useWorkspaceStore();
 const { dragged, pressItem } = useMoveProjectItem();
 
 const name = computed(() => props.table.display_name?.String || props.table.name);
+const icon = computed(() => tableIcons[props.table.icon] || tableIcons.TableCellsIcon);
 const isCurrent = computed(() => route.params.tid === props.table.id);
 
 function open() {

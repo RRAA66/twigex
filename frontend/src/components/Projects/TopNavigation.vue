@@ -7,9 +7,17 @@ SPDX-License-Identifier: AGPL-3.0-only
     <div class="flex flex-col w-full" ref="listboxWrapper">
         <div class="tn-row1">
             <template v-if="route.params.tid != undefined">
-                <span class="tn-avatar">{{
-                    tableName ? tableName.charAt(0).toUpperCase() : "?"
-                }}</span>
+                <span class="tn-avatar">
+                    <component
+                        :is="tableIcons[tableIcon]"
+                        v-if="tableIcons[tableIcon]"
+                        class="h-5 w-5"
+                        aria-hidden="true"
+                    />
+                    <template v-else>{{
+                        tableName ? tableName.charAt(0).toUpperCase() : "?"
+                    }}</template>
+                </span>
                 <span class="tn-table-name" :title="tableName">{{ tableName }}</span>
             </template>
             <FolderNavigation v-else />
@@ -504,6 +512,7 @@ import { ChevronUpDownIcon, CheckIcon } from "@heroicons/vue/20/solid";
 import { useAlertStore } from "@/store/alerts";
 import { extractErrorMessage } from "@/utils/errors";
 import { workspaceTables } from "@/utils/projects/tree";
+import { tableIcons } from "@/constants/tableIcons";
 import FilterMenu from "./Menu/FilterMenu.vue";
 import FormDialog from "@/components/FormDialog.vue";
 import BaseButton from "@/components/BaseButton.vue";
@@ -1143,12 +1152,13 @@ const rightSideNavigation = computed({
 
 const workspaceName = ref("");
 const tableName = ref("");
+const tableIcon = ref("");
 
 async function fetchWorkspaceData() {
     const { id: workspaceId, tid: tableId } = route.params;
 
     if (!workspaceId || !tableId) {
-        return { workspace: null, workspaceName: "", tableName: "" };
+        return { workspace: null, workspaceName: "", tableName: "", tableIcon: "" };
     }
 
     try {
@@ -1168,6 +1178,7 @@ async function fetchWorkspaceData() {
             tableName: table
                 ? table.display_name?.String?.trim() || table.name
                 : t.value("projects.full_task_navigation.unknown_table"),
+            tableIcon: table?.icon || "",
         };
     } catch (error) {
         useAlertStore().showError(
@@ -1176,7 +1187,7 @@ async function fetchWorkspaceData() {
                 t.value("projects.top_navigation.unexpected_error_while_loading_workspace"),
         );
 
-        return { workspace: null, workspaceName: "Error", tableName: "Error" };
+        return { workspace: null, workspaceName: "Error", tableName: "Error", tableIcon: "" };
     }
 }
 
@@ -1275,6 +1286,7 @@ watch(
 
             workspaceName.value = data.workspaceName;
             tableName.value = data.tableName;
+            tableIcon.value = data.tableIcon;
 
             await addToView(data.workspace, tableID, viewID);
 
