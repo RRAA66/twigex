@@ -164,7 +164,7 @@ func TestSetFormImageOnlyOnTheFormsWorkspaceAndTable(t *testing.T) {
 
 func TestSetFormImageIsOpenToWhoManagesTheTablesViews(t *testing.T) {
 	a, ws, _ := imageApp(t)
-	ws.fakeAccessWorkspaceStore = memberWithoutViewPermissions()
+	ws.fakeAccessWorkspaceStore = perTableViewManager(tbl1)
 	a.WorkspaceRoles = formRoles{viewsTable: tbl1}
 
 	image := uploadedFiles(t, "file", map[string]string{"a.png": pngHeader})[0]
