@@ -69,8 +69,29 @@ export const useWorkspaceRolesStore = defineStore("workspaceRoles", {
 
             return state.perTableMode
                 ? state.hasTablePermission(tableId, action)
-                : permissions.includes(action);
+                : permissions.includes(action) || state.grantedOnTable(tableId, action);
         },
+
+        canManageOptions: (state) => (tableId) => {
+            const permissions = state.userPermissions;
+
+            if (permissions.length === 0) return true;
+
+            if (state.perTableMode) {
+                return state.hasTablePermission(tableId, "create_fields");
+            }
+
+            return (
+                permissions.includes("update_workspace_table") ||
+                permissions.includes("create_fields") ||
+                state.grantedOnTable(tableId, "create_fields")
+            );
+        },
+
+        grantedOnTable: (state) => (tableId, action) =>
+            (state.user?.table_permissions || []).some(
+                (p) => p.table_id === tableId && p.action === action,
+            ),
 
         // backward-compat: per_table_mode false → all table actions allowed
         hasTablePermission: (state) => (tableId, action) => {
