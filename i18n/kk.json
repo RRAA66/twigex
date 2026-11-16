@@ -1976,6 +1976,14 @@
     "translation": "Барлық міндетті өрістерді толтырыңыз."
   },
   {
+    "id": "workspace.form_submit_number_invalid",
+    "translation": "Сан енгізіңіз, мысалы, 12 немесе 4.5."
+  },
+  {
+    "id": "workspace.form_submit_whole_number",
+    "translation": "Бүтін сан енгізіңіз, мысалы, 12, ондық бөлігінсіз."
+  },
+  {
     "id": "workspace.form_submit_failed",
     "translation": "Пішінді жіберу сәтсіз аяқталды. Қайталап көріңіз."
   },

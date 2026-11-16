@@ -2036,6 +2036,14 @@
     "translation": "Fill in all required fields."
   },
   {
+    "id": "workspace.form_submit_number_invalid",
+    "translation": "Enter a number, such as 12 or 4.5."
+  },
+  {
+    "id": "workspace.form_submit_whole_number",
+    "translation": "Enter a whole number, such as 12, without a decimal part."
+  },
+  {
     "id": "workspace.form_submit_failed",
     "translation": "Failed to submit the form. Please try again."
   },

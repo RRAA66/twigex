@@ -1976,6 +1976,14 @@
     "translation": "Aizpildiet visus obligātos laukus."
   },
   {
+    "id": "workspace.form_submit_number_invalid",
+    "translation": "Ievadiet skaitli, piemēram, 12 vai 4.5."
+  },
+  {
+    "id": "workspace.form_submit_whole_number",
+    "translation": "Ievadiet veselu skaitli, piemēram, 12, bez decimāldaļas."
+  },
+  {
     "id": "workspace.form_submit_failed",
     "translation": "Neizdevās iesniegt veidlapu. Lūdzu, mēģiniet vēlreiz."
   },

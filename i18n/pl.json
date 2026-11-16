@@ -1976,6 +1976,14 @@
     "translation": "Wypełnij wszystkie wymagane pola."
   },
   {
+    "id": "workspace.form_submit_number_invalid",
+    "translation": "Wpisz liczbę, np. 12 lub 4.5."
+  },
+  {
+    "id": "workspace.form_submit_whole_number",
+    "translation": "Wpisz liczbę całkowitą, np. 12, bez części dziesiętnej."
+  },
+  {
     "id": "workspace.form_submit_failed",
     "translation": "Nie udało się wysłać formularza. Spróbuj ponownie."
   },
