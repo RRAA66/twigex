@@ -142,17 +142,39 @@ describe("FormFieldInput", () => {
         expect(w.emitted("update:modelValue")).toBeUndefined();
     });
 
-    it("keeps a whole number field to digits and refuses a decimal separator", async () => {
-        mountField({ field_type: "number" }, { modelValue: "12" });
+    it.each(["12.", "1,5", "1.5", "1e3", "3.25", " 1 200x", "12-"])(
+        "refuses %s in a whole number field, keeps the value and says why",
+        async (typed) => {
+            mountField({ field_type: "number" }, { modelValue: "12" });
+
+            const input = w.find("input");
+
+            await input.setValue(typed);
+
+            expect(w.emitted("update:modelValue")).toBeUndefined();
+            expect(input.element.value).toBe("12");
+            expect(w.text()).toContain("Whole numbers only");
+            expect(input.attributes("aria-invalid")).toBe("true");
+        },
+    );
+
+    it("clears the whole number message on the next valid input", async () => {
+        mountField(
+            { field_type: "number" },
+            {
+                modelValue: "1",
+                "onUpdate:modelValue": (value) => w.setProps({ modelValue: value }),
+            },
+        );
 
         const input = w.find("input");
 
-        await input.setValue("12.");
-        await input.setValue("1,5");
-        await input.setValue(" 1 200x");
+        await input.setValue("1.");
+        await input.setValue("-15");
 
-        expect(w.emitted("update:modelValue")).toEqual([["12"], ["12"], ["1200"]]);
-        expect(input.element.value).toBe("1200");
+        expect(w.emitted("update:modelValue")).toEqual([["-15"]]);
+        expect(input.element.value).toBe("-15");
+        expect(w.text()).not.toContain("Whole numbers only");
     });
 
     it("names a field with no label of its own after its table field, translated", () => {

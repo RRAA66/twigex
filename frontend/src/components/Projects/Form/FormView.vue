@@ -20,15 +20,9 @@ SPDX-License-Identifier: AGPL-3.0-only
         >
             <LockClosedIcon class="h-8 w-8 text-gray-400" aria-hidden="true" />
             <p class="text-sm text-gray-500">{{ t("projects.form_view.no_access") }}</p>
-            <p class="max-w-md text-sm text-gray-500">
-                {{
-                    canSeeSubmissions
-                        ? t("projects.form_view.viewer.fill_and_see")
-                        : t("projects.form_view.viewer.ask_for_link")
-                }}
-            </p>
+            <p class="max-w-md text-sm text-gray-500">{{ t(viewerMessageKey) }}</p>
             <RouterLink
-                v-if="viewerToken"
+                v-if="canFillForm && viewerToken"
                 :to="{ name: 'public-form', params: { token: viewerToken } }"
                 target="_blank"
                 class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
@@ -247,6 +241,21 @@ const canSeeSubmissions = computed(
         rolesStore.hasPermission("views_form") &&
         rolesStore.hasPermission("views_grid"),
 );
+
+// Filling a form in adds a row, so it takes what the server's submit takes.
+const canFillForm = computed(() => rolesStore.canRowAction(route.params.tid, "create_task"));
+
+const viewerMessageKey = computed(() => {
+    if (canFillForm.value) {
+        return canSeeSubmissions.value
+            ? "projects.form_view.viewer.fill_and_see"
+            : "projects.form_view.viewer.ask_for_link";
+    }
+
+    return canSeeSubmissions.value
+        ? "projects.form_view.viewer.see_only"
+        : "projects.form_view.viewer.no_fill";
+});
 
 const viewerToken = ref("");
 const dialogMode = ref(null);
