@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/twigex/twigex/interfaces"
@@ -33,9 +34,8 @@ func (f *fakeCreateViewStore) CreateView(workspaceID, tableID, order, name, view
 	return &model.WorkspaceView{ID: viewID, WorkspaceID: workspaceID, TableID: tableID, Name: name, ViewType: viewType, TaskOrder: order}, nil
 }
 
-// tableViewRoles answers like the enterprise roles: a table permission counts
-// for a member whose roles are per-table, and every table action is allowed
-// to anyone else.
+// tableViewRoles answers like the enterprise roles: a member's workspace and
+// per-table roles add up.
 type tableViewRoles struct{}
 
 func (tableViewRoles) Resolve(in interfaces.AccessInput) interfaces.WorkspaceAccess {
@@ -47,13 +47,14 @@ type tableViewAccess struct {
 	in interfaces.AccessInput
 }
 
-func (v tableViewAccess) TableHasPermission(tableID, action string) bool {
-	perTable := slices.ContainsFunc(v.in.Roles, func(r model.ProjectWorkspaceRole) bool { return r.PerTableMode })
-	if !perTable {
-		return true
+func (v tableViewAccess) CanPerformRowAction(tableID, workspacePerm, tableAction string) bool {
+	for _, r := range v.in.Roles {
+		if !r.PerTableMode && slices.Contains(r.Permissions, workspacePerm) {
+			return true
+		}
 	}
 
-	return slices.Contains(v.in.TablePerms, model.TablePermission{TableID: tableID, Action: action})
+	return slices.Contains(v.in.TablePerms, model.TablePermission{TableID: tableID, Action: tableAction})
 }
 
 func createViewApp(memberRole string) (*App, *fakeCreateViewStore) {
@@ -63,11 +64,20 @@ func createViewApp(memberRole string) (*App, *fakeCreateViewStore) {
 }
 
 func createViewAppWithRole(role model.ProjectWorkspaceRole, tablePerms ...model.TablePermission) (*App, *fakeCreateViewStore) {
+	return createViewAppWithRoles([]model.ProjectWorkspaceRole{role}, tablePerms...)
+}
+
+func createViewAppWithRoles(roles []model.ProjectWorkspaceRole, tablePerms ...model.TablePermission) (*App, *fakeCreateViewStore) {
+	var names []string
+	for _, r := range roles {
+		names = append(names, r.Name)
+	}
+
 	ws := &fakeCreateViewStore{
 		fakeReadAccessStore: fakeReadAccessStore{
 			fakeAccessWorkspaceStore: fakeAccessWorkspaceStore{
-				memberRoleName: role.Name,
-				roles:          []model.ProjectWorkspaceRole{role},
+				memberRoleName: strings.Join(names, " "),
+				roles:          roles,
 				tablePerms:     tablePerms,
 			},
 			tableOwner: map[string]string{"t-a": "ws-a"},
@@ -136,6 +146,20 @@ func TestCreateViewNeedsTheWorkspacePermissionOutsidePerTableMode(t *testing.T) 
 func TestCreateViewIsOpenToAPerTableRoleThatManagesTheTablesViews(t *testing.T) {
 	role := model.ProjectWorkspaceRole{ID: "table-id", Name: "table", PerTableMode: true}
 	a, ws := createViewAppWithRole(role, model.TablePermission{TableID: "t-a", Action: "manage_views"})
+	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
+
+	if _, appErr := a.CreateView(context.Background(), "ws-a", "t-a", "", "Mine", "grid", true, member, "", ""); appErr != nil {
+		t.Fatalf("CreateView: %v", appErr)
+	}
+	if len(ws.created) != 1 {
+		t.Errorf("created %d views, want 1", len(ws.created))
+	}
+}
+
+func TestCreateViewAddsAPerTableRoleThatManagesTheTablesViewsToAWorkspaceRole(t *testing.T) {
+	reader := model.ProjectWorkspaceRole{ID: "reader-id", Name: "reader", Permissions: []string{model.PermissionCreateTask}}
+	table := model.ProjectWorkspaceRole{ID: "table-id", Name: "table", PerTableMode: true}
+	a, ws := createViewAppWithRoles([]model.ProjectWorkspaceRole{reader, table}, model.TablePermission{TableID: "t-a", Action: "manage_views"})
 	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
 
 	if _, appErr := a.CreateView(context.Background(), "ws-a", "t-a", "", "Mine", "grid", true, member, "", ""); appErr != nil {
