@@ -484,11 +484,6 @@ func (a *API) getWorkspaceTablesForRoleEditor(w http.ResponseWriter, r *http.Req
 }
 
 func (a *API) updateRoleTablePermissions(w http.ResponseWriter, r *http.Request) {
-	if !a.app.Server.License.HasWorkspaceRoles() {
-		respondAppError(w, r, model.NewAppError("workspace.roles_license_required", http.StatusPaymentRequired))
-		return
-	}
-
 	params := mux.Vars(r)
 
 	user, appErr := a.app.GetCurrentUser(r)
@@ -536,11 +531,6 @@ func (a *API) getProjectWorkspaceRoles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) updateProjectWorkspaceRole(w http.ResponseWriter, r *http.Request) {
-	if !a.app.Server.License.HasWorkspaceRoles() {
-		respondAppError(w, r, model.NewAppError("workspace.roles_license_required", http.StatusPaymentRequired))
-		return
-	}
-
 	params := mux.Vars(r)
 
 	var s model.ProjectWorkspaceRolePatch
@@ -564,11 +554,6 @@ func (a *API) updateProjectWorkspaceRole(w http.ResponseWriter, r *http.Request)
 }
 
 func (a *API) createProjectWorkspaceRole(w http.ResponseWriter, r *http.Request) {
-	if !a.app.Server.License.HasWorkspaceRoles() {
-		respondAppError(w, r, model.NewAppError("workspace.roles_license_required", http.StatusPaymentRequired))
-		return
-	}
-
 	params := mux.Vars(r)
 
 	var s model.ProjectWorkspaceRole
