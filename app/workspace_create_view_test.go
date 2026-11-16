@@ -7,8 +7,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"testing"
 
+	"github.com/twigex/twigex/interfaces"
 	"github.com/twigex/twigex/model"
 )
 
@@ -31,16 +33,50 @@ func (f *fakeCreateViewStore) CreateView(workspaceID, tableID, order, name, view
 	return &model.WorkspaceView{ID: viewID, WorkspaceID: workspaceID, TableID: tableID, Name: name, ViewType: viewType, TaskOrder: order}, nil
 }
 
+// tableViewRoles answers like the enterprise roles: a table permission counts
+// for a member whose roles are per-table, and every table action is allowed
+// to anyone else.
+type tableViewRoles struct{}
+
+func (tableViewRoles) Resolve(in interfaces.AccessInput) interfaces.WorkspaceAccess {
+	return tableViewAccess{in: in}
+}
+
+type tableViewAccess struct {
+	openAccess
+	in interfaces.AccessInput
+}
+
+func (v tableViewAccess) TableHasPermission(tableID, action string) bool {
+	perTable := slices.ContainsFunc(v.in.Roles, func(r model.ProjectWorkspaceRole) bool { return r.PerTableMode })
+	if !perTable {
+		return true
+	}
+
+	return slices.Contains(v.in.TablePerms, model.TablePermission{TableID: tableID, Action: action})
+}
+
 func createViewApp(memberRole string) (*App, *fakeCreateViewStore) {
+	return createViewAppWithRole(model.ProjectWorkspaceRole{
+		ID: memberRole + "-id", Name: memberRole, Permissions: []string{model.PermissionCreateWorkspaceView},
+	})
+}
+
+func createViewAppWithRole(role model.ProjectWorkspaceRole, tablePerms ...model.TablePermission) (*App, *fakeCreateViewStore) {
 	ws := &fakeCreateViewStore{
 		fakeReadAccessStore: fakeReadAccessStore{
-			fakeAccessWorkspaceStore: fakeAccessWorkspaceStore{memberRoleName: memberRole},
-			tableOwner:               map[string]string{"t-a": "ws-a"},
+			fakeAccessWorkspaceStore: fakeAccessWorkspaceStore{
+				memberRoleName: role.Name,
+				roles:          []model.ProjectWorkspaceRole{role},
+				tablePerms:     tablePerms,
+			},
+			tableOwner: map[string]string{"t-a": "ws-a"},
 		},
 		names: map[string]bool{"Taken": true},
 	}
 	a := readAccessApp(&ws.fakeReadAccessStore)
 	a.Store.Workspace = ws
+	a.WorkspaceRoles = tableViewRoles{}
 	return a, ws
 }
 
@@ -78,6 +114,69 @@ func TestCreateGridViewRefusesATakenName(t *testing.T) {
 	_, appErr := a.CreateView(context.Background(), "ws-a", "t-a", "", "Taken", "grid", true, member, "", "")
 	if appErr == nil || appErr.Status != http.StatusConflict {
 		t.Errorf("a grid view named like another: got %v, want 409", appErr)
+	}
+	if len(ws.created) != 0 {
+		t.Errorf("created %d views, want none", len(ws.created))
+	}
+}
+
+func TestCreateViewNeedsTheWorkspacePermissionOutsidePerTableMode(t *testing.T) {
+	a, ws := createViewAppWithRole(model.ProjectWorkspaceRole{ID: "reader-id", Name: "reader", Permissions: []string{model.PermissionCreateTask}})
+	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
+
+	_, appErr := a.CreateView(context.Background(), "ws-a", "t-a", "", "Mine", "grid", true, member, "", "")
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("got %v, want 403", appErr)
+	}
+	if len(ws.created) != 0 {
+		t.Errorf("created %d views, want none", len(ws.created))
+	}
+}
+
+func TestCreateViewIsOpenToAPerTableRoleThatManagesTheTablesViews(t *testing.T) {
+	role := model.ProjectWorkspaceRole{ID: "table-id", Name: "table", PerTableMode: true}
+	a, ws := createViewAppWithRole(role, model.TablePermission{TableID: "t-a", Action: "manage_views"})
+	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
+
+	if _, appErr := a.CreateView(context.Background(), "ws-a", "t-a", "", "Mine", "grid", true, member, "", ""); appErr != nil {
+		t.Fatalf("CreateView: %v", appErr)
+	}
+	if len(ws.created) != 1 {
+		t.Errorf("created %d views, want 1", len(ws.created))
+	}
+}
+
+func TestCreateViewRefusesAPerTableRoleThatDoesNotManageTheTablesViews(t *testing.T) {
+	role := model.ProjectWorkspaceRole{ID: "table-id", Name: "table", PerTableMode: true}
+	a, ws := createViewAppWithRole(role, model.TablePermission{TableID: "t-other", Action: "manage_views"})
+	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
+
+	_, appErr := a.CreateView(context.Background(), "ws-a", "t-a", "", "Mine", "grid", true, member, "", "")
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("got %v, want 403", appErr)
+	}
+	if len(ws.created) != 0 {
+		t.Errorf("created %d views, want none", len(ws.created))
+	}
+}
+
+func TestDeleteViewNeedsTheWorkspacePermissionOutsidePerTableMode(t *testing.T) {
+	a, _ := createViewAppWithRole(model.ProjectWorkspaceRole{ID: "reader-id", Name: "reader", Permissions: []string{model.PermissionCreateTask}})
+	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
+
+	_, appErr := a.DeleteWorkspaceTableView(context.Background(), "ws-a", "t-a", "view-1", member)
+	if appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("got %v, want 403", appErr)
+	}
+}
+
+func TestCreateViewRefusesAFormView(t *testing.T) {
+	a, ws := createViewApp("member")
+	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
+
+	_, appErr := a.CreateView(context.Background(), "ws-a", "t-a", "", "Signup", "form", true, member, "", "")
+	if appErr == nil || appErr.Status != http.StatusBadRequest {
+		t.Errorf("got %v, want 400", appErr)
 	}
 	if len(ws.created) != 0 {
 		t.Errorf("created %d views, want none", len(ws.created))

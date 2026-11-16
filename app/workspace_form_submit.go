@@ -354,6 +354,25 @@ func (a *App) attachFormFiles(ctx context.Context, form *model.WorkspaceFormWith
 	return nil
 }
 
+// requireFormSubmissionsAccess opens a form's submissions to who builds the
+// form, and to who may open both form views and the table's grid, since the
+// submissions are the grid's rows.
+func (a *App) requireFormSubmissionsAccess(ctx context.Context, user model.User, workspaceID, tableID string) *model.AppError {
+	builds := a.canChangeTableViews(user, workspaceID, tableID, model.PermissionUpdateWorkspaceView)
+	views := a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionViewForm) &&
+		a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionViewGrid)
+
+	if !builds && !views {
+		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if !a.canReadTable(ctx, user, workspaceID, tableID) {
+		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	return nil
+}
+
 // GetFormSubmissions lists a page of who submitted a form, newest first,
 // with the row each made as the grid would show it now. Rows are table data,
 // so it asks for reading the table as well as what reading the form asks for.
@@ -369,11 +388,12 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
-	if appErr := a.requireFormTableAccess(ctx, user, workspaceID, tableID, model.PermissionUpdateWorkspaceView); appErr != nil {
+	if appErr := a.requireFormSubmissionsAccess(ctx, user, workspaceID, tableID); appErr != nil {
 		return nil, appErr
 	}
 
-	if _, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
+	form, appErr := a.getTableForm(ctx, workspaceID, tableID, formID, user)
+	if appErr != nil {
 		return nil, appErr
 	}
 
@@ -411,7 +431,7 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 		return nil, failed
 	}
 
-	result := &model.FormSubmissionsPage{Items: submissions, Total: total}
+	result := &model.FormSubmissionsPage{Items: submissions, Total: total, Fields: form.Fields, PublicToken: form.PublicToken}
 
 	if err := a.nameSubmitters(result.Items); err != nil {
 		tlog.Errorw("Failed to retrieve form submitters",
@@ -661,7 +681,12 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 	case field.FieldType == "number" || field.FieldType == "decimal":
 		number, ok := formNumber(value)
 		if !ok {
-			return invalid
+			return model.NewAppError("workspace.form_submit_number_invalid", http.StatusBadRequest)
+		}
+
+		// A number column holds whole numbers and would round a decimal.
+		if field.FieldType == "number" && number != math.Trunc(number) {
+			return model.NewAppError("workspace.form_submit_whole_number", http.StatusBadRequest)
 		}
 
 		task.Values[name] = number

@@ -50,6 +50,10 @@ func (d *TaskDay) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// ErrFormChanged is returned when a form to be saved was changed since the
+// caller read it.
+var ErrFormChanged = errors.New("the form was changed since it was read")
+
 // ErrFolderCycle is returned when a folder is to be moved into itself or into
 // a folder inside it.
 var ErrFolderCycle = errors.New("a folder cannot be moved inside itself")
@@ -703,7 +707,11 @@ type FormSubmissionsFilter struct {
 	Access    SQLFilter
 }
 
+// FormSubmissionsPage carries the form's fields and link too, for a member
+// who sees the submissions but may not open the form's builder.
 type FormSubmissionsPage struct {
-	Items []WorkspaceFormSubmission `json:"items"`
-	Total int                       `json:"total"`
+	Items       []WorkspaceFormSubmission `json:"items"`
+	Total       int                       `json:"total"`
+	Fields      []WorkspaceFormField      `json:"fields"`
+	PublicToken string                    `json:"public_token"`
 }
