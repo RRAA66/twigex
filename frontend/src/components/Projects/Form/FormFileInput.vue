@@ -50,7 +50,7 @@ import { PaperClipIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 import { t } from "@/i18n/index.js";
 import formService from "@/services/formService";
 import { useAlertStore } from "@/store/alerts";
-import { extractErrorMessage } from "@/utils/errors";
+import { formRequestError } from "@/utils/projects/forms";
 import BaseButton from "@/components/BaseButton.vue";
 
 // The server keeps no more files than this for one field.
@@ -88,15 +88,28 @@ async function pick(event) {
     if (picked.length === 0) return;
 
     uploading.value = true;
-    try {
-        const { data } = await formService.uploadPublicFormFiles(props.token, picked);
 
-        emit("update:modelValue", [...files.value, ...data]);
-    } catch (error) {
-        alertStore.showError(extractErrorMessage(error));
-    } finally {
-        uploading.value = false;
-    }
+    // One file at a time, so a file the server refuses does not take the others with it.
+    const results = await Promise.allSettled(
+        picked.map((file) => formService.uploadPublicFormFiles(props.token, [file])),
+    );
+
+    uploading.value = false;
+
+    const uploaded = results.flatMap((r) => (r.status === "fulfilled" ? r.value.data : []));
+
+    if (uploaded.length > 0) emit("update:modelValue", [...files.value, ...uploaded]);
+
+    const failed = results.flatMap((r, i) => (r.status === "rejected" ? [i] : []));
+
+    if (failed.length === 0) return;
+
+    alertStore.showError(
+        t.value("projects.form_view.error.files_not_uploaded", {
+            names: failed.map((i) => picked[i].name).join(", "),
+            reason: formRequestError(results[failed[0]].reason, t.value),
+        }),
+    );
 }
 
 function remove(fileId) {

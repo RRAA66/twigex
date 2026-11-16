@@ -203,6 +203,10 @@ describe("FormViewSubmissions", () => {
         );
         expect(w.text()).toContain("No submissions in this date range");
         expect(w.findComponent({ name: "DataTable" }).props("items")).toEqual([]);
+
+        const exportButton = w.findAll("button").find((b) => b.text() === "Export CSV");
+
+        expect(exportButton.attributes("disabled")).toBeDefined();
     });
 
     it("says no submission was sent in the days picked", async () => {
@@ -240,6 +244,8 @@ describe("FormViewSubmissions", () => {
         expect(JSON.parse(href.searchParams.get("labels"))).toEqual({
             submitted_by: "Submitted by",
             submitted_at: "Date",
+            "field:name": "Title",
+            "field:status": "Status",
         });
         click.mockRestore();
     });

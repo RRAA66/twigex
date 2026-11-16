@@ -38,8 +38,20 @@ export function useFormBuilder() {
     const incompleteFields = computed(() =>
         conditionsChecked.value ? incompleteConditionFields(formFields.value) : [],
     );
+    const changedElsewhere = ref(false);
+    const savedState = ref("");
 
     let loadRequest = 0;
+
+    const isDirty = computed(() => status.value === "ready" && currentState() !== savedState.value);
+
+    function currentState() {
+        return JSON.stringify([formData.value, formFields.value]);
+    }
+
+    function markSaved() {
+        savedState.value = currentState();
+    }
 
     async function loadHeaders() {
         const { data } = await workspaceStore.fetchWorkspaceNav(route.params.id);
@@ -68,6 +80,7 @@ export function useFormBuilder() {
         formFields.value = [];
         conditionsChecked.value = false;
         images.discard();
+        changedElsewhere.value = false;
 
         if (!settingsStore.getLicenseFeature("forms")) {
             status.value = "unlicensed";
@@ -84,13 +97,20 @@ export function useFormBuilder() {
 
             headers.value = tableHeaders;
             if (saved.form) formData.value = normalizeFormData(saved.form, id, tid);
-            formFields.value = mergeFormFields(tableHeaders, saved.fields, t.value);
+            formFields.value = mergeFormFields(tableHeaders, saved.fields);
+            markSaved();
             status.value = "ready";
         } catch (error) {
             if (request !== loadRequest) return;
 
             if (error?.response?.status === 403) {
                 status.value = "forbidden";
+
+                return;
+            }
+
+            if (error?.response?.status === 404) {
+                status.value = "missing";
 
                 return;
             }
@@ -175,9 +195,18 @@ export function useFormBuilder() {
             }
 
             formData.value = normalizeFormData(data, route.params.id, route.params.tid);
-            if (await saveImages())
-                alertStore.showSuccess(t.value("projects.form_view.success.saved"));
+
+            const imagesSaved = await saveImages();
+
+            if (request === loadRequest) markSaved();
+            if (imagesSaved) alertStore.showSuccess(t.value("projects.form_view.success.saved"));
         } catch (error) {
+            if (error?.response?.status === 409 && request === loadRequest) {
+                changedElsewhere.value = true;
+
+                return;
+            }
+
             alertStore.showError(extractErrorMessage(error));
         } finally {
             saving.value = false;
@@ -205,8 +234,12 @@ export function useFormBuilder() {
             }
 
             formData.value = normalizeFormData(data, route.params.id, route.params.tid);
-            if (await saveImages())
-                alertStore.showSuccess(t.value("projects.form_view.success.saved"));
+
+            const imagesSaved = await saveImages();
+
+            if (request === loadRequest) markSaved();
+            if (imagesSaved) alertStore.showSuccess(t.value("projects.form_view.success.saved"));
+
             await router.replace({
                 name: "form-view",
                 params: { id: route.params.id, tid: route.params.tid, fid: data.id },
@@ -242,6 +275,8 @@ export function useFormBuilder() {
         status,
         saving,
         incompleteFields,
+        changedElsewhere,
+        isDirty,
         load,
         checkConditions,
         updateSettings,

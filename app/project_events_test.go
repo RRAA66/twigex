@@ -554,3 +554,22 @@ func TestUpdateTableIconRefusesAnUnknownIcon(t *testing.T) {
 		t.Fatalf("got %v, want 400", appErr)
 	}
 }
+
+func TestUpdateTableIconAsksWhatRenamingTheTableAsks(t *testing.T) {
+	member := model.User{ID: "member", Role: model.SystemUserRoleId}
+
+	for name, roles := range map[string]interfaces.WorkspaceRoles{"open": changeRoles{}, "no row actions": readOnlyRoles{}} {
+		t.Run(name, func(t *testing.T) {
+			a, _ := changeApp(nil, changeRoles{})
+			a.WorkspaceRoles = roles
+			a.Store.Workspace = fakeRenameStore{a.Store.Workspace.(perUserRoleStore)}
+
+			_, renameErr := a.UpdateWorkspaceTable(context.Background(), "ws-a", "t-a", "Renamed", member)
+			iconErr := a.UpdateTableIcon(context.Background(), "ws-a", "t-a", "StarIcon", member)
+
+			if (renameErr == nil) != (iconErr == nil) {
+				t.Errorf("rename %v, icon %v; want the same answer", renameErr, iconErr)
+			}
+		})
+	}
+}

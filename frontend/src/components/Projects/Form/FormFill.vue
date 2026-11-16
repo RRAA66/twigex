@@ -37,10 +37,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 
     <form
         v-else
+        ref="formEl"
         class="w-full overflow-hidden rounded-lg border-t-4 bg-white shadow-sm ring-1 ring-gray-200"
         :style="{ borderTopColor: shown.accent_color || DEFAULT_ACCENT_COLOR }"
         novalidate
-        @submit.prevent="submit"
+        @submit.prevent="send"
     >
         <FormCoverImage v-if="coverSrc" :src="coverSrc" :position="shown.cover_position" />
         <div class="space-y-2 px-6 pt-8 sm:px-10">
@@ -98,7 +99,13 @@ SPDX-License-Identifier: AGPL-3.0-only
                 />
             </fieldset>
 
-            <p v-if="submitError" role="alert" class="mt-4 text-sm text-red-600">
+            <p
+                v-if="submitError"
+                ref="submitErrorEl"
+                role="alert"
+                tabindex="-1"
+                class="mt-4 text-sm text-red-600"
+            >
                 {{ submitError }}
             </p>
 
@@ -120,7 +127,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { computed, useId } from "vue";
+import { computed, nextTick, ref, useId } from "vue";
 import { useRouter } from "vue-router";
 import {
     CheckCircleIcon,
@@ -166,6 +173,8 @@ const {
 } = usePublicForm(() => props.token, { live: props.live, preview: props.preview });
 
 const honeypotId = useId();
+const formEl = ref(null);
+const submitErrorEl = ref(null);
 
 const shown = computed(() => ({ ...form.value, ...props.draft }));
 
@@ -216,5 +225,17 @@ const canContinue = computed(() => props.followRedirect && Boolean(nextPage.valu
 function goNext() {
     if (form.value.after_submit === "grid") router.push(nextPage.value);
     else window.location.assign(nextPage.value);
+}
+
+async function send() {
+    await submit();
+    await nextTick();
+
+    const target = formEl.value?.querySelector("[aria-invalid='true']") || submitErrorEl.value;
+
+    if (!target) return;
+
+    target.scrollIntoView?.({ block: "center" });
+    target.focus();
 }
 </script>

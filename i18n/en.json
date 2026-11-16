@@ -1432,6 +1432,10 @@
     "translation": "A view with this name already exists."
   },
   {
+    "id": "workspace.view_form_type_invalid",
+    "translation": "Create a form from the Form view instead."
+  },
+  {
     "id": "workspace.single_select_update_failed",
     "translation": "Failed to update option name. Please try again."
   },
@@ -2012,6 +2016,10 @@
     "translation": "Failed to update form. Please try again."
   },
   {
+    "id": "workspace.form_changed",
+    "translation": "This form was changed by someone else. Reload to see the latest version."
+  },
+  {
     "id": "workspace.form_login_required",
     "translation": "Log in to open this form."
   },
@@ -2032,12 +2040,24 @@
     "translation": "Fill in all required fields."
   },
   {
+    "id": "workspace.form_submit_number_invalid",
+    "translation": "Enter a number, such as 12 or 4.5."
+  },
+  {
+    "id": "workspace.form_submit_whole_number",
+    "translation": "Enter a whole number, such as 12, without a decimal part."
+  },
+  {
     "id": "workspace.form_submit_failed",
     "translation": "Failed to submit the form. Please try again."
   },
   {
     "id": "workspace.form_submissions_failed",
     "translation": "Failed to load the form's submissions. Please try again."
+  },
+  {
+    "id": "workspace.form_submissions_range_reversed",
+    "translation": "The From day is after the To day. Pick a From day on or before it."
   },
   {
     "id": "workspace.form_file_too_large",
