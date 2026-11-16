@@ -1422,6 +1422,11 @@ func (a *App) CreateView(ctx context.Context, workspaceID string, tableID string
 		return nil, model.NewAppError("workspace.forbidden", http.StatusForbidden)
 	}
 
+	// A form view is made with its form by CreateForm; one made here would have none.
+	if viewType == "form" {
+		return nil, model.NewAppError("workspace.view_form_type_invalid", http.StatusBadRequest)
+	}
+
 	exists, err := a.Store.Workspace.ViewExistsByName(tableID, name)
 	if err != nil {
 		tlog.Errorw("Failed to check view name",

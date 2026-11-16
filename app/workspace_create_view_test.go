@@ -169,3 +169,16 @@ func TestDeleteViewNeedsTheWorkspacePermissionOutsidePerTableMode(t *testing.T) 
 		t.Errorf("got %v, want 403", appErr)
 	}
 }
+
+func TestCreateViewRefusesAFormView(t *testing.T) {
+	a, ws := createViewApp("member")
+	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
+
+	_, appErr := a.CreateView(context.Background(), "ws-a", "t-a", "", "Signup", "form", true, member, "", "")
+	if appErr == nil || appErr.Status != http.StatusBadRequest {
+		t.Errorf("got %v, want 400", appErr)
+	}
+	if len(ws.created) != 0 {
+		t.Errorf("created %d views, want none", len(ws.created))
+	}
+}
