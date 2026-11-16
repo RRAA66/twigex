@@ -130,12 +130,13 @@ SPDX-License-Identifier: AGPL-3.0-only
             :id="id"
             :value="modelValue ?? ''"
             :type="inputType"
+            :inputmode="type === 'number' ? 'numeric' : undefined"
             :step="type === 'decimal' ? '0.01' : undefined"
             v-bind="aria"
             class="block w-full rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             :class="error ? 'ring-red-600' : 'ring-gray-300'"
             :placeholder="field.placeholder || t(placeholderKey)"
-            @input="update($event.target.value)"
+            @input="onInput"
         />
         <p
             v-if="field.description && labelledBySelect"
@@ -152,7 +153,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script setup>
 import { computed, useId } from "vue";
 import { t } from "@/i18n/index.js";
-import { formFieldType, linkedTableId } from "@/utils/projects/forms";
+import {
+    formFieldLabel,
+    formFieldType,
+    linkedTableId,
+    wholeNumberText,
+} from "@/utils/projects/forms";
 import BaseSelect from "@/components/BaseSelect.vue";
 import DatePickerField from "@/components/DatePicker/DatePickerField.vue";
 import FormFileInput from "@/components/Projects/Form/FormFileInput.vue";
@@ -183,9 +189,7 @@ const labelId = `${id}-label`;
 
 const type = computed(() => formFieldType(props.field));
 
-const label = computed(
-    () => props.field.label || props.field.display_name || props.field.header_name,
-);
+const label = computed(() => formFieldLabel(props.field, t.value));
 
 // BaseSelect labels its own button.
 const labelledBySelect = computed(() => type.value === "master-link");
@@ -205,13 +209,8 @@ const aria = computed(() => {
 
 const halfWidth = computed(() => ["left", "right"].includes(props.field.column_position));
 
-const inputType = computed(() =>
-    type.value === "decimal"
-        ? "number"
-        : ["number", "url"].includes(type.value)
-          ? type.value
-          : "text",
-);
+// A whole number is typed as text, so what is typed can be seen and kept to digits.
+const inputType = computed(() => ({ decimal: "number", url: "url" })[type.value] || "text");
 
 const placeholderKey = computed(
     () => PLACEHOLDER_KEYS[type.value] || "projects.form_view.placeholder.your_answer",
@@ -228,5 +227,21 @@ const tableOptions = computed(() => [
 
 function update(value) {
     emit("update:modelValue", value);
+}
+
+function onInput(event) {
+    if (type.value !== "number") {
+        update(event.target.value);
+
+        return;
+    }
+
+    // A decimal separator is refused rather than dropped, which would turn 12.5 into 125.
+    const digits = /[.,]/.test(event.target.value)
+        ? String(props.modelValue ?? "")
+        : wholeNumberText(event.target.value);
+
+    event.target.value = digits;
+    update(digits);
 }
 </script>

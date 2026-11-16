@@ -1372,6 +1372,10 @@
     "translation": "Skats ar šādu nosaukumu jau pastāv."
   },
   {
+    "id": "workspace.view_form_type_invalid",
+    "translation": "Veidlapu izveidojiet skatā Veidlapa."
+  },
+  {
     "id": "workspace.single_select_update_failed",
     "translation": "Neizdevās atjaunināt opcijas nosaukumu. Lūdzu, mēģiniet vēlreiz."
   },
@@ -1952,6 +1956,10 @@
     "translation": "Neizdevās atjaunināt veidlapu. Lūdzu, mēģiniet vēlreiz."
   },
   {
+    "id": "workspace.form_changed",
+    "translation": "Šo veidlapu ir mainījis kāds cits. Pārlādējiet, lai redzētu jaunāko versiju."
+  },
+  {
     "id": "workspace.form_login_required",
     "translation": "Lai atvērtu šo veidlapu, piesakieties."
   },
@@ -1966,6 +1974,14 @@
   {
     "id": "workspace.form_submit_required_field",
     "translation": "Aizpildiet visus obligātos laukus."
+  },
+  {
+    "id": "workspace.form_submit_number_invalid",
+    "translation": "Ievadiet skaitli, piemēram, 12 vai 4.5."
+  },
+  {
+    "id": "workspace.form_submit_whole_number",
+    "translation": "Ievadiet veselu skaitli, piemēram, 12, bez decimāldaļas."
   },
   {
     "id": "workspace.form_submit_failed",

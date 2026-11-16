@@ -354,6 +354,25 @@ func (a *App) attachFormFiles(ctx context.Context, form *model.WorkspaceFormWith
 	return nil
 }
 
+// requireFormSubmissionsAccess opens a form's submissions to who builds the
+// form, and to who may open both form views and the table's grid, since the
+// submissions are the grid's rows.
+func (a *App) requireFormSubmissionsAccess(ctx context.Context, user model.User, workspaceID, tableID string) *model.AppError {
+	builds := a.canChangeTableViews(user, workspaceID, tableID, model.PermissionUpdateWorkspaceView)
+	views := a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionViewForm) &&
+		a.ProjectWorkspaceHasPermission(user, workspaceID, model.PermissionViewGrid)
+
+	if !builds && !views {
+		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	if !a.canReadTable(ctx, user, workspaceID, tableID) {
+		return model.NewAppError("workspace.forbidden", http.StatusForbidden)
+	}
+
+	return nil
+}
+
 func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, formID string, filter model.FormSubmissionsFilter, page int, user model.User) (*model.FormSubmissionsPage, *model.AppError) {
 	if page < 1 {
 		page = 1
@@ -362,7 +381,8 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 	ctx, cancel := a.dbCtx(ctx)
 	defer cancel()
 
-	if _, appErr := a.submissionsForm(ctx, workspaceID, tableID, formID, user); appErr != nil {
+	form, appErr := a.submissionsForm(ctx, workspaceID, tableID, formID, user)
+	if appErr != nil {
 		return nil, appErr
 	}
 
@@ -401,7 +421,7 @@ func (a *App) GetFormSubmissions(ctx context.Context, workspaceID, tableID, form
 		return nil, failed
 	}
 
-	result := &model.FormSubmissionsPage{Items: submissions, Total: total}
+	result := &model.FormSubmissionsPage{Items: submissions, Total: total, Fields: form.Fields, PublicToken: form.PublicToken}
 
 	if err := a.nameSubmitters(result.Items); err != nil {
 		tlog.Errorw("Failed to retrieve form submitters",
@@ -657,7 +677,12 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 	case field.FieldType == "number" || field.FieldType == "decimal":
 		number, ok := formNumber(value)
 		if !ok {
-			return invalid
+			return model.NewAppError("workspace.form_submit_number_invalid", http.StatusBadRequest)
+		}
+
+		// A number column holds whole numbers and would round a decimal.
+		if field.FieldType == "number" && number != math.Trunc(number) {
+			return model.NewAppError("workspace.form_submit_whole_number", http.StatusBadRequest)
 		}
 
 		task.Values[name] = number

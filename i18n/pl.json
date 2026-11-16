@@ -1372,6 +1372,10 @@
     "translation": "Widok o tej nazwie już istnieje."
   },
   {
+    "id": "workspace.view_form_type_invalid",
+    "translation": "Utwórz formularz w widoku Formularz."
+  },
+  {
     "id": "workspace.single_select_update_failed",
     "translation": "Nie udało się zaktualizować nazwy opcji. Spróbuj ponownie."
   },
@@ -1952,6 +1956,10 @@
     "translation": "Nie udało się zaktualizować formularza. Spróbuj ponownie."
   },
   {
+    "id": "workspace.form_changed",
+    "translation": "Ten formularz został zmieniony przez kogoś innego. Odśwież, aby zobaczyć najnowszą wersję."
+  },
+  {
     "id": "workspace.form_login_required",
     "translation": "Zaloguj się, aby otworzyć ten formularz."
   },
@@ -1966,6 +1974,14 @@
   {
     "id": "workspace.form_submit_required_field",
     "translation": "Wypełnij wszystkie wymagane pola."
+  },
+  {
+    "id": "workspace.form_submit_number_invalid",
+    "translation": "Wpisz liczbę, np. 12 lub 4.5."
+  },
+  {
+    "id": "workspace.form_submit_whole_number",
+    "translation": "Wpisz liczbę całkowitą, np. 12, bez części dziesiętnej."
   },
   {
     "id": "workspace.form_submit_failed",
