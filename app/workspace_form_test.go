@@ -19,8 +19,9 @@ import (
 
 type fakeFormStore struct {
 	fakeAccessWorkspaceStore
-	forms  map[string]*model.WorkspaceFormWithFields
-	writes int
+	forms     map[string]*model.WorkspaceFormWithFields
+	writes    int
+	updateErr error
 }
 
 func (f *fakeFormStore) GetTableWorkspaceID(_ context.Context, tableID string) (string, error) {
@@ -73,6 +74,10 @@ func (f *fakeFormStore) GetForm(_ context.Context, formID string) (*model.Worksp
 }
 
 func (f *fakeFormStore) UpdateForm(_ context.Context, form model.WorkspaceForm, fields []model.WorkspaceFormField) error {
+	if f.updateErr != nil {
+		return f.updateErr
+	}
+
 	f.writes++
 	stored := f.forms[form.ID]
 	stored.Name = form.Name
@@ -143,6 +148,11 @@ func (f formAccess) VisibleTables(tables []model.WorkspaceTable) []model.Workspa
 	}
 
 	return visible
+}
+
+func memberWithPermissions(permissions ...string) fakeAccessWorkspaceStore {
+	role := model.ProjectWorkspaceRole{ID: "viewer-id", Name: "viewer", Permissions: permissions}
+	return fakeAccessWorkspaceStore{memberRoleName: role.Name, roles: []model.ProjectWorkspaceRole{role}}
 }
 
 func memberWithoutViewPermissions() fakeAccessWorkspaceStore {
@@ -383,6 +393,16 @@ func TestUpdateFormAnswersWithTheStoredForm(t *testing.T) {
 	}
 	if len(updated.Fields) != 1 || updated.Fields[0].ID == "form-2-field" || updated.Fields[0].FormID != "form-1" {
 		t.Errorf("answered fields %+v, want one new field of form-1", updated.Fields)
+	}
+}
+
+func TestUpdateFormOfAFormChangedSinceItWasReadIsAConflict(t *testing.T) {
+	a, ws := formApp(workspaceAdminAccess(), true)
+	ws.updateErr = model.ErrFormChanged
+
+	_, appErr := a.UpdateForm(context.Background(), wsID, tbl1, "form-1", model.WorkspaceForm{Name: "Renamed"}, nil, workspaceAdmin)
+	if appErr == nil || appErr.Status != http.StatusConflict {
+		t.Fatalf("want 409, got %v", appErr)
 	}
 }
 

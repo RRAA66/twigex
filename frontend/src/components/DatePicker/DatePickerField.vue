@@ -32,6 +32,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             <PopoverPanel
                 ref="floating"
                 v-slot="{ close }"
+                focus
                 :style="floatingStyles"
                 class="z-[100] rounded-xl bg-white p-3 shadow-lg ring-1 ring-black/5"
             >

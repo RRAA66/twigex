@@ -29,10 +29,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 
     <form
         v-else
+        ref="formEl"
         class="w-full overflow-hidden rounded-lg border-t-4 bg-white shadow-sm ring-1 ring-gray-200"
         :style="{ borderTopColor: form.accent_color || DEFAULT_ACCENT_COLOR }"
         novalidate
-        @submit.prevent="submit"
+        @submit.prevent="send"
     >
         <FormCoverImage
             v-if="form.cover_image"
@@ -93,7 +94,13 @@ SPDX-License-Identifier: AGPL-3.0-only
                 />
             </fieldset>
 
-            <p v-if="submitError" role="alert" class="mt-4 text-sm text-red-600">
+            <p
+                v-if="submitError"
+                ref="submitErrorEl"
+                role="alert"
+                tabindex="-1"
+                class="mt-4 text-sm text-red-600"
+            >
                 {{ submitError }}
             </p>
 
@@ -112,7 +119,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup>
-import { computed, useId } from "vue";
+import { computed, nextTick, ref, useId } from "vue";
 import {
     CheckCircleIcon,
     DocumentMagnifyingGlassIcon,
@@ -150,6 +157,8 @@ const {
 } = usePublicForm(() => props.token, { live: props.live });
 
 const honeypotId = useId();
+const formEl = ref(null);
+const submitErrorEl = ref(null);
 
 const statusIcon = computed(
     () =>
@@ -163,4 +172,16 @@ const statusMessage = computed(() => {
 
     return loadError.value;
 });
+
+async function send() {
+    await submit();
+    await nextTick();
+
+    const target = formEl.value?.querySelector("[aria-invalid='true']") || submitErrorEl.value;
+
+    if (!target) return;
+
+    target.scrollIntoView?.({ block: "center" });
+    target.focus();
+}
 </script>
