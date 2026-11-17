@@ -227,6 +227,11 @@ func (f *fakeCreateViewStore) DeleteTableView(_ context.Context, _, _, _ string)
 	return true, nil
 }
 
+// GetForm finds no form, as the views deleted in these tests are not forms.
+func (f *fakeCreateViewStore) GetForm(context.Context, string) (*model.WorkspaceFormWithFields, error) {
+	return nil, nil
+}
+
 func TestWithoutEnterpriseTheUserRoleCannotCreateOrDeleteViewsThroughTheAPI(t *testing.T) {
 	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
 
