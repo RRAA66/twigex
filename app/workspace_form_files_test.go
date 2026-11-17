@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/twigex/twigex/config"
 	"github.com/twigex/twigex/internal/filestore"
 	"github.com/twigex/twigex/model"
 	"github.com/twigex/twigex/store"
@@ -395,5 +396,18 @@ func TestDeleteFormRemovesItsPendingFiles(t *testing.T) {
 	}
 	if _, err := os.Stat(other); err != nil {
 		t.Errorf("another form's pending file is gone: %v", err)
+	}
+}
+
+func TestTheCleanupJobSweepsPendingFormFilesOnlyWithTheFormsFlag(t *testing.T) {
+	for _, on := range []bool{false, true} {
+		serverConfig := model.ServerConfig{}
+		serverConfig.SetDefaults()
+		serverConfig.FeatureFlags.Forms = model.NewBool(on)
+		a := &App{ConfigStore: config.ConfigStore{Config: &serverConfig}}
+
+		if swept := a.pendingFileSweeper() != nil; swept != on {
+			t.Errorf("with the Forms flag %v the cleanup job sweeps: %v, want %v", on, swept, on)
+		}
 	}
 }
