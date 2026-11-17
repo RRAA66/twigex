@@ -526,3 +526,36 @@ func TestAGridWithoutASortShowsTheNewestFirst(t *testing.T) {
 		t.Errorf("a table without created_at = %q, want %q", got, want)
 	}
 }
+
+// kanbanSyncStore creates the task and then records the Kanban sync, failing
+// like the database does when the context it is given was cancelled.
+type kanbanSyncStore struct {
+	*fakeTaskWriteStore
+	synced bool
+}
+
+func (k *kanbanSyncStore) CreateTask(_, _, _, _, _, _ string, _ int64, _ map[string]any) (*map[string]interface{}, error) {
+	return &map[string]interface{}{"id": "task-1"}, nil
+}
+
+func (k *kanbanSyncStore) SyncTaskKanban(ctx context.Context, _, _, _ string, _ map[string]string, _ map[string]interface{}) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	k.synced = true
+	return errors.New("stop after the sync")
+}
+
+func TestACancelledRequestStillSyncsKanban(t *testing.T) {
+	a, ws := taskWriteApp()
+	store := &kanbanSyncStore{fakeTaskWriteStore: ws}
+	a.Store.Workspace = store
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, _ = a.CreateWorkspaceTask(ctx, "ws", "t-a", "New task", "", "", model.NewTaskFields{}, workspaceAdmin, "")
+
+	if !store.synced {
+		t.Fatal("the Kanban sync was cut short by the cancelled request, want it to finish once the task exists")
+	}
+}
