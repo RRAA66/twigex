@@ -214,3 +214,45 @@ func TestCreateViewRefusesAFormView(t *testing.T) {
 		t.Errorf("created %d views, want none", len(ws.created))
 	}
 }
+
+// ceViewApp is the Community Edition: the member has one built-in role and no
+// enterprise roles are installed.
+func ceViewApp(roleID string) (*App, *fakeCreateViewStore) {
+	a, ws := createViewAppWithRole(*model.MakeDefaultProjectWorkspaceRoles()[roleID])
+	a.WorkspaceRoles = nil
+	return a, ws
+}
+
+func (f *fakeCreateViewStore) DeleteTableView(_ context.Context, _, _, _ string) (bool, error) {
+	return true, nil
+}
+
+func TestWithoutEnterpriseTheUserRoleCannotCreateOrDeleteViewsThroughTheAPI(t *testing.T) {
+	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
+
+	for _, viewType := range []string{"grid", "kanban", "gantt", "calendar"} {
+		a, ws := ceViewApp(model.ProjectWorkspaceUserRoleID)
+		_, appErr := a.CreateView(context.Background(), "ws-a", "t-a", "", "Mine", viewType, true, member, "status", "")
+		if appErr == nil || appErr.Status != http.StatusForbidden || len(ws.created) != 0 {
+			t.Errorf("%s view: got %v after %d creates, want 403 and none", viewType, appErr, len(ws.created))
+		}
+	}
+
+	a, _ := ceViewApp(model.ProjectWorkspaceUserRoleID)
+	if _, appErr := a.DeleteWorkspaceTableView(context.Background(), "ws-a", "t-a", "view-1", member); appErr == nil || appErr.Status != http.StatusForbidden {
+		t.Errorf("delete view: got %v, want 403", appErr)
+	}
+}
+
+func TestWithoutEnterpriseTheAdminRoleCanCreateAndDeleteViews(t *testing.T) {
+	member := model.User{ID: "u1", Role: model.SystemUserRoleId}
+
+	a, ws := ceViewApp(model.ProjectWorkspaceAdminRoleID)
+	if _, appErr := a.CreateView(context.Background(), "ws-a", "t-a", "", "Mine", "grid", true, member, "", ""); appErr != nil || len(ws.created) != 1 {
+		t.Errorf("create view: got %v after %d creates, want it created", appErr, len(ws.created))
+	}
+
+	if _, appErr := a.DeleteWorkspaceTableView(context.Background(), "ws-a", "t-a", "view-1", member); appErr != nil {
+		t.Errorf("delete view: got %v, want it deleted", appErr)
+	}
+}

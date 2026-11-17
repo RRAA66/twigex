@@ -17,6 +17,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/twigex/twigex/app/jobs"
 	"github.com/twigex/twigex/model"
 	"github.com/twigex/twigex/tlog"
 )
@@ -263,6 +264,16 @@ func (a *App) dropPendingFormFiles(ctx context.Context, form *model.WorkspaceFor
 			)
 		}
 	}
+}
+
+// pendingFileSweeper gives the cleanup job its sweep of pending form uploads,
+// which runs only with the Forms flag on.
+func (a *App) pendingFileSweeper() jobs.PendingFileSweeper {
+	if !*a.ConfigStore.Config.FeatureFlags.Forms {
+		return nil
+	}
+
+	return a
 }
 
 func (a *App) SweepPendingFormFiles(ctx context.Context) error {
