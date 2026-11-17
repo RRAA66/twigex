@@ -3733,7 +3733,9 @@ func (a *App) CreateWorkspaceTask(ctx context.Context, workspaceID string, table
 	}
 
 	if parentTaskID == "" {
-		if err := a.Store.Workspace.SyncTaskKanban(ctx, workspaceID, tableID, taskID, selects, *workspaceTask); err != nil {
+		// The task is already stored, so the Kanban sync finishes even if the
+		// client has gone; otherwise the task would be left out of its boards.
+		if err := a.Store.Workspace.SyncTaskKanban(context.WithoutCancel(ctx), workspaceID, tableID, taskID, selects, *workspaceTask); err != nil {
 			tlog.Errorw("Failed to sync task kanban",
 				"workspace_id", workspaceID,
 				"table_id", tableID,
