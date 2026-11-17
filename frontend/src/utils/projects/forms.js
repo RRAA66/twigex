@@ -232,7 +232,6 @@ export function defaultAnswers(fields) {
     );
 }
 
-// Written as that answer would be sent.
 export function defaultFromAnswer(field, answer) {
     const type = formFieldType(field);
 
