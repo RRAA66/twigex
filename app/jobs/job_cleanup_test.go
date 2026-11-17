@@ -41,3 +41,13 @@ func TestCleanupJobSweepsPendingFormFilesEvenWhenOldJobsFail(t *testing.T) {
 		t.Errorf("swept %d times, want once", sweeper.swept)
 	}
 }
+
+func TestCleanupJobWithoutASweeperDeletesOnlyOldJobs(t *testing.T) {
+	failure := errors.New("database gone")
+
+	err := NewCleanupJob(fakeOldJobs{err: failure}, nil).Run(context.Background(), &model.Job{})
+
+	if !errors.Is(err, failure) {
+		t.Errorf("Run answered %v, want the old jobs' error", err)
+	}
+}
