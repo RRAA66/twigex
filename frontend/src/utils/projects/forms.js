@@ -159,8 +159,6 @@ function isEmptyFormValue(value) {
     );
 }
 
-// A field's own label, or else its table field's current name, translated for
-// a built-in field.
 export function formFieldLabel(field, translate) {
     return (
         field.label ||
@@ -292,7 +290,6 @@ export function defaultAnswers(fields) {
     );
 }
 
-// Written as that answer would be sent.
 export function defaultFromAnswer(field, answer) {
     const type = formFieldType(field);
 
