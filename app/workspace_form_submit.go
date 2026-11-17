@@ -658,7 +658,6 @@ func isCheckboxField(f model.WorkspaceFormField) bool {
 	return f.FieldType == "bool" || f.FieldType == "checkbox"
 }
 
-// formNumber reads a number field's value, sent as a number or as text.
 func formNumber(value any) (float64, bool) {
 	var number float64
 	switch v := value.(type) {
