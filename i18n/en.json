@@ -2228,6 +2228,14 @@
     "translation": "Enter a whole number, such as 12, without a decimal part."
   },
   {
+    "id": "workspace.form_submit_number_too_large",
+    "translation": "This number is too large for its field."
+  },
+  {
+    "id": "workspace.form_submit_text_too_long",
+    "translation": "This answer is too long for its field."
+  },
+  {
     "id": "workspace.form_submit_failed",
     "translation": "Failed to submit the form. Please try again."
   },
