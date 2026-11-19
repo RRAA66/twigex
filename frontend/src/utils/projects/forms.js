@@ -140,8 +140,26 @@ export function isWholeNumberText(text) {
     return /^-?\d*$/.test(text);
 }
 
-// Number answers the server would refuse, with the message saying what each takes.
-export function invalidNumberFields(fields, values) {
+// A number field is a DECIMAL(10,0) column and a decimal field a DECIMAL(20,2).
+const NUMBER_LIMITS = { number: 1e10, decimal: 1e18 };
+
+// A row's name is a VARCHAR(255), which counts letters; any other text is a
+// TEXT, which counts bytes and so has no letter limit.
+const NAME_MAX_LENGTH = 255;
+const TEXT_MAX_BYTES = 65535;
+
+export function formFieldMaxLength(field) {
+    return field.header_name === "name" ? NAME_MAX_LENGTH : undefined;
+}
+
+function fitsTextColumn(field, text) {
+    if (field.header_name === "name") return [...text].length <= NAME_MAX_LENGTH;
+
+    return new TextEncoder().encode(text).length <= TEXT_MAX_BYTES;
+}
+
+// Answers the server would refuse, with the message saying what each takes.
+export function invalidAnswerFields(fields, values) {
     const invalid = {};
 
     for (const f of fields) {
@@ -154,6 +172,10 @@ export function invalidNumberFields(fields, values) {
             invalid[f.header_name] = "projects.form_view.error.whole_number";
         } else if (type === "decimal" && !Number.isFinite(Number(value))) {
             invalid[f.header_name] = "projects.form_view.error.number";
+        } else if (NUMBER_LIMITS[type] && Math.abs(Number(value)) >= NUMBER_LIMITS[type]) {
+            invalid[f.header_name] = "projects.form_view.error.too_large";
+        } else if (typeof value === "string" && !fitsTextColumn(f, value)) {
+            invalid[f.header_name] = "projects.form_view.error.too_long";
         }
     }
 

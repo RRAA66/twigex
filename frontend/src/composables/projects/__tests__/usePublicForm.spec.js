@@ -251,14 +251,40 @@ describe("usePublicForm", () => {
             expect(state.fieldErrors.value).toEqual({});
         });
 
-        it("shows a form switched off meanwhile as not found", async () => {
+        it("keeps the answers of a form switched off meanwhile and sends none", async () => {
             const { state } = await setup({ live: true });
+
+            state.values.value.name = "Ann";
 
             formService.getPublicForm.mockRejectedValue(httpError(404));
             deliver({ type: "FORM_CONFIG_CHANGED", form_id: "f1" });
             await flushPromises();
 
-            expect(state.status.value).toBe("not_found");
+            expect(state.status.value).toBe("ready");
+            expect(state.closed.value).toBe(true);
+            expect(state.values.value.name).toBe("Ann");
+
+            await state.submit();
+            expect(formService.submitPublicForm).not.toHaveBeenCalled();
+        });
+
+        it("opens again with the answers kept when the form is switched back on", async () => {
+            const { state } = await setup({ live: true });
+
+            state.values.value.name = "Ann";
+
+            formService.getPublicForm.mockRejectedValueOnce(httpError(404));
+            deliver({ type: "FORM_CONFIG_CHANGED", form_id: "f1" });
+            await flushPromises();
+            deliver({ type: "FORM_CONFIG_CHANGED", form_id: "f1" });
+            await flushPromises();
+
+            expect(state.closed.value).toBe(false);
+            expect(state.values.value.name).toBe("Ann");
+
+            formService.submitPublicForm.mockResolvedValue({});
+            await state.submit();
+            expect(formService.submitPublicForm).toHaveBeenCalled();
         });
 
         it("alerts when the reload fails", async () => {

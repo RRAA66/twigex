@@ -128,6 +128,15 @@ describe("FormFieldInput", () => {
         expect(input.attributes("aria-required")).toBeUndefined();
     });
 
+    it("caps the name at what its column holds and leaves other text uncapped", () => {
+        mountField({ header_name: "name", field_type: "text" });
+        expect(w.find("input").attributes("maxlength")).toBe("255");
+        w.unmount();
+
+        mountField({ field_type: "text" });
+        expect(w.find("input").attributes("maxlength")).toBeUndefined();
+    });
+
     it("shows the error on a date field", () => {
         mountField({ field_type: "date" }, { error: "Required" });
 
