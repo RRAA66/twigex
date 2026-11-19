@@ -14,6 +14,7 @@ import {
     emptyFormData,
     fillableFormFields,
     formFieldLabel,
+    formFieldMaxLength,
     formFieldType,
     formImageUrl,
     formLinkTables,
@@ -21,7 +22,7 @@ import {
     formSubmitFields,
     headerLabel,
     incompleteConditionFields,
-    invalidNumberFields,
+    invalidAnswerFields,
     linkedTableId,
     mergeFormFields,
     missingRequiredFields,
@@ -597,22 +598,58 @@ describe("isWholeNumberText", () => {
     });
 });
 
-describe("invalidNumberFields", () => {
+describe("invalidAnswerFields", () => {
     const fields = [
         { header_name: "count", field_type: "number" },
         { header_name: "price", field_type: "decimal" },
     ];
 
     it("names a decimal in a whole number field and text in a number field", () => {
-        expect(invalidNumberFields(fields, { count: "1.5", price: "abc" })).toEqual({
+        expect(invalidAnswerFields(fields, { count: "1.5", price: "abc" })).toEqual({
             count: "projects.form_view.error.whole_number",
             price: "projects.form_view.error.number",
         });
     });
 
     it("accepts empty and well-formed answers", () => {
-        expect(invalidNumberFields(fields, { count: "-12", price: "4.5" })).toEqual({});
-        expect(invalidNumberFields(fields, {})).toEqual({});
+        expect(invalidAnswerFields(fields, { count: "-12", price: "4.5" })).toEqual({});
+        expect(invalidAnswerFields(fields, {})).toEqual({});
+    });
+
+    it("names numbers too large for their columns", () => {
+        expect(
+            invalidAnswerFields(fields, { count: "10000000000", price: "1000000000000000000" }),
+        ).toEqual({
+            count: "projects.form_view.error.too_large",
+            price: "projects.form_view.error.too_large",
+        });
+        expect(
+            invalidAnswerFields(fields, { count: "-9999999999", price: "99999999999999990" }),
+        ).toEqual({});
+    });
+
+    it("names text too long for its column", () => {
+        const texts = [
+            { header_name: "name", field_type: "text" },
+            { header_name: "note", field_type: "text" },
+        ];
+
+        expect(
+            invalidAnswerFields(texts, { name: "ā".repeat(255), note: "ā".repeat(32767) }),
+        ).toEqual({});
+        expect(
+            invalidAnswerFields(texts, { name: "a".repeat(256), note: "ā".repeat(32768) }),
+        ).toEqual({
+            name: "projects.form_view.error.too_long",
+            note: "projects.form_view.error.too_long",
+        });
+    });
+});
+
+describe("formFieldMaxLength", () => {
+    it("limits only the name, the one text column that counts letters", () => {
+        expect(formFieldMaxLength({ header_name: "name", field_type: "text" })).toBe(255);
+        expect(formFieldMaxLength({ header_name: "note", field_type: "text" })).toBeUndefined();
     });
 });
 

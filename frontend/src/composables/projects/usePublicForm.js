@@ -12,7 +12,7 @@ import {
     fillableFormFields,
     formRequestError,
     formSubmitFields,
-    invalidNumberFields,
+    invalidAnswerFields,
     missingRequiredFields,
     shownFormFields,
 } from "@/utils/projects/forms";
@@ -41,6 +41,7 @@ export function usePublicForm(token, { live = false, preview = false, draft = nu
     const submitting = ref(false);
     const submitted = ref(false);
     const configChanged = ref(false);
+    const closed = ref(false);
     let reloadRequest = 0;
 
     const fillable = computed(() => fillableFormFields(form.value?.fields));
@@ -86,20 +87,26 @@ export function usePublicForm(token, { live = false, preview = false, draft = nu
             if (current !== reloadRequest) return;
 
             form.value = data;
+            closed.value = false;
             configChanged.value = true;
             clearFilledErrors();
         } catch (error) {
             if (current !== reloadRequest) return;
 
-            if (STATUS_BY_HTTP[error?.response?.status]) failLoad(error);
+            // A form switched off is only closed until it is switched back
+            // on, so what was filled in stays to be sent then.
+            if (error?.response?.status === 404) closed.value = true;
+            else if (STATUS_BY_HTTP[error?.response?.status]) failLoad(error);
             else alertStore.showError(formRequestError(error, t.value));
         }
     }
 
     async function submit() {
+        if (closed.value) return;
+
         submitError.value = "";
 
-        const numberErrors = Object.entries(invalidNumberFields(fields.value, values.value)).map(
+        const answerErrors = Object.entries(invalidAnswerFields(fields.value, values.value)).map(
             ([name, key]) => [name, t.value(key)],
         );
         const requiredErrors = missingRequiredFields(fields.value, values.value).map((name) => [
@@ -107,7 +114,7 @@ export function usePublicForm(token, { live = false, preview = false, draft = nu
             t.value("common.error.required_field"),
         ]);
 
-        fieldErrors.value = Object.fromEntries([...numberErrors, ...requiredErrors]);
+        fieldErrors.value = Object.fromEntries([...answerErrors, ...requiredErrors]);
         if (Object.keys(fieldErrors.value).length > 0) return;
 
         // The builder's preview shows what a sent form looks like without
@@ -137,7 +144,7 @@ export function usePublicForm(token, { live = false, preview = false, draft = nu
         if (Object.keys(fieldErrors.value).length === 0) return;
 
         const missing = new Set(missingRequiredFields(fields.value, values.value));
-        const invalid = invalidNumberFields(fields.value, values.value);
+        const invalid = invalidAnswerFields(fields.value, values.value);
 
         fieldErrors.value = Object.fromEntries(
             Object.entries(fieldErrors.value).filter(
@@ -192,6 +199,7 @@ export function usePublicForm(token, { live = false, preview = false, draft = nu
         submitting,
         submitted,
         configChanged,
+        closed,
         load,
         submit,
         startOver,
