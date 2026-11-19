@@ -1003,6 +1003,11 @@ func TestSubmitFormSaysWhatANumberFieldTakes(t *testing.T) {
 		{"number", "1,5,6", "workspace.form_submit_number_invalid"},
 		{"number", "twelve", "workspace.form_submit_number_invalid"},
 		{"decimal", "twelve", "workspace.form_submit_number_invalid"},
+		{"number", "10000000000", "workspace.form_submit_number_too_large"},
+		{"number", "-10000000000", "workspace.form_submit_number_too_large"},
+		{"number", "1e30", "workspace.form_submit_number_too_large"},
+		{"decimal", "1000000000000000000", "workspace.form_submit_number_too_large"},
+		{"decimal", "-1e30", "workspace.form_submit_number_too_large"},
 	}
 
 	for _, c := range cases {
@@ -1012,6 +1017,55 @@ func TestSubmitFormSaysWhatANumberFieldTakes(t *testing.T) {
 			_, appErr := submit(a, submitter, model.FormValue{Name: "amount", Value: c.value})
 			if appErr == nil || appErr.Status != http.StatusBadRequest || appErr.ID != c.wantID {
 				t.Fatalf("want 400 %s, got %v", c.wantID, appErr)
+			}
+		})
+	}
+}
+
+func TestSubmitFormTakesTheLargestNumbersItsColumnsHold(t *testing.T) {
+	cases := []struct {
+		fieldType string
+		value     string
+		want      float64
+	}{
+		{"number", "9999999999", 9999999999},
+		{"number", "-9999999999", -9999999999},
+		{"decimal", "99999999999999990", 99999999999999990},
+	}
+
+	for _, c := range cases {
+		t.Run(c.fieldType+" "+c.value, func(t *testing.T) {
+			a, ws, _ := submitApp(model.WorkspaceFormField{HeaderName: "amount", FieldType: c.fieldType, Visible: true})
+
+			if _, appErr := submit(a, submitter, model.FormValue{Name: "amount", Value: c.value}); appErr != nil {
+				t.Fatalf("SubmitForm: %v", appErr)
+			}
+			if got := ws.created[0].Values["amount"]; got != c.want {
+				t.Errorf("stored %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+func TestSubmitFormSaysWhenTextIsTooLongForItsColumn(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+	}{
+		{"name", strings.Repeat("a", 256)},
+		{"description", strings.Repeat("ā", maxTaskDescription/2+1)},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a, ws, _ := submitApp(model.WorkspaceFormField{HeaderName: c.name, FieldType: "text", Visible: true})
+
+			_, appErr := submit(a, submitter, model.FormValue{Name: c.name, Value: c.value})
+			if appErr == nil || appErr.Status != http.StatusBadRequest || appErr.ID != "workspace.form_submit_text_too_long" {
+				t.Fatalf("want 400 workspace.form_submit_text_too_long, got %v", appErr)
+			}
+			if len(ws.created) != 0 {
+				t.Errorf("created %d rows, want none", len(ws.created))
 			}
 		})
 	}
