@@ -3641,6 +3641,19 @@ func (w *workspaceRepository) DeleteTableField(workspaceID string, tableID strin
 		}
 	}
 
+	// A form field that watched a deleted field would otherwise stay hidden
+	// on the form for good.
+	_, err = tx.Exec(`
+		UPDATE workspace_form_fields ff
+		JOIN workspace_forms f ON f.id = ff.form_id
+		JOIN workspace_fields wf ON wf.table_id = f.table_id AND wf.id IN (?, ?)
+		SET ff.visibility_rule = NULL
+		WHERE JSON_UNQUOTE(JSON_EXTRACT(ff.visibility_rule, '$.trigger_field')) = wf.field_name`,
+		fieldID, parentFieldID)
+	if err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 

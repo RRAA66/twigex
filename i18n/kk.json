@@ -2168,6 +2168,14 @@
     "translation": "Бүтін сан енгізіңіз, мысалы, 12, ондық бөлігінсіз."
   },
   {
+    "id": "workspace.form_submit_number_too_large",
+    "translation": "Бұл сан бұл өріс үшін тым үлкен."
+  },
+  {
+    "id": "workspace.form_submit_text_too_long",
+    "translation": "Бұл жауап бұл өріс үшін тым ұзын."
+  },
+  {
     "id": "workspace.form_submit_failed",
     "translation": "Пішінді жіберу сәтсіз аяқталды. Қайталап көріңіз."
   },
