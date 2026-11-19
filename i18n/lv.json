@@ -2164,6 +2164,14 @@
     "translation": "Ievadiet veselu skaitli, piemēram, 12, bez decimāldaļas."
   },
   {
+    "id": "workspace.form_submit_number_too_large",
+    "translation": "Šis skaitlis ir par lielu šim laukam."
+  },
+  {
+    "id": "workspace.form_submit_text_too_long",
+    "translation": "Šī atbilde ir par garu šim laukam."
+  },
+  {
     "id": "workspace.form_submit_failed",
     "translation": "Neizdevās iesniegt veidlapu. Lūdzu, mēģiniet vēlreiz."
   },

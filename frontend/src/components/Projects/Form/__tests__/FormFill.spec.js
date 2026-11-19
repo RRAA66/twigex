@@ -7,10 +7,16 @@ import { createPinia, setActivePinia } from "pinia";
 import FormFill from "@/components/Projects/Form/FormFill.vue";
 import formService from "@/services/formService";
 
+let deliver;
+
 vi.mock("@/js/websocket", () => ({
     initialize: vi.fn(),
     close: vi.fn(),
-    onProjectChange: () => () => {},
+    onProjectChange: (listener) => {
+        deliver = listener;
+
+        return () => {};
+    },
 }));
 
 vi.mock("@/services/formService", () => ({
@@ -42,12 +48,12 @@ const form = {
     ],
 };
 
-async function mountFill() {
+async function mountFill(props = {}) {
     const pinia = createPinia();
 
     setActivePinia(pinia);
     const w = mount(FormFill, {
-        props: { token: "tok" },
+        props: { token: "tok", ...props },
         global: { plugins: [pinia] },
         attachTo: document.body,
     });
@@ -211,6 +217,28 @@ describe("FormFill", () => {
         );
         expect(w.find("fieldset").attributes("disabled")).toBeDefined();
         expect(w.find("button[type='submit']").exists()).toBe(false);
+        w.unmount();
+    });
+
+    it("keeps the answers while the form is switched off and sends them once it is back", async () => {
+        const w = await mountFill({ live: true });
+
+        await w.find("fieldset input").setValue("Ann");
+
+        formService.getPublicForm.mockRejectedValueOnce({ response: { status: 404 } });
+        deliver({ type: "FORM_CONFIG_CHANGED", form_id: "f1" });
+        await flushPromises();
+
+        expect(w.text()).toContain("This form is closed for now.");
+        expect(w.find("button[type='submit']").attributes("disabled")).toBeDefined();
+        expect(w.find("fieldset input").element.value).toBe("Ann");
+
+        deliver({ type: "FORM_CONFIG_CHANGED", form_id: "f1" });
+        await flushPromises();
+
+        expect(w.text()).not.toContain("This form is closed for now.");
+        expect(w.find("button[type='submit']").attributes("disabled")).toBeUndefined();
+        expect(w.find("fieldset input").element.value).toBe("Ann");
         w.unmount();
     });
 
