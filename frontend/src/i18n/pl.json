@@ -2483,6 +2483,8 @@
     "projects.form_view.error.whole_number": "Wpisz liczbę całkowitą, np. 12, bez części dziesiętnej.",
     "projects.form_view.error.whole_number_only": "Tylko liczby całkowite, np. 15 — w tym polu nie można wpisać części dziesiętnej.",
     "projects.form_view.error.number": "Wpisz liczbę, np. 12 lub 4.5.",
+    "projects.form_view.error.too_large": "Ta liczba jest za duża dla tego pola.",
+    "projects.form_view.error.too_long": "Ta odpowiedź jest za długa dla tego pola.",
     "projects.form_view.error.network": "Nie udało się połączyć z serwerem. Sprawdź połączenie i spróbuj ponownie.",
     "graph.title": "Graf wiedzy",
     "graph.path": "Ścieżka",

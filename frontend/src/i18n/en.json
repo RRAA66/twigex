@@ -2483,6 +2483,8 @@
     "projects.form_view.error.whole_number": "Enter a whole number, such as 12, without a decimal part.",
     "projects.form_view.error.whole_number_only": "Whole numbers only, such as 15 — this field takes no decimals.",
     "projects.form_view.error.number": "Enter a number, such as 12 or 4.5.",
+    "projects.form_view.error.too_large": "This number is too large for this field.",
+    "projects.form_view.error.too_long": "This answer is too long for this field.",
     "projects.form_view.error.network": "Could not reach the server. Check your connection and try again.",
     "graph.title": "Knowledge graph",
     "graph.path": "Path",

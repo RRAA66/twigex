@@ -2483,6 +2483,8 @@
     "projects.form_view.error.whole_number": "Ievadiet veselu skaitli, piemēram, 12, bez decimāldaļas.",
     "projects.form_view.error.whole_number_only": "Tikai veseli skaitļi, piemēram, 15 — šajā laukā nevar ievadīt decimāldaļu.",
     "projects.form_view.error.number": "Ievadiet skaitli, piemēram, 12 vai 4.5.",
+    "projects.form_view.error.too_large": "Šis skaitlis ir par lielu šim laukam.",
+    "projects.form_view.error.too_long": "Šī atbilde ir par garu šim laukam.",
     "projects.form_view.error.network": "Neizdevās sazināties ar serveri. Pārbaudiet savienojumu un mēģiniet vēlreiz.",
     "graph.title": "Zināšanu grafs",
     "graph.path": "Ceļš",

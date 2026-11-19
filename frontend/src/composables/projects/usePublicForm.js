@@ -10,7 +10,7 @@ import {
     fillableFormFields,
     formRequestError,
     formSubmitFields,
-    invalidNumberFields,
+    invalidAnswerFields,
     missingRequiredFields,
 } from "@/utils/projects/forms";
 
@@ -79,7 +79,7 @@ export function usePublicForm(token, { live = false } = {}) {
     async function submit() {
         submitError.value = "";
 
-        const numberErrors = Object.entries(invalidNumberFields(fields.value, values.value)).map(
+        const answerErrors = Object.entries(invalidAnswerFields(fields.value, values.value)).map(
             ([name, key]) => [name, t.value(key)],
         );
         const requiredErrors = missingRequiredFields(fields.value, values.value).map((name) => [
@@ -87,7 +87,7 @@ export function usePublicForm(token, { live = false } = {}) {
             t.value("common.error.required_field"),
         ]);
 
-        fieldErrors.value = Object.fromEntries([...numberErrors, ...requiredErrors]);
+        fieldErrors.value = Object.fromEntries([...answerErrors, ...requiredErrors]);
         if (Object.keys(fieldErrors.value).length > 0) return;
 
         submitting.value = true;
@@ -109,7 +109,7 @@ export function usePublicForm(token, { live = false } = {}) {
         if (Object.keys(fieldErrors.value).length === 0) return;
 
         const missing = new Set(missingRequiredFields(fields.value, values.value));
-        const invalid = invalidNumberFields(fields.value, values.value);
+        const invalid = invalidAnswerFields(fields.value, values.value);
 
         fieldErrors.value = Object.fromEntries(
             Object.entries(fieldErrors.value).filter(
