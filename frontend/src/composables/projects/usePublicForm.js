@@ -36,6 +36,7 @@ export function usePublicForm(token, { live = false } = {}) {
     const submitting = ref(false);
     const submitted = ref(false);
     const configChanged = ref(false);
+    const closed = ref(false);
     let reloadRequest = 0;
 
     const fields = computed(() => fillableFormFields(form.value?.fields));
@@ -66,17 +67,23 @@ export function usePublicForm(token, { live = false } = {}) {
             if (current !== reloadRequest) return;
 
             form.value = data;
+            closed.value = false;
             configChanged.value = true;
             clearFilledErrors();
         } catch (error) {
             if (current !== reloadRequest) return;
 
-            if (STATUS_BY_HTTP[error?.response?.status]) failLoad(error);
+            // A form switched off is only closed until it is switched back
+            // on, so what was filled in stays to be sent then.
+            if (error?.response?.status === 404) closed.value = true;
+            else if (STATUS_BY_HTTP[error?.response?.status]) failLoad(error);
             else alertStore.showError(formRequestError(error, t.value));
         }
     }
 
     async function submit() {
+        if (closed.value) return;
+
         submitError.value = "";
 
         const answerErrors = Object.entries(invalidAnswerFields(fields.value, values.value)).map(
@@ -163,6 +170,7 @@ export function usePublicForm(token, { live = false } = {}) {
         submitting,
         submitted,
         configChanged,
+        closed,
         load,
         submit,
         startOver,
