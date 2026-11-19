@@ -46,7 +46,14 @@ SPDX-License-Identifier: AGPL-3.0-only
         <FormCoverImage v-if="coverSrc" :src="coverSrc" :position="shown.cover_position" />
         <div class="space-y-2 px-6 pt-8 sm:px-10">
             <p
-                v-if="configChanged"
+                v-if="closed"
+                role="status"
+                class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+            >
+                {{ t("projects.form_view.public.closed") }}
+            </p>
+            <p
+                v-else-if="configChanged"
                 role="status"
                 class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
             >
@@ -116,6 +123,7 @@ SPDX-License-Identifier: AGPL-3.0-only
                 color="text-white hover:opacity-90"
                 :style="{ backgroundColor: shown.accent_color || DEFAULT_ACCENT_COLOR }"
                 :is-loading="submitting"
+                :is-disabled="closed"
             >
                 {{ t("projects.form_view.action.submit") }}
             </BaseButton>
@@ -167,6 +175,7 @@ const {
     submitting,
     submitted,
     configChanged,
+    closed,
     load,
     submit,
     startOver,

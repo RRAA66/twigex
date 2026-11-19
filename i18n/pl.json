@@ -2168,6 +2168,14 @@
     "translation": "Wpisz liczbę całkowitą, np. 12, bez części dziesiętnej."
   },
   {
+    "id": "workspace.form_submit_number_too_large",
+    "translation": "Ta liczba jest za duża dla tego pola."
+  },
+  {
+    "id": "workspace.form_submit_text_too_long",
+    "translation": "Ta odpowiedź jest za długa dla tego pola."
+  },
+  {
     "id": "workspace.form_submit_failed",
     "translation": "Nie udało się wysłać formularza. Spróbuj ponownie."
   },

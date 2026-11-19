@@ -177,6 +177,60 @@ func TestFormFieldKeepsItsVisibilityRule(t *testing.T) {
 	}
 }
 
+func TestDeleteTableFieldClearsFormRulesItTriggers(t *testing.T) {
+	requireDB(t)
+	resetFormTables(t)
+	seedFormTable(t)
+	mustExec(t, `INSERT INTO workspace_tables (id, workspace_id, name, display_name, linked, single_select, parent_table_id, both_direction_link, second_table_id, folder_id, deleted_at)
+		VALUES ('t3', 'w1', 'orders', 'Orders', false, false, '', false, '', '', 0)`)
+	mustExec(t, `INSERT INTO workspace_fields (id, workspace_id, table_id, field_name, field_display_name, field_type, created_at, deleted_at)
+		VALUES ('f-note', 'w1', 't1', 'note', 'Note', 'text', 1, 0),
+		       ('f-client3', 'w1', 't3', 'client', 'Client', 'text', 1, 0)`)
+	w := &workspaceRepository{Db: testDB}
+	ctx := context.Background()
+
+	byClient := &model.VisibilityRule{TriggerField: "client", Operator: "is_not_empty"}
+	byBudget := &model.VisibilityRule{TriggerField: "budget", Operator: "equals", Value: "5"}
+	form := model.WorkspaceForm{ID: "form-1", WorkspaceID: "w1", TableID: "t1", Name: "Intake", PublicToken: "token-1", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	if err := w.CreateForm(ctx, form, []model.WorkspaceFormField{
+		{ID: "ff-1", HeaderID: "f-client", Label: "Client", SortOrder: 1},
+		{ID: "ff-2", HeaderName: "budget", Label: "Budget", SortOrder: 2, VisibilityRule: byClient},
+		{ID: "ff-3", HeaderName: "note", Label: "Note", SortOrder: 3, VisibilityRule: byBudget},
+	}); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+	other := model.WorkspaceForm{ID: "form-2", WorkspaceID: "w1", TableID: "t3", Name: "Orders", PublicToken: "token-2", Active: true, CreatedBy: "u1", CreatedAt: 100, UpdatedAt: 100}
+	if err := w.CreateForm(ctx, other, []model.WorkspaceFormField{
+		{ID: "ff-4", HeaderName: "client", Label: "Client", SortOrder: 1},
+		{ID: "ff-5", HeaderName: "status", Label: "Status", SortOrder: 2, VisibilityRule: byClient},
+	}); err != nil {
+		t.Fatalf("CreateForm: %v", err)
+	}
+
+	if err := w.DeleteTableField("w1", "t1", "f-client", ""); err != nil {
+		t.Fatalf("DeleteTableField: %v", err)
+	}
+
+	got, err := w.GetForm(ctx, "form-1")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+	if len(got.Fields) != 2 || got.Fields[0].VisibilityRule != nil {
+		t.Errorf("fields %+v, want budget without its rule", got.Fields)
+	}
+	if len(got.Fields) == 2 && (got.Fields[1].VisibilityRule == nil || *got.Fields[1].VisibilityRule != *byBudget) {
+		t.Errorf("note rule %+v, want %+v kept", got.Fields[1].VisibilityRule, byBudget)
+	}
+
+	kept, err := w.GetForm(ctx, "form-2")
+	if err != nil {
+		t.Fatalf("GetForm: %v", err)
+	}
+	if kept.Fields[1].VisibilityRule == nil {
+		t.Error("the other table's form lost its rule on its own client field")
+	}
+}
+
 func TestFormFieldKeepsItsDefaultAndReadOnly(t *testing.T) {
 	requireDB(t)
 	resetFormTables(t)

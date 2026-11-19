@@ -780,6 +780,10 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 			return model.NewAppError("workspace.form_submit_whole_number", http.StatusBadRequest)
 		}
 
+		if !fitsNumberColumn(field.FieldType, number) {
+			return model.NewAppError("workspace.form_submit_number_too_large", http.StatusBadRequest)
+		}
+
 		task.Values[name] = number
 
 	case isMasterLinkField(field):
@@ -793,7 +797,7 @@ func (a *App) setFormValue(ctx context.Context, workspaceID string, field model.
 		return invalid
 
 	case isText && !fitsTextColumn(name, text):
-		return invalid
+		return model.NewAppError("workspace.form_submit_text_too_long", http.StatusBadRequest)
 
 	default:
 		task.Values[name] = value
@@ -874,6 +878,16 @@ func formNumber(value any) (float64, bool) {
 	}
 
 	return number, !math.IsNaN(number) && !math.IsInf(number, 0)
+}
+
+// fitsNumberColumn reports whether number fits its column: a number field is
+// a DECIMAL(10,0) and a decimal field a DECIMAL(20,2).
+func fitsNumberColumn(fieldType string, number float64) bool {
+	if fieldType == "number" {
+		return math.Abs(number) < 1e10
+	}
+
+	return math.Abs(number) < 1e18
 }
 
 // fitsTextColumn reports whether text fits its column: a task's name is a
