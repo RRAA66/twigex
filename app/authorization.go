@@ -368,3 +368,14 @@ func (a *App) ProjectWorkspaceTableHasPermission(user model.User, workspaceId, t
 	in := a.buildAccessInput(user, workspaceId)
 	return a.resolveAccess(in).TableHasPermission(tableId, action)
 }
+
+// canChangeTableViews reports whether the user may change tableID's views:
+// by the workspace permission, or by a per-table role that manages the
+// table's views.
+func (a *App) canChangeTableViews(user model.User, workspaceID, tableID, permission string) bool {
+	if a.ProjectWorkspaceHasPermission(user, workspaceID, permission) {
+		return true
+	}
+
+	return a.CanPerformRowAction(user, workspaceID, tableID, permission, "manage_views")
+}

@@ -20,8 +20,13 @@ const officeTestSecret = "office-test-secret"
 
 type fakeOfficeFileStore struct {
 	store.FileStore
-	files  map[string]*model.File
-	shares map[string][]model.File
+	files       map[string]*model.File
+	shares      map[string][]model.File
+	storageUsed int64
+}
+
+func (f *fakeOfficeFileStore) GetStorageUsed(string) (int64, error) {
+	return f.storageUsed, nil
 }
 
 func (f *fakeOfficeFileStore) Get(id string) (*model.File, error) {
@@ -80,6 +85,7 @@ type officeTestStores struct {
 func newOfficeAccessApp() (*App, officeTestStores) {
 	serverConfig := model.ServerConfig{}
 	serverConfig.SetDefaults()
+	serverConfig.OfficeSettings.Enable = model.NewBool(true)
 	serverConfig.OfficeSettings.Secret = model.NewString(officeTestSecret)
 
 	stores := officeTestStores{
