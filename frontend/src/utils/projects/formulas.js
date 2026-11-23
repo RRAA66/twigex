@@ -441,12 +441,14 @@ export const formatCellValue = (v, header) => {
 };
 
 // The footer of an aggregate column applies the column's own function to its
-// rows' results: the average of the averages, not their sum.
+// rows' results: the average of the averages, not their sum. Row PRODUCTs are
+// added, so a Quantity x Price column totals to the sum of its row totals.
 const combineTotals = (name, nums) => {
     if (!nums.length) return "";
 
     switch (name) {
         case "SUM":
+        case "PRODUCT":
             return nums.reduce((a, b) => a + b, 0);
         case "AVERAGE":
             return nums.reduce((a, b) => a + b, 0) / nums.length;
@@ -454,8 +456,6 @@ const combineTotals = (name, nums) => {
             return Math.min(...nums);
         case "MAX":
             return Math.max(...nums);
-        case "PRODUCT":
-            return nums.reduce((a, b) => a * b, 1);
         default:
             return "";
     }

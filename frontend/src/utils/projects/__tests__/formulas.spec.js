@@ -127,6 +127,14 @@ describe("columnTotal", () => {
         expect(columnTotal(calc({ name: "MIN", args: fields("a", "b") }), rows)).toBe(1);
     });
 
+    it("adds each row's PRODUCT across the rows, not multiplies them", () => {
+        expect(columnTotal(calc({ name: "PRODUCT", args: fields("a", "b") }), rows)).toBe(14);
+    });
+
+    it("adds the typed values of a PRODUCT over no fields", () => {
+        expect(columnTotal(calc({ name: "PRODUCT", args: [] }), rows)).toBe(10);
+    });
+
     it("combines the typed values of an aggregate over no fields", () => {
         expect(columnTotal(calc({ name: "MAX", args: [] }), rows)).toBe(6);
     });

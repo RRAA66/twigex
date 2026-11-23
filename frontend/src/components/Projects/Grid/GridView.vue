@@ -949,7 +949,12 @@ SPDX-License-Identifier: AGPL-3.0-only
                                         class="text-xs text-gray-600 truncate"
                                         style="padding-left: 6px"
                                     >
-                                        {{ columnTotal(getHeaderType(colIndex), tableData) }}
+                                        {{
+                                            formatCellValue(
+                                                columnTotal(getHeaderType(colIndex), tableData),
+                                                getHeaderType(colIndex),
+                                            )
+                                        }}
                                     </span>
                                 </template>
                             </div>
