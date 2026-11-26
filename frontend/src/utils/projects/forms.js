@@ -248,10 +248,21 @@ export function formSubmitFields(fields, values) {
     }));
 }
 
+// A number as its column stores it: a decimal field is a DECIMAL(20,2), which
+// rounds a half away from zero by the written digits, so 2.675 is 2.68 although
+// the float 2.675 lies just below it.
+function storedNumber(number, type) {
+    const places = type === "decimal" ? 2 : 0;
+    const shifted = Number(`${Math.abs(number)}e${places}`);
+    const whole = Math.round(Number.isFinite(shifted) ? shifted : Math.abs(number) * 10 ** places);
+
+    return (Math.sign(number) * whole) / 10 ** places || 0;
+}
+
 // The shown answers as a calculation reads them, with the default of each
 // hidden field among allFields, which the server answers for it. A number
 // answer is read as the server stores it, so 1e3 counts as 1000 rather than
-// as the digits 1 and 3.
+// as the digits 1 and 3, and 2.675 in a decimal field as 2.68.
 export function calculationAnswers(fields, values, allFields = []) {
     const hidden = allFields.filter((f) => !f.visible && f.default_value);
     const answers = { ...values, ...defaultAnswers(hidden) };
@@ -261,13 +272,13 @@ export function calculationAnswers(fields, values, allFields = []) {
             const value = answers[f.header_name];
             const type = formFieldType(f);
 
-            if ((type !== "number" && type !== "decimal") || typeof value !== "string") {
-                return [f.header_name, value];
-            }
+            if (type !== "number" && type !== "decimal") return [f.header_name, value];
+            if (typeof value === "number") return [f.header_name, storedNumber(value, type)];
+            if (typeof value !== "string") return [f.header_name, value];
 
             const number = value.trim() === "" ? NaN : Number(value);
 
-            return [f.header_name, Number.isFinite(number) ? number : ""];
+            return [f.header_name, Number.isFinite(number) ? storedNumber(number, type) : ""];
         }),
     );
 }
