@@ -88,6 +88,23 @@ func TestCreateFormTaskAttachesItsFiles(t *testing.T) {
 	}
 }
 
+// A row added without a name, such as from a form that does not ask for one,
+// can still be linked, from either end.
+func TestCreateFormTaskLinksRowsWithoutAName(t *testing.T) {
+	w := setupFormSubmit(t)
+	mustExec(t, "UPDATE zz_links_b SET name = NULL WHERE id = 'b1'")
+
+	task, submission := formTask(map[string][]string{"related": {"b1"}})
+	delete(task.Values, "name")
+	if _, err := w.CreateFormTask(context.Background(), "ws", "t-a", task, submission); err != nil {
+		t.Fatalf("CreateFormTask: %v", err)
+	}
+
+	if got := linksOf(t, "new-1"); !slices.Equal(got, []string{"b1"}) {
+		t.Errorf("links %v, want b1", got)
+	}
+}
+
 func TestCreateFormTaskWritesNothingWhenALinkFails(t *testing.T) {
 	w := setupFormSubmit(t)
 
