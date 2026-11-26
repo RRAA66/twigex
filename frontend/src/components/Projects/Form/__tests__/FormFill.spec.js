@@ -167,6 +167,7 @@ describe("FormFill", () => {
 
             expect(w.text()).toContain("We will call you.");
             expect(w.text()).not.toContain("Your response has been recorded.");
+            expect(w.text()).not.toContain("Thank you!");
             w.unmount();
         });
 
