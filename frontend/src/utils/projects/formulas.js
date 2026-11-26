@@ -148,6 +148,8 @@ const resolveArg = (argSpec, row) => {
     return null;
 };
 
+// The submissions export works a calculation out the same way on the server,
+// in app/workspace_form_calculation.go, so a change here belongs there too.
 export const evaluateFormulaForRow = (header, row) => {
     const spec = header?.formula;
 

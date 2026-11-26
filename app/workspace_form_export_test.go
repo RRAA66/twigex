@@ -149,3 +149,34 @@ func TestExportFieldLabelTakesThePagesNameForAFieldWithoutALabel(t *testing.T) {
 		t.Errorf("label %q, want the field's name", got)
 	}
 }
+
+func TestExportFormSubmissionsWorksOutACalculationAsThePageDoes(t *testing.T) {
+	a, ws, _ := submitApp()
+	ws.submissions = []model.WorkspaceFormSubmission{{ID: "s1", FormID: "form-1", TaskID: "task-1", SubmittedBy: "member-1"}}
+	ws.rows = []map[string]any{{"id": "task-1", "net": "1234.56", "rate": "1.21", "total": "1234.56"}}
+
+	export, appErr := a.PrepareFormSubmissionsExport(context.Background(), wsID, tbl1, "form-1", model.FormSubmissionsFilter{}, "UTC", "24h", nil, workspaceAdmin)
+	if appErr != nil {
+		t.Fatalf("PrepareFormSubmissionsExport: %v", appErr)
+	}
+
+	export.fields = append(export.fields, model.WorkspaceHeaders{Name: "total", HeaderUsage: "calculations", Formula: &model.FormulaSpec{
+		Name: "PRODUCT",
+		Args: []model.FormulaArg{{Type: "field", Value: "net"}, {Type: "field", Value: "rate"}},
+	}})
+	export.labels = append(export.labels, "Total")
+
+	var out bytes.Buffer
+	if err := export.WriteCSV(context.Background(), &out, nil); err != nil {
+		t.Fatalf("WriteCSV: %v", err)
+	}
+
+	records, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(out.String(), "\xEF\xBB\xBF"))).ReadAll()
+	if err != nil {
+		t.Fatalf("read CSV: %v", err)
+	}
+
+	if got := records[1][2]; got != "1493.82" {
+		t.Errorf("total %q, want 1493.82 as the submissions page shows it", got)
+	}
+}
