@@ -528,6 +528,25 @@ describe("calculations on a form", () => {
         });
     });
 
+    it("reads a number answer as it is stored, so the live result is the saved one", () => {
+        const fields = [
+            { header_name: "qty", field_type: "number" },
+            { header_name: "price", field_type: "decimal" },
+        ];
+        const answers = calculationAnswers(fields, { qty: "3", price: "2.675" });
+
+        expect(answers).toEqual({ qty: 3, price: 2.68 });
+        expect(calculatedAnswer(total, answers)).toBe("8.04");
+        expect(calculationAnswers(fields, { qty: 2, price: 1.005 })).toEqual({
+            qty: 2,
+            price: 1.01,
+        });
+        expect(calculationAnswers(fields, { qty: "-2", price: "-2.675" })).toEqual({
+            qty: -2,
+            price: -2.68,
+        });
+    });
+
     it("waits on the form until every field a calculation reads is answered", () => {
         expect(formCalculatedAnswer(total, { qty: 3 })).toBe("");
         expect(formCalculatedAnswer(total, { qty: 3, price: "" })).toBe("");
