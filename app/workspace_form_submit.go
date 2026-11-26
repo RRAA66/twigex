@@ -33,10 +33,12 @@ func (a *App) GetPublicForm(ctx context.Context, token string, user *model.User)
 		return nil, appErr
 	}
 
-	// A hidden field's default is answered on the server, so it is not shown.
+	// A hidden field's default is answered on the server, so it is not shown,
+	// unless a shown calculation reads it and is worked out on the page.
+	read := calculatedFields(form.Fields)
 	fields := slices.Clone(form.Fields)
-	for i := range fields {
-		if !fields[i].Visible {
+	for i, f := range fields {
+		if !f.Visible && (!read[f.HeaderName] || !presetsDefault(f)) {
 			fields[i].DefaultValue = ""
 		}
 	}
@@ -847,6 +849,34 @@ func formFileIDs(value any) ([]string, bool) {
 
 func isCalculationField(f model.WorkspaceFormField) bool {
 	return f.FieldType == "calculations"
+}
+
+// calculatedFields names the fields the form's shown calculations read.
+func calculatedFields(fields []model.WorkspaceFormField) map[string]bool {
+	read := map[string]bool{}
+	for _, f := range fields {
+		if !f.Visible || !isCalculationField(f) || f.Formula == nil {
+			continue
+		}
+
+		for _, arg := range f.Formula.Args {
+			if arg.Type == "field" {
+				read[stripFormulaQuotes(arg.Value)] = true
+			}
+		}
+	}
+
+	return read
+}
+
+// stripFormulaQuotes reads a formula argument as the grid does, without the
+// quotes around it.
+func stripFormulaQuotes(s string) string {
+	if len(s) >= 2 && (s[0] == '"' && s[len(s)-1] == '"' || s[0] == '\'' && s[len(s)-1] == '\'') {
+		return s[1 : len(s)-1]
+	}
+
+	return s
 }
 
 func isAssigneeField(f model.WorkspaceFormField) bool {

@@ -239,12 +239,17 @@ export function formSubmitFields(fields, values) {
     }));
 }
 
-// The shown answers as a calculation reads them. A number answer is read as
-// the server stores it, so 1e3 counts as 1000 rather than as the digits 1 and 3.
-export function calculationAnswers(fields, values) {
+// The shown answers as a calculation reads them, with the default of each
+// hidden field among allFields, which the server answers for it. A number
+// answer is read as the server stores it, so 1e3 counts as 1000 rather than
+// as the digits 1 and 3.
+export function calculationAnswers(fields, values, allFields = []) {
+    const hidden = allFields.filter((f) => !f.visible && f.default_value);
+    const answers = { ...values, ...defaultAnswers(hidden) };
+
     return Object.fromEntries(
-        fields.map((f) => {
-            const value = values[f.header_name];
+        [...fields, ...hidden].map((f) => {
+            const value = answers[f.header_name];
             const type = formFieldType(f);
 
             if ((type !== "number" && type !== "decimal") || typeof value !== "string") {
