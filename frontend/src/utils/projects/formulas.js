@@ -3,7 +3,7 @@
 
 const headerKey = (h) => h?.header_name || h?.name || "";
 
-const stripQuotes = (s) =>
+export const stripQuotes = (s) =>
     typeof s === "string" &&
     s.length >= 2 &&
     ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))
