@@ -8,7 +8,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { close, initialize } from "@/js/websocket";
 import formService from "@/services/formService";
 import { useAlertStore } from "@/store/alerts";
-import { calculatedAnswer } from "@/utils/projects/forms";
+import { formCalculatedAnswer } from "@/utils/projects/forms";
 import { usePublicForm } from "../usePublicForm";
 
 let deliver;
@@ -127,9 +127,11 @@ describe("usePublicForm", () => {
 
         const { state } = await setup();
 
+        expect(formCalculatedAnswer(total, state.answers.value)).toBe("");
+
         state.values.value.net = "1234.56";
 
-        expect(calculatedAnswer(total, state.answers.value)).toBe("1493.82");
+        expect(formCalculatedAnswer(total, state.answers.value)).toBe("1493.82");
         expect(Object.keys(state.values.value)).not.toContain("rate");
     });
 

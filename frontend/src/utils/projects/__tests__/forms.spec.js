@@ -6,6 +6,7 @@ import { t } from "@/i18n/index.js";
 import {
     calculatedAnswer,
     calculationAnswers,
+    formCalculatedAnswer,
     defaultAnswer,
     defaultAnswers,
     defaultFromAnswer,
@@ -525,6 +526,32 @@ describe("calculations on a form", () => {
             qty: "",
             price: "",
         });
+    });
+
+    it("waits on the form until every field a calculation reads is answered", () => {
+        expect(formCalculatedAnswer(total, { qty: 3 })).toBe("");
+        expect(formCalculatedAnswer(total, { qty: 3, price: "" })).toBe("");
+        expect(formCalculatedAnswer(total, { qty: "", price: 2.5 })).toBe("");
+        expect(formCalculatedAnswer(total, { qty: 3, price: 2.5 })).toBe("7.5");
+        expect(formCalculatedAnswer(total, { qty: 0, price: 2.5 })).toBe("0");
+    });
+
+    it("counts a picked row, an unticked box and a field slot left empty as answered", () => {
+        const field = {
+            formula: {
+                name: "CONCATENATE",
+                args: [
+                    { type: "field", value: "'owner'" },
+                    { type: "field", value: "done" },
+                    { type: "field", value: "" },
+                ],
+            },
+        };
+
+        expect(formCalculatedAnswer(field, { owner: [], done: false })).toBe("");
+        expect(
+            formCalculatedAnswer(field, { owner: [{ id: "1", name: "Ann" }], done: false }),
+        ).toBe("Annfalse");
     });
 
     it("sends no calculation and asks none to be filled in", () => {
