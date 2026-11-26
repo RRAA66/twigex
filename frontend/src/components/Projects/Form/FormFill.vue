@@ -20,10 +20,18 @@ SPDX-License-Identifier: AGPL-3.0-only
 
     <div v-else-if="submitted" class="flex flex-col items-center gap-y-2 py-20 text-center">
         <CheckCircleIcon class="h-12 w-12 text-green-500" aria-hidden="true" />
-        <h2 class="text-xl font-bold text-gray-900">{{ t("projects.form_view.success.title") }}</h2>
-        <p class="max-w-md whitespace-pre-line text-sm text-gray-500">
-            {{ shown.success_message || t("projects.form_view.success.body") }}
+        <p
+            v-if="shown.success_message"
+            class="max-w-md whitespace-pre-line text-base text-gray-900"
+        >
+            {{ shown.success_message }}
         </p>
+        <template v-else>
+            <h2 class="text-xl font-bold text-gray-900">
+                {{ t("projects.form_view.success.title") }}
+            </h2>
+            <p class="max-w-md text-sm text-gray-500">{{ t("projects.form_view.success.body") }}</p>
+        </template>
         <p v-if="preview" class="text-xs text-gray-400">
             {{ t("projects.form_view.preview_not_saved") }}
         </p>

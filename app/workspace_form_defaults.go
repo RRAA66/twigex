@@ -65,7 +65,7 @@ func (a *App) checkFormDefaults(ctx context.Context, workspaceID, tableID string
 
 func (a *App) presetFormValues(ctx context.Context, form *model.WorkspaceFormWithFields, linkTables map[string]bool, task *model.FormTask) *model.AppError {
 	for _, f := range form.Fields {
-		if f.Visible || f.DefaultValue == "" || f.FieldType == "file" || isCalculationField(f) || model.IsServerKeptColumn(f.HeaderName) {
+		if f.Visible || f.DefaultValue == "" || !presetsDefault(f) {
 			continue
 		}
 
@@ -75,6 +75,10 @@ func (a *App) presetFormValues(ctx context.Context, form *model.WorkspaceFormWit
 	}
 
 	return nil
+}
+
+func presetsDefault(f model.WorkspaceFormField) bool {
+	return f.FieldType != "file" && !isCalculationField(f) && !model.IsServerKeptColumn(f.HeaderName)
 }
 
 func (a *App) prepareBuilderForm(ctx context.Context, user model.User, form *model.WorkspaceFormWithFields) *model.AppError {
