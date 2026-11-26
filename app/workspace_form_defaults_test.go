@@ -215,3 +215,23 @@ func TestSubmitFormLeavesACalculationToItsFormula(t *testing.T) {
 		t.Errorf("budget %v, want the calculation left to its formula", got)
 	}
 }
+
+func TestPublicFormSendsAHiddenDefaultAShownCalculationReads(t *testing.T) {
+	rate := model.WorkspaceFormField{HeaderName: "rate", FieldType: "decimal", DefaultValue: "1.21"}
+	secret := model.WorkspaceFormField{HeaderName: "secret", FieldType: "text", DefaultValue: "internal"}
+	net := model.WorkspaceFormField{HeaderName: "net", FieldType: "decimal", Visible: true}
+	total := model.WorkspaceFormField{HeaderName: "total", FieldType: "calculations", Visible: true, Formula: &model.FormulaSpec{
+		Name: "PRODUCT",
+		Args: []model.FormulaArg{{Type: "field", Value: "net"}, {Type: "field", Value: `"rate"`}},
+	}}
+	a, _, _ := submitApp(rate, secret, net, total)
+
+	form, appErr := a.GetPublicForm(context.Background(), "token-1", submitter)
+	if appErr != nil {
+		t.Fatalf("GetPublicForm: %v", appErr)
+	}
+
+	if form.Fields[0].DefaultValue != "1.21" || form.Fields[1].DefaultValue != "" {
+		t.Errorf("fields %+v, want only the default the calculation reads", form.Fields)
+	}
+}

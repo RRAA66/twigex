@@ -46,7 +46,9 @@ export function usePublicForm(token, { live = false, preview = false, draft = nu
 
     const fillable = computed(() => fillableFormFields(form.value?.fields));
     const fields = computed(() => shownFormFields(fillable.value, values.value));
-    const answers = computed(() => calculationAnswers(fields.value, values.value));
+    const answers = computed(() =>
+        calculationAnswers(fields.value, values.value, form.value?.fields),
+    );
 
     function failLoad(error) {
         status.value = STATUS_BY_HTTP[error?.response?.status] || "failed";

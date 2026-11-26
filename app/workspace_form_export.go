@@ -78,10 +78,8 @@ func (a *App) PrepareFormSubmissionsExport(ctx context.Context, workspaceID, tab
 	}
 
 	for _, f := range form.Fields {
-		// A calculation is only worked out on screen, so the file leaves it
-		// out, as the task report's export does.
 		h, ok := byName[f.HeaderName]
-		if !f.Visible || !ok || h.HeaderUsage == "calculations" {
+		if !f.Visible || !ok {
 			continue
 		}
 
@@ -142,6 +140,7 @@ func (e *FormSubmissionsExport) WriteCSV(ctx context.Context, w io.Writer, flush
 		timeLayout = e.dateLayout + " 3:04 PM"
 	}
 
+	now := time.Now()
 	record := make([]string, len(e.labels))
 	for offset := 0; ; offset += taskExportChunk {
 		submissions, err := e.a.Store.Workspace.GetFormSubmissions(ctx, e.form.ID, e.filter, taskExportChunk, offset)
@@ -171,9 +170,17 @@ func (e *FormSubmissionsExport) WriteCSV(ctx context.Context, w io.Writer, flush
 			record[1] = time.Unix(s.SubmittedAt, 0).In(e.loc).Format(timeLayout)
 
 			row := rows[s.TaskID]
+			var calcRow map[string]any
 			for i, h := range e.fields {
 				record[2+i] = ""
-				if row != nil {
+				switch {
+				case row == nil:
+				case h.HeaderUsage == "calculations":
+					if calcRow == nil {
+						calcRow = calculationRow(row)
+					}
+					record[2+i] = formCalculation(h.Formula, calcRow, e.loc, now)
+				default:
 					record[2+i] = e.cell(h, row, lookups)
 				}
 			}

@@ -8,6 +8,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { close, initialize } from "@/js/websocket";
 import formService from "@/services/formService";
 import { useAlertStore } from "@/store/alerts";
+import { calculatedAnswer } from "@/utils/projects/forms";
 import { usePublicForm } from "../usePublicForm";
 
 let deliver;
@@ -100,6 +101,44 @@ describe("usePublicForm", () => {
 
         expect(state.status.value).toBe(status);
         expect(state.loadError.value).toBe("Nope");
+    });
+
+    it("works a calculation out with a hidden field's default, as the server saves it", async () => {
+        const total = {
+            header_name: "total",
+            field_type: "calculations",
+            visible: true,
+            formula: {
+                name: "PRODUCT",
+                args: [
+                    { type: "field", value: "net" },
+                    { type: "field", value: "rate" },
+                ],
+            },
+        };
+
+        formService.getPublicForm.mockResolvedValue({
+            data: {
+                ...form,
+                fields: [
+                    { header_name: "net", field_type: "decimal", visible: true },
+                    {
+                        header_name: "rate",
+                        field_type: "decimal",
+                        visible: false,
+                        default_value: "1.21",
+                    },
+                    total,
+                ],
+            },
+        });
+
+        const { state } = await setup();
+
+        state.values.value.net = "1234.56";
+
+        expect(calculatedAnswer(total, state.answers.value)).toBe("1493.82");
+        expect(Object.keys(state.values.value)).not.toContain("rate");
     });
 
     it("starts each shown field with its default, and again after sending", async () => {
