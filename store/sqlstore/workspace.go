@@ -5526,7 +5526,7 @@ func (w *workspaceRepository) getLinkedItemNameTx(tx *sql.Tx, tableName, itemID 
 
 	var itemName string
 	err = tx.QueryRow(`
-		SELECT name FROM `+table+`
+		SELECT COALESCE(name, '') FROM `+table+`
 		WHERE id = ?
 	`, itemID).Scan(&itemName)
 	if err != nil {
@@ -5618,7 +5618,7 @@ func (w *workspaceRepository) getCurrentLinkedItemsTx(tx *sql.Tx, tableID string
 	for _, itemID := range linkedItems {
 		var itemName string
 		err = tx.QueryRow(`
-        SELECT name
+        SELECT COALESCE(name, '')
         FROM `+warehouseTable+`
         WHERE id = ?
     `, itemID).Scan(&itemName)
