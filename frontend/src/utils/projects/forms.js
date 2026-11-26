@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { extractErrorMessage } from "@/utils/errors";
-import { calculateRowValueForRow, formatCellValue } from "@/utils/projects/formulas";
+import { calculateRowValueForRow, formatCellValue, stripQuotes } from "@/utils/projects/formulas";
 import { fieldLabel } from "@/utils/projects/rows";
 
 export const DEFAULT_ACCENT_COLOR = "#4f46e5";
@@ -280,6 +280,24 @@ export function calculatedAnswer(field, values) {
     );
 
     return result === "" ? "" : formatCellValue(result).trim();
+}
+
+// A calculation on the form waits until every field it reads is answered,
+// rather than leaving an empty one out as the grid does.
+export function formCalculatedAnswer(field, answers) {
+    const waits = (field.formula?.args || []).some((a) => {
+        const name = a?.type === "field" ? String(stripQuotes(a.value ?? "")).trim() : "";
+        const value = answers?.[name];
+
+        return (
+            name !== "" &&
+            (value == null ||
+                (typeof value === "string" && value.trim() === "") ||
+                (Array.isArray(value) && value.length === 0))
+        );
+    });
+
+    return waits ? "" : calculatedAnswer(field, answers);
 }
 
 export function defaultAnswer(field) {

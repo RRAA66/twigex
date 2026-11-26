@@ -89,6 +89,27 @@ describe("FormFieldInput", () => {
         expect(w.find("input").exists()).toBe(false);
     });
 
+    it("shows a calculation empty until every field it reads is answered", async () => {
+        const field = {
+            field_type: "calculations",
+            formula: {
+                name: "PRODUCT",
+                args: [
+                    { type: "field", value: "net" },
+                    { type: "field", value: "rate" },
+                ],
+            },
+        };
+
+        mountField(field, { answers: { rate: 0.21 } });
+
+        expect(w.find("[aria-readonly='true']").text()).toBe("–");
+
+        await w.setProps({ answers: { net: 100, rate: 0.21 } });
+
+        expect(w.find("[aria-readonly='true']").text()).toBe("21");
+    });
+
     it("shows a read-only field's default instead of an input", () => {
         mountField({
             linked_id: "t-s",

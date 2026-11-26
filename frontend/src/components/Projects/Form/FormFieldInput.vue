@@ -43,7 +43,7 @@ SPDX-License-Identifier: AGPL-3.0-only
             aria-live="polite"
             class="flex min-h-9 items-center rounded-md bg-gray-50 px-3 py-1.5 text-sm text-gray-900 ring-1 ring-inset ring-gray-200"
         >
-            {{ calculatedAnswer(field, answers) || "–" }}
+            {{ formCalculatedAnswer(field, answers) || "–" }}
         </div>
         <div v-else-if="type === 'checkbox'" class="flex items-center gap-x-2">
             <input
@@ -180,7 +180,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { computed, ref, useId } from "vue";
 import { t } from "@/i18n/index.js";
 import {
-    calculatedAnswer,
+    formCalculatedAnswer,
     formFieldLabel,
     formFieldMaxLength,
     formFieldType,
