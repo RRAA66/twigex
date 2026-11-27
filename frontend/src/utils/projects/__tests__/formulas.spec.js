@@ -56,12 +56,13 @@ describe("calculateRowValueForRow", () => {
         expect(calculateRowValueForRow(header, {})).toBe(2.35);
     });
 
-    it("is empty for a PRODUCT with a field left unanswered", () => {
+    it("skips an unanswered field in a PRODUCT, as a spreadsheet does", () => {
         const header = calc({ name: "PRODUCT", args: fields("qty", "price") });
 
-        expect(calculateRowValueForRow(header, { qty: 1, price: "" })).toBe("");
-        expect(calculateRowValueForRow(header, { qty: 1, price: null })).toBe("");
-        expect(calculateRowValueForRow(header, { qty: 1 })).toBe("");
+        expect(calculateRowValueForRow(header, { qty: 2, price: "" })).toBe(2);
+        expect(calculateRowValueForRow(header, { qty: 2, price: null })).toBe(2);
+        expect(calculateRowValueForRow(header, { qty: 2 })).toBe(2);
+        expect(calculateRowValueForRow(header, { qty: "", price: "" })).toBe("");
         expect(calculateRowValueForRow(header, { qty: 2, price: "3.5" })).toBe(7);
     });
 
@@ -72,7 +73,7 @@ describe("calculateRowValueForRow", () => {
         });
 
         expect(formatCellValue(calculateRowValueForRow(header, { net: "3.50" }))).toBe("4.24");
-        expect(calculateRowValueForRow(header, { net: "" })).toBe("");
+        expect(calculateRowValueForRow(header, { net: "" })).toBe(1.21);
     });
 
     it("rounds a half away from zero by its written digits", () => {
@@ -235,7 +236,7 @@ describe("columnTotal", () => {
         expect(columnTotal(whole, halves)).toBe(2);
     });
 
-    it("leaves out a row whose PRODUCT has an unanswered field", () => {
+    it("adds a PRODUCT row with an unanswered field as the product of the rest", () => {
         const total = calc({ name: "PRODUCT", args: fields("qty", "price") });
 
         expect(
@@ -243,8 +244,8 @@ describe("columnTotal", () => {
                 { qty: 2, price: "3" },
                 { qty: 1, price: "" },
             ]),
-        ).toBe(6);
-        expect(columnTotal(total, [{ qty: 1, price: "" }])).toBe("");
+        ).toBe(7);
+        expect(columnTotal(total, [{ qty: "", price: "" }])).toBe("");
     });
 
     it("is empty for a column that is not a calculation, or without rows", () => {
