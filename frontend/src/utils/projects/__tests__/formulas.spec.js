@@ -219,7 +219,7 @@ describe("columnTotal", () => {
             name: "PRODUCT",
             args: [...fields("net"), { type: "const", value: "0.21" }],
         });
-        const nets = [{ net: "0.05" }, { net: "0.05" }, { net: "0.05" }];
+        const nets = [{ net: "0.07" }, { net: "0.07" }, { net: "0.07" }];
 
         expect(formatCellValue(calculateRowValueForRow(vat, nets[0]))).toBe("0.01");
         expect(formatCellValue(columnTotal(vat, nets))).toBe("0.03");
