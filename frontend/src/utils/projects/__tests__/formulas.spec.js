@@ -8,6 +8,7 @@ import {
     columnTotal,
     formulaArgsFor,
     isComputedCalculations,
+    roundDecimals,
 } from "../formulas";
 
 const calc = (formula, extra = {}) => ({
@@ -55,6 +56,67 @@ describe("calculateRowValueForRow", () => {
         expect(calculateRowValueForRow(header, {})).toBe(2.35);
     });
 
+    it("is empty for a PRODUCT with a field left unanswered", () => {
+        const header = calc({ name: "PRODUCT", args: fields("qty", "price") });
+
+        expect(calculateRowValueForRow(header, { qty: 1, price: "" })).toBe("");
+        expect(calculateRowValueForRow(header, { qty: 1, price: null })).toBe("");
+        expect(calculateRowValueForRow(header, { qty: 1 })).toBe("");
+        expect(calculateRowValueForRow(header, { qty: 2, price: "3.5" })).toBe(7);
+    });
+
+    it("multiplies by a constant beside a field", () => {
+        const header = calc({
+            name: "PRODUCT",
+            args: [...fields("net"), { type: "const", value: "1.21" }],
+        });
+
+        expect(formatCellValue(calculateRowValueForRow(header, { net: "3.50" }))).toBe("4.24");
+        expect(calculateRowValueForRow(header, { net: "" })).toBe("");
+    });
+
+    it("rounds a half away from zero by its written digits", () => {
+        const round = (value, digits) =>
+            calculateRowValueForRow(
+                calc({
+                    name: "ROUND",
+                    args: [
+                        { type: "const", value },
+                        { type: "const", value: digits },
+                    ],
+                }),
+                {},
+            );
+
+        expect(round("1.005", "2")).toBe(1.01);
+        expect(round("2.675", "2")).toBe(2.68);
+        expect(round("1.255", "2")).toBe(1.26);
+        expect(round("-1.005", "2")).toBe(-1.01);
+        expect(round("0.5", "0")).toBe(1);
+        expect(round("-2.5", "0")).toBe(-3);
+    });
+
+    it("rounds up away from zero and down toward it without float noise", () => {
+        const fn = (name, value, digits) =>
+            calculateRowValueForRow(
+                calc({
+                    name,
+                    args: [
+                        { type: "const", value },
+                        { type: "const", value: digits },
+                    ],
+                }),
+                {},
+            );
+
+        expect(fn("ROUNDUP", "1.1", "1")).toBe(1.1);
+        expect(fn("ROUNDUP", "0.07", "2")).toBe(0.07);
+        expect(fn("ROUNDUP", "1.11", "1")).toBe(1.2);
+        expect(fn("ROUNDUP", "-1.11", "1")).toBe(-1.2);
+        expect(fn("ROUNDDOWN", "1.19", "1")).toBe(1.1);
+        expect(fn("ROUNDDOWN", "-1.19", "1")).toBe(-1.1);
+    });
+
     it("is empty for a field that is not a calculation", () => {
         expect(calculateRowValueForRow({ name: "x", header_usage: "text" }, { x: 1 })).toBe("");
     });
@@ -86,6 +148,19 @@ describe("formatCellValue", () => {
 
     it("shows the decimals a field names", () => {
         expect(formatCellValue(2.5, { decimals: 2 })).toBe("2.50");
+    });
+
+    it("rounds a half away from zero by its written digits", () => {
+        expect(formatCellValue(3.5 * 1.21)).toBe("4.24");
+        expect(formatCellValue(1.005)).toBe("1.01");
+        expect(formatCellValue(2.675)).toBe("2.68");
+        expect(formatCellValue(1.255)).toBe("1.26");
+        expect(formatCellValue(-4.235)).toBe("-4.24");
+        expect(formatCellValue(-1.005, { decimals: 2 })).toBe("-1.01");
+        expect(formatCellValue(1.005, { decimals: 2 })).toBe("1.01");
+        expect(formatCellValue(0.5, { decimals: 0 })).toBe("1");
+        expect(formatCellValue(-0.5, { decimals: 0 })).toBe("-1");
+        expect(formatCellValue(-0.001)).toBe("0");
     });
 
     it("shows nothing for an empty value", () => {
@@ -139,9 +214,65 @@ describe("columnTotal", () => {
         expect(columnTotal(calc({ name: "MAX", args: [] }), rows)).toBe(6);
     });
 
+    it("adds the row results as they are shown", () => {
+        const vat = calc({
+            name: "PRODUCT",
+            args: [...fields("net"), { type: "const", value: "0.21" }],
+        });
+        const nets = [{ net: "0.05" }, { net: "0.05" }, { net: "0.05" }];
+
+        expect(formatCellValue(calculateRowValueForRow(vat, nets[0]))).toBe("0.01");
+        expect(formatCellValue(columnTotal(vat, nets))).toBe("0.03");
+    });
+
+    it("adds the row results to the decimals the column names", () => {
+        const whole = calc({ name: "PRODUCT", args: fields("a", "b") }, { decimals: 0 });
+        const halves = [
+            { a: 0.5, b: 1 },
+            { a: 0.5, b: 1 },
+        ];
+
+        expect(columnTotal(whole, halves)).toBe(2);
+    });
+
+    it("leaves out a row whose PRODUCT has an unanswered field", () => {
+        const total = calc({ name: "PRODUCT", args: fields("qty", "price") });
+
+        expect(
+            columnTotal(total, [
+                { qty: 2, price: "3" },
+                { qty: 1, price: "" },
+            ]),
+        ).toBe(6);
+        expect(columnTotal(total, [{ qty: 1, price: "" }])).toBe("");
+    });
+
     it("is empty for a column that is not a calculation, or without rows", () => {
         expect(columnTotal({ name: "a", header_usage: "number" }, rows)).toBe("");
         expect(columnTotal(calc({ name: "SUM", args: [] }), null)).toBe("");
+    });
+});
+
+describe("roundDecimals", () => {
+    it("rounds the classic float halves up", () => {
+        expect(roundDecimals(4.235, 2)).toBe(4.24);
+        expect(roundDecimals(3.5 * 1.21, 2)).toBe(4.24);
+        expect(roundDecimals(1.005, 2)).toBe(1.01);
+        expect(roundDecimals(2.675, 2)).toBe(2.68);
+        expect(roundDecimals(1.255, 2)).toBe(1.26);
+    });
+
+    it("rounds a negative half away from zero, without a negative zero", () => {
+        expect(roundDecimals(-4.235, 2)).toBe(-4.24);
+        expect(roundDecimals(-0.5, 0)).toBe(-1);
+        expect(Object.is(roundDecimals(-0.001, 2), 0)).toBe(true);
+    });
+
+    it("keeps a value already at its decimals and handles large or tiny ones", () => {
+        expect(roundDecimals(4.24, 2)).toBe(4.24);
+        expect(roundDecimals(1234567.89 * 1.21, 2)).toBe(1493827.15);
+        expect(roundDecimals(1e21, 2)).toBe(1e21);
+        expect(roundDecimals(1e-7, 2)).toBe(0);
     });
 });
 

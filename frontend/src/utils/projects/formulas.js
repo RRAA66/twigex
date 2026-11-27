@@ -22,6 +22,29 @@ export const toNumber = (v) => {
     return NaN;
 };
 
+// n with its decimal point moved by places, read from its first fifteen
+// digits: the float 3.50 × 1.21 is 4.2349999999999994, but 423.5 at two places.
+const shiftDecimals = (n, places) => {
+    const [digits, exponent = "0"] = n.toPrecision(15).split("e");
+
+    return Number(`${digits}e${Number(exponent) + places}`);
+};
+
+// Rounds n to places decimals as on paper: a half away from zero, so 1.005 is
+// 1.01 and -2.5 is -3. It rounds the size, so Math.ceil rounds away from zero
+// and Math.floor toward it.
+export const roundDecimals = (n, places, round = Math.round) => {
+    const shifted = shiftDecimals(Math.abs(n), places);
+
+    // A float this large has no digits left at these places.
+    if (shifted > Number.MAX_SAFE_INTEGER) return n;
+
+    return (Math.sign(n) * round(shifted)) / 10 ** places || 0;
+};
+
+const isEmptyAnswer = (v) =>
+    v == null || (typeof v === "string" && v.trim() === "") || (Array.isArray(v) && v.length === 0);
+
 const coerceDate = (v) => {
     if (v == null || v === "") return null;
     if (v instanceof Date && !Number.isNaN(v.getTime())) return v;
@@ -173,8 +196,18 @@ export const evaluateFormulaForRow = (header, row) => {
                 return nums.length ? Math.min(...nums) : "";
             case "MAX":
                 return nums.length ? Math.max(...nums) : "";
-            case "PRODUCT":
-                return nums.length ? nums.reduce((a, b) => a * b, 1) : "";
+            case "PRODUCT": {
+                // A product of an unanswered field is unknown, not the
+                // product of the others.
+                const missing = spec.args.some(
+                    (a, i) =>
+                        a?.type === "field" &&
+                        String(stripQuotes(a.value ?? "")).trim() !== "" &&
+                        isEmptyAnswer(rawArgs[i]),
+                );
+
+                return nums.length && !missing ? nums.reduce((a, b) => a * b, 1) : "";
+            }
         }
     }
 
@@ -221,9 +254,8 @@ export const evaluateFormulaForRow = (header, row) => {
             const d = Math.max(0, parseInt(rawArgs[1] ?? 0, 10) || 0);
 
             if (!Number.isFinite(n)) return "";
-            const p = Math.pow(10, d);
 
-            return Math.round(n * p) / p;
+            return roundDecimals(n, d);
         }
 
         case "ROUNDUP": {
@@ -231,9 +263,8 @@ export const evaluateFormulaForRow = (header, row) => {
             const d = Math.max(0, parseInt(rawArgs[1] ?? 0, 10) || 0);
 
             if (!Number.isFinite(n)) return "";
-            const p = Math.pow(10, d);
 
-            return Math.ceil(n * p) / p;
+            return roundDecimals(n, d, Math.ceil);
         }
 
         case "ROUNDDOWN": {
@@ -241,9 +272,8 @@ export const evaluateFormulaForRow = (header, row) => {
             const d = Math.max(0, parseInt(rawArgs[1] ?? 0, 10) || 0);
 
             if (!Number.isFinite(n)) return "";
-            const p = Math.pow(10, d);
 
-            return Math.floor(n * p) / p;
+            return roundDecimals(n, d, Math.floor);
         }
 
         case "ABS": {
@@ -402,6 +432,12 @@ export const calculateRowValueForRow = (header, row) => {
     return evaluateFormulaForRow({ ...header, formula: spec }, row);
 };
 
+// The decimals a number shows in: as many as its field names, or up to two.
+const shownDecimals = (header) =>
+    header?.decimals != null && header.decimals !== ""
+        ? Math.max(0, parseInt(header.decimals, 10) || 0)
+        : 2;
+
 export const formatCellValue = (v, header) => {
     if (v instanceof Date && !Number.isNaN(v.getTime())) {
         const dd = String(v.getDate()).padStart(2, "0");
@@ -428,13 +464,12 @@ export const formatCellValue = (v, header) => {
     if (typeof v === "number" && Number.isFinite(v)) {
         // A field that names its decimals shows that many; otherwise up to
         // two, so 1.25 + 1.25 is 2.5, not 3.
-        if (header?.decimals != null && header.decimals !== "") {
-            const d = Math.max(0, parseInt(header.decimals, 10) || 0);
+        const places = shownDecimals(header);
+        const rounded = roundDecimals(v, places);
 
-            return v.toFixed(d);
-        }
+        if (header?.decimals != null && header.decimals !== "") return rounded.toFixed(places);
 
-        return String(Math.round(v * 100) / 100);
+        return String(rounded);
     }
 
     if (v === null || v === undefined || v === "") return " ";
@@ -463,6 +498,15 @@ const combineTotals = (name, nums) => {
     }
 };
 
+// A row's result as its cell shows it, so the total adds up what is shown.
+const shownResult = (header, spec, row) => {
+    const v = evaluateFormulaForRow({ ...header, formula: spec }, row);
+
+    return typeof v === "number" && Number.isFinite(v)
+        ? roundDecimals(v, shownDecimals(header))
+        : toNumber(v);
+};
+
 // The value a calculations column shows under its rows.
 export const columnTotal = (header, rows) => {
     if (!Array.isArray(rows)) return "";
@@ -479,9 +523,7 @@ export const columnTotal = (header, rows) => {
     const isVariadicAggregator = AGGREGATORS.has(name) && hasFieldArgs;
 
     if (isVariadicAggregator) {
-        const nums = rows
-            .map((row) => toNumber(evaluateFormulaForRow({ ...header, formula: spec }, row)))
-            .filter(Number.isFinite);
+        const nums = rows.map((row) => shownResult(header, spec, row)).filter(Number.isFinite);
 
         return combineTotals(name, nums);
     }
@@ -493,9 +535,7 @@ export const columnTotal = (header, rows) => {
         return combineTotals(name, nums);
     }
 
-    const nums = rows
-        .map((row) => toNumber(evaluateFormulaForRow({ ...header, formula: spec }, row)))
-        .filter(Number.isFinite);
+    const nums = rows.map((row) => shownResult(header, spec, row)).filter(Number.isFinite);
 
     if (!nums.length) return "";
 
