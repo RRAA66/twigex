@@ -42,9 +42,6 @@ export const roundDecimals = (n, places, round = Math.round) => {
     return (Math.sign(n) * round(shifted)) / 10 ** places || 0;
 };
 
-const isEmptyAnswer = (v) =>
-    v == null || (typeof v === "string" && v.trim() === "") || (Array.isArray(v) && v.length === 0);
-
 const coerceDate = (v) => {
     if (v == null || v === "") return null;
     if (v instanceof Date && !Number.isNaN(v.getTime())) return v;
@@ -196,18 +193,8 @@ export const evaluateFormulaForRow = (header, row) => {
                 return nums.length ? Math.min(...nums) : "";
             case "MAX":
                 return nums.length ? Math.max(...nums) : "";
-            case "PRODUCT": {
-                // A product of an unanswered field is unknown, not the
-                // product of the others.
-                const missing = spec.args.some(
-                    (a, i) =>
-                        a?.type === "field" &&
-                        String(stripQuotes(a.value ?? "")).trim() !== "" &&
-                        isEmptyAnswer(rawArgs[i]),
-                );
-
-                return nums.length && !missing ? nums.reduce((a, b) => a * b, 1) : "";
-            }
+            case "PRODUCT":
+                return nums.length ? nums.reduce((a, b) => a * b, 1) : "";
         }
     }
 
