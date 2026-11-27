@@ -145,6 +145,10 @@ func (c formulaCalc) evaluate(spec *model.FormulaSpec) any {
 			}
 		}
 
+		if fn == "PRODUCT" && c.readsEmptyField(spec) {
+			return ""
+		}
+
 		return aggregate(fn, nums)
 	case "ROUND", "ROUNDUP", "ROUNDDOWN":
 		n := jsToNumber(arg(0))
@@ -152,15 +156,15 @@ func (c formulaCalc) evaluate(spec *model.FormulaSpec) any {
 			return ""
 		}
 
-		p := math.Pow(10, math.Max(0, intArg(1, 0)))
+		places := math.Max(0, intArg(1, 0))
 		switch fn {
 		case "ROUNDUP":
-			return math.Ceil(n*p) / p
+			return roundDecimals(n, places, math.Ceil)
 		case "ROUNDDOWN":
-			return math.Floor(n*p) / p
+			return roundDecimals(n, places, math.Floor)
 		}
 
-		return jsRound(float64(n*p)) / p
+		return roundDecimals(n, places, math.Round)
 	case "ABS":
 		n := jsToNumber(arg(0))
 		if math.IsNaN(n) || math.IsInf(n, 0) {
@@ -303,6 +307,26 @@ func (c formulaCalc) evaluate(spec *model.FormulaSpec) any {
 	}
 
 	return ""
+}
+
+// readsEmptyField tells whether a field the formula reads is unanswered.
+func (c formulaCalc) readsEmptyField(spec *model.FormulaSpec) bool {
+	for _, a := range spec.Args {
+		if a.Type != "field" || jsTrim(stripFormulaQuotes(a.Value)) == "" {
+			continue
+		}
+
+		switch v := c.resolve(a).(type) {
+		case nil:
+			return true
+		case string:
+			if jsTrim(v) == "" {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func aggregate(fn string, nums []float64) any {
@@ -458,7 +482,7 @@ func (c formulaCalc) format(v any) string {
 			return jsString(t)
 		}
 
-		return jsString(jsRound(float64(t*100)) / 100)
+		return jsString(roundDecimals(t, 2, math.Round))
 	case nil:
 		return ""
 	}
@@ -466,17 +490,25 @@ func (c formulaCalc) format(v any) string {
 	return jsString(v)
 }
 
-// jsRound rounds as Math.round: to the nearest whole number, a half up. Its
-// callers convert a product to float64 first, which keeps the compiler from
-// fusing it into the subtraction here and so rounding it otherwise than
-// JavaScript does.
-func jsRound(x float64) float64 {
-	r := math.Floor(x)
-	if x-r >= 0.5 {
-		r++
+// roundDecimals rounds as the page's roundDecimals: n to places decimals read
+// from its first fifteen digits, so the float 3.50 × 1.21 is 4.24 as on
+// paper. round rounds the size, so math.Round rounds a half away from zero.
+func roundDecimals(n, places float64, round func(float64) float64) float64 {
+	digits := strconv.FormatFloat(math.Abs(n), 'e', 14, 64)
+	at := strings.IndexByte(digits, 'e')
+	exponent, _ := strconv.ParseFloat(digits[at+1:], 64)
+
+	shifted, _ := strconv.ParseFloat(digits[:at]+"e"+jsNumber(exponent+places), 64)
+	if shifted > 1<<53-1 {
+		return n
 	}
 
-	return r
+	out := round(shifted) / math.Pow(10, places)
+	if n < 0 {
+		return -out
+	}
+
+	return out
 }
 
 func jsTruthy(v any) bool {
