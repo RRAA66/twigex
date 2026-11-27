@@ -145,10 +145,6 @@ func (c formulaCalc) evaluate(spec *model.FormulaSpec) any {
 			}
 		}
 
-		if fn == "PRODUCT" && c.readsEmptyField(spec) {
-			return ""
-		}
-
 		return aggregate(fn, nums)
 	case "ROUND", "ROUNDUP", "ROUNDDOWN":
 		n := jsToNumber(arg(0))
@@ -307,26 +303,6 @@ func (c formulaCalc) evaluate(spec *model.FormulaSpec) any {
 	}
 
 	return ""
-}
-
-// readsEmptyField tells whether a field the formula reads is unanswered.
-func (c formulaCalc) readsEmptyField(spec *model.FormulaSpec) bool {
-	for _, a := range spec.Args {
-		if a.Type != "field" || jsTrim(stripFormulaQuotes(a.Value)) == "" {
-			continue
-		}
-
-		switch v := c.resolve(a).(type) {
-		case nil:
-			return true
-		case string:
-			if jsTrim(v) == "" {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func aggregate(fn string, nums []float64) any {
